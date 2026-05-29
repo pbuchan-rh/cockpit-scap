@@ -54,9 +54,14 @@ install -d -m 755 %{buildroot}/var/lib/%{name}/content
 
 %post
 # Set SELinux file context for /var/lib/cockpit-scap/ and apply it
-semanage fcontext -a -t cockpit_var_lib_t '/var/lib/cockpit-scap(/.*)?' 2>/dev/null || \
-    semanage fcontext -m -t cockpit_var_lib_t '/var/lib/cockpit-scap(/.*)?'
-restorecon -Rv /var/lib/cockpit-scap 2>/dev/null || true
+if semanage fcontext -a -t cockpit_var_lib_t '/var/lib/cockpit-scap(/.*)?' 2>/dev/null || \
+   semanage fcontext -m -t cockpit_var_lib_t '/var/lib/cockpit-scap(/.*)?'; then
+    restorecon -Rv /var/lib/cockpit-scap || true
+else
+    echo "WARNING: Failed to configure SELinux context for /var/lib/cockpit-scap/" >&2
+    echo "WARNING: Run manually: semanage fcontext -a -t cockpit_var_lib_t '/var/lib/cockpit-scap(/.*)?'" >&2
+    echo "WARNING: Then run:     restorecon -Rv /var/lib/cockpit-scap" >&2
+fi
 
 %postun
 # Remove the fcontext entry only on full uninstall, not on upgrade
