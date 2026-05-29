@@ -105,19 +105,17 @@
 
 ### Multi-Version SDS Content Management
 
-- **REQ-51:** The module MUST auto-detect SDS files from both `/usr/share/xml/scap/ssg/content/` (system-managed) and `/var/lib/cockpit-scap/content/` (user-managed) and present them in the SDS selector
-- **REQ-52:** The SDS selector MUST visually distinguish system-installed content from user-uploaded content (e.g., grouped by source)
-- **REQ-53:** The module MUST provide an upload button that writes an SDS file to `/var/lib/cockpit-scap/content/` via `cockpit.file()` with `{ superuser: "require" }`
-- **REQ-54:** The module MUST provide a content management UI listing all files in `/var/lib/cockpit-scap/content/` with per-entry delete (routed through the confirmation modal)
-- **REQ-55:** When any SDS is selected, the module MUST detect its CPE target platform by parsing `oscap info` output and comparing against the host OS
-- **REQ-56:** When a cross-version SDS is selected (target OS does not match host), the module MUST disable the scan button and display a clear explanation — e.g., "This content targets RHEL 8. Tailoring is available. Scanning is not supported for cross-version content."
-- **REQ-57:** Tailoring MUST remain fully available for cross-version content — the tailoring tab operates identically regardless of target OS
-- **REQ-58:** The SELinux file context for `/var/lib/cockpit-scap/content/` MUST be defined in `selinux/cockpit-scap.fc` (included in the v1 `.fc` deliverable even though the feature lands in v2)
+- **REQ-51:** ✅ The module MUST auto-detect SDS files from both `/usr/share/xml/scap/ssg/content/` (system-managed) and `/var/lib/cockpit-scap/content/` (user-managed) and present them in the SDS selector
+- **REQ-52:** ✅ The SDS selector MUST visually distinguish system-installed content from user-uploaded content — implemented as `<optgroup>` grouping ("System Content" / "Uploaded Content")
+- **REQ-53:** ⬜ ~~The module MUST provide an upload button~~ — **Deferred.** SCP-first approach; admins stage files to `/var/lib/cockpit-scap/content/` directly. Upload button is an optional future addition pending Cockpit file size limit validation.
+- **REQ-54:** ✅ The module MUST provide a content management UI listing all files in `/var/lib/cockpit-scap/content/` with per-entry delete (routed through the confirmation modal)
+- **REQ-55:** ✅ Cross-version detection implemented via filename pattern (`ssg-rhel<N>-ds.xml`). Note: `oscap info` text output does not include CPE lines for satellite SSG content; filename-based detection is reliable for all SSG-named files.
+- **REQ-56:** ✅ Cross-version SDS disables scan button with inline explanation. Implementation is synchronous (host OS version cached at startup) to prevent race conditions.
+- **REQ-57:** ✅ Tailoring tab fully available for cross-version content — verified with RHEL 7/8/9 satellite content on RHEL 10 host.
+- **REQ-58:** ✅ `/var/lib/cockpit-scap/content/` covered by `selinux/cockpit-scap.fc` wildcard — confirmed `cockpit_var_lib_t` context on rhel10cis.
 
-**Design notes:**
-- Admins may stage content by SCP to `/var/lib/cockpit-scap/content/` directly; the upload button is an alternative, not the only path
-- SSG data stream files are 35MB+; upload size limits should be validated against the Cockpit file manager as a reference point before implementation
-- This feature enables admins to tailor RHEL 7/8/9 profiles on a RHEL 10 management host and download the resulting tailoring files for fleet deployment
+**Security note (discovered during implementation):**
+Files staged via SCP retain the SCP user's ownership. The directory is root-owned 755 (prevents creating new files without sudo) but existing files owned by the cockpit user can be overwritten without sudo. Files should be `chown root:root` after staging. A compromised unprivileged user who can write to content files could craft a malicious SDS to generate a harmful remediation script. Mitigations: root-owned files, UI warning on remediations from uploaded content, "uploaded content" badge in scan history.
 
 ---
 

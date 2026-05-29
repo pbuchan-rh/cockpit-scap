@@ -4,7 +4,7 @@
 
 ## Current State
 
-**Version:** v2.0
+**Version:** v2.0 (bug-fixed)
 **Last session:** 2026-05-29
 **Deployed to:** rhel10cis.beastmode.localdomain
 
@@ -18,17 +18,27 @@
 - Unsaved changes guard: confirmation modal fires before Load Profile or Edit discards in-progress changes
 - Base profile description panel: two-column layout matching Scan tab — description updates on profile select, clears on cancel/content change/edit
 
+### Content Tab (v2.0)
+- System Content card: read-only list of files from `/usr/share/xml/scap/ssg/content/`
+- Uploaded Content card: list of files from `/var/lib/cockpit-scap/content/` with per-entry Delete (confirmation modal) and Refresh button
+- SCP staging instructions shown inline
+- All content files in `/var/lib/cockpit-scap/content/` must be root-owned (755 dir, root:root files) — prevents unprivileged overwrite
+
 ### Scan Tab
-- Auto-detect SSG data stream files from `/usr/share/xml/scap/ssg/content/`
-- Human-readable SDS display names
-- Profile selection with full description display
+- Auto-detect SSG data stream files from `/usr/share/xml/scap/ssg/content/` **and** `/var/lib/cockpit-scap/content/`
+- SDS selector uses `<optgroup>` grouping: "System Content" / "Uploaded Content"
+- Human-readable SDS display names (static map covers all standard SSG filenames including RHEL 6–10)
+- **CPE / OS compatibility check**: version extracted from filename (`ssg-rhel<N>-ds.xml`), compared against cached `/etc/os-release` `VERSION_ID`. Cross-version content shows inline warning and blocks scan; tailoring unaffected. Check is fully synchronous (host OS version cached at startup) — no race condition.
+- Profile selection with full description display (description loads for all profiles including cross-version)
 - Tailoring file selector (hidden until tailoring files exist, filtered by current SDS)
 - Scan execution via `oscap xccdf eval` with cancel support
 - Results summary — pass/fail/error/notchecked counts + compliance score
+- **Uploaded content warning** in results card when scan used `/var/lib/cockpit-scap/content/` SDS
 - View Full Report (IndexedDB bridge → viewer.html, CSP-compliant, handles large HTML)
 - Download report, bash remediation, ansible remediation from results and history
 - Apply Remediation button (visibly stubbed — "Coming in a future release")
 - Scan history — last 10 scans retained, auto-pruned, each entry has View Report / Bash / Ansible / Delete
+- **"uploaded content" badge** on history rows for scans that used uploaded SDS
 - Confirmation modal on all destructive actions (history delete, tailoring delete)
 - Prereq detection: shows install instructions if openscap-scanner / SSG are missing
 
@@ -66,6 +76,10 @@
 | fapolicyd advisory | Struck from requirements (REQ-23) — target audience (security admins) knows their stack |
 | Rule results table | Struck (REQ-14/15/16/17) — oscap HTML report covers this better with zero implementation cost |
 | `generateRemediation` failure | Non-fatal — logs error, does not block results display; known limitation for tailored scans |
+| CPE detection method | Filename-based (`ssg-rhel<N>-ds.xml` regex) — `oscap info` text output does not include CPE lines for any tested satellite SSG files |
+| CPE check timing | `hostOsVersion` cached from `/etc/os-release` at DOMContentLoaded; `checkCpeCompat` is synchronous — eliminates race condition where profile select populated before block fired |
+| Content file ownership | Files in `/var/lib/cockpit-scap/content/` must be root:root — directory is already root-owned 755 but files placed by SCP retain the SCP user's ownership; Makefile install target creates the dir as root; admins staging via SCP should `sudo chown root:root` the files |
+| Upload button | Deferred (REQ-53) — SCP-first approach; 35MB files through browser upload has unvalidated size limits in Cockpit; admins can scp directly |
 
 ---
 
@@ -83,16 +97,19 @@
 | 2026-05-29 | v1.0 | Release | SELinux .fc file, Makefile install/uninstall, clean install test on rhel10cis — all v1 acceptance criteria met, SELinux enforcing mode confirmed, project checked into Gitea |
 | 2026-05-29 | v1.1 | UI Polish | Page alignment fix; unified tailoring editor (3 cards → 1 sticky card); variables Collapse/Expand + search; unsaved-changes guard on Load Profile and Edit; base profile description panel on Tailoring tab matching Scan tab pattern; bug fixes: stray div, description state not clearing on Cancel/Edit |
 | 2026-05-29 | v2.0 | Feature | Content tab: system content list + user-staged content list with delete; SDS selectors now use optgroups (System Content / Uploaded Content); CPE/OS compatibility detection — cross-version content blocks scan, shows inline alert, tailoring unaffected; getUserContentMeta sidecar for display names; loadProfiles returns raw oscap output |
+| 2026-05-29 | v2.0 | Satellite content | 5 SDS files (RHEL 6–10) pulled from satellite.beastmode.localdomain (`scap-security-guide-satellite` package) → staged to local `content/` dir and `/var/lib/cockpit-scap/content/` on rhel10cis; files chowned root:root; `content/` added to .gitignore |
+| 2026-05-29 | v2.0 | Bug fixes | Content detection hang: removed eager `oscap info` from `getUserContentMeta` (was parsing 5×20MB files on page load); CPE detection: `oscap info` output has no CPE lines for satellite SSG files — switched to filename regex; CPE race condition: `hostOsVersion` now cached at startup, `checkCpeCompat` is synchronous; profile description suppressed for cross-version content: fixed by separating description load from scan button gate |
+| 2026-05-29 | v2.0 | Security | Root-owned content files (chown root:root on rhel10cis); uploaded-content warning in results card; "uploaded content" badge in scan history; documented spoofed-file remediation risk and mitigations |
 
 ---
 
 ## Next Session — Suggested Order
 
-**Goal:** v2 testing + remaining v2 items
+**Goal:** RPM spec + community release prep
 
-1. **Live test on rhel10cis** — verify Content tab, SDS optgroups, CPE alert with an actual cross-version SDS file (stage an RHEL 8 or 9 SDS into `/var/lib/cockpit-scap/content/` via scp and exercise the full flow)
-2. **Cross-version tailoring verification** — confirm tailoring tab loads an RHEL 8/9 profile and produces valid XML when a cross-version SDS is selected (REQ-57)
-3. **RPM spec skeleton** — needed before community release (Fedora COPR)
+1. **RPM spec** (`cockpit-scap.spec`) — packages module files, runs SELinux `restorecon` in `%post`, creates `/var/lib/cockpit-scap/{results,tailoring,content}/` in `%install`. Required before Fedora COPR submission.
+2. **Upload button** (REQ-53, optional) — in-browser SDS file upload to `/var/lib/cockpit-scap/content/`; validate Cockpit file size limits first
+3. **Community engagement** — comment on cockpit-project/cockpit issue #19691; submit to Fedora COPR; contact OpenSCAP project
 
 **Upstream engagement (when ready):**
 - Comment on cockpit-project/cockpit issue #19691 with link to repo
@@ -103,20 +120,13 @@
 
 ## Backlog (Priority Order)
 
-### v1 — Remaining
-1. **SELinux `.fc` file** — REQ-50/REQ-58; include `/var/lib/cockpit-scap/content/` path now for v2 readiness
-2. **Makefile install/uninstall** — REQ-49, required for repeatable installs
-3. **RPM spec** — parking lot, needed for Fedora/COPR packaging
-4. **Silent remediation failure for tailored scans** — `oscap xccdf generate fix` failure is non-fatal; a UI warning would be better than silent failure
-
-### v2 — Multi-Version SDS Content Management
-5. **Content directory + upload UI** — REQ-51–54; `/var/lib/cockpit-scap/content/`, upload button, management list
-6. **CPE / target OS detection** — REQ-55–56; parse `oscap info`, block scan for cross-version content
-7. **Cross-version tailoring** — REQ-57; tailoring tab works identically for RHEL 7/8/9 content
-8. **In-place remediation apply** — deferred v2, requires design discussion
+### Pre-release
+1. **RPM spec** — required for Fedora COPR; see Next Session
+2. **Upload button** (REQ-53) — optional but rounds out the content management story
+3. **Silent remediation failure** — `oscap xccdf generate fix` non-fatal; a visible UI warning for tailored-scan remediation failures would be better than silent console.error
 
 ### v3 — Container Image Scanning
-9. **`oscap-podman` integration** — enabled by v2 content management; scan RHEL 7/8/9 images with matching SSG content; requires Podman installed; image enumeration + OS detection from image metadata
+4. **`oscap-podman` integration** — enabled by v2 content management; scan RHEL 7/8/9 images with matching SSG content; requires Podman installed; image enumeration + OS detection from image metadata; requires its own design session
 
 ---
 
@@ -126,14 +136,20 @@
 |---|---|
 | `CLAUDE.md` | ✅ Current |
 | `DESIGN.md` | ✅ Current |
-| `HANDOFF.md` | ✅ This file — v0.9 |
-| `README.md` | ✅ Written for v0.9 |
-| `REQUIREMENTS.md` | ✅ Current |
+| `CLAUDE.md` | ✅ Current |
+| `DESIGN.md` | ✅ Current |
+| `HANDOFF.md` | ✅ This file — updated v2.0 |
+| `README.md` | ⚠️ Written for v0.9 — needs v2 content tab / multi-version SDS section |
+| `REQUIREMENTS.md` | ⚠️ v2 items need status update |
 | `PROMPT_DASHBOARD.md` | ✅ Current |
+| `WORKBENCH_FEATURES.md` | ✅ Current |
+| `ECOSYSTEM.md` | ✅ Current |
+| `SCAP_TUI_DESIGN.md` | ✅ Current |
 | `manifest.json` | ✅ Complete |
-| `index.html` | ✅ v0.9 |
-| `index.js` | ✅ v0.9 |
-| `style.css` | ✅ v0.9 |
+| `index.html` | ✅ v2.0 |
+| `index.js` | ✅ v2.0 |
+| `style.css` | ✅ v2.0 |
 | `viewer.html` | ✅ Complete |
-| `selinux/cockpit-scap.fc` | ✅ Complete — tested on rhel10cis, SELinux enforcing confirmed |
-| `Makefile` | ✅ Complete — clean install tested on rhel10cis |
+| `selinux/cockpit-scap.fc` | ✅ Complete — covers content/ path, SELinux enforcing confirmed |
+| `Makefile` | ✅ Complete — creates content/ dir, clean install tested |
+| `cockpit-scap.spec` | ❌ Not yet written — next deliverable |
