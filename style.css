@@ -1,5 +1,5 @@
 /* ============================================================
-   cockpit-scap — style.css  v0.2
+   cockpit-scap — style.css  v0.3
    PF6-compatible CSS without a build toolchain.
    All custom classes prefixed ct-.
    All colors via CSS custom properties — no hardcoded hex.
@@ -985,6 +985,34 @@ details.ct-tailor-group .ct-tailor-rule {
 .ct-btn-danger-link:hover:not(:disabled) {
   color: var(--ct-color-danger);
   text-decoration: underline;
+}
+
+/* ---- Content tab ------------------------------------------ */
+
+.ct-cpe-alert {
+  margin-top: var(--ct-space-sm);
+  margin-bottom: var(--ct-space-sm);
+}
+
+.ct-content-help {
+  color: var(--ct-color-text-secondary);
+  margin-bottom: var(--ct-space-md);
+}
+
+.ct-content-empty {
+  color: var(--ct-color-text-secondary);
+  font-style: italic;
+}
+
+.ct-content-scp-hint {
+  background: var(--ct-color-bg-page);
+  border-radius: var(--ct-border-radius-sm);
+  padding: var(--ct-space-sm) var(--ct-space-md);
+  font-family: var(--ct-font-mono);
+  font-size: var(--ct-font-size-sm);
+  margin-bottom: var(--ct-space-md);
+  overflow-x: auto;
+  white-space: pre;
 }
 
 /* ---- Confirmation modal ------------------------------------ */
