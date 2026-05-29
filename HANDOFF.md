@@ -4,7 +4,7 @@
 
 ## Current State
 
-**Version:** v1.1
+**Version:** v2.0
 **Last session:** 2026-05-29
 **Deployed to:** rhel10cis.beastmode.localdomain
 
@@ -82,18 +82,17 @@
 | 2026-05-29 | v0.9 | Planning | Workbench feature audit (WORKBENCH_FEATURES.md), scap-tui concept (SCAP_TUI_DESIGN.md), v2/v3 roadmap locked, OVAL scanning explicitly out of scope, container scanning deferred to v3 |
 | 2026-05-29 | v1.0 | Release | SELinux .fc file, Makefile install/uninstall, clean install test on rhel10cis — all v1 acceptance criteria met, SELinux enforcing mode confirmed, project checked into Gitea |
 | 2026-05-29 | v1.1 | UI Polish | Page alignment fix; unified tailoring editor (3 cards → 1 sticky card); variables Collapse/Expand + search; unsaved-changes guard on Load Profile and Edit; base profile description panel on Tailoring tab matching Scan tab pattern; bug fixes: stray div, description state not clearing on Cancel/Edit |
+| 2026-05-29 | v2.0 | Feature | Content tab: system content list + user-staged content list with delete; SDS selectors now use optgroups (System Content / Uploaded Content); CPE/OS compatibility detection — cross-version content blocks scan, shows inline alert, tailoring unaffected; getUserContentMeta sidecar for display names; loadProfiles returns raw oscap output |
 
 ---
 
 ## Next Session — Suggested Order
 
-**Goal:** v2 — Multi-version SDS content management
+**Goal:** v2 testing + remaining v2 items
 
-1. Content directory UI — list files in `/var/lib/cockpit-scap/content/`, upload button, delete with confirmation modal
-2. CPE / target OS detection — parse `oscap info` on SDS selection, block scan for cross-version content with clear message
-3. SDS selector — group system content vs uploaded content visually
-4. Cross-version tailoring — verify tailoring tab works identically for RHEL 7/8/9 SDS files
-5. RPM spec skeleton — needed before community release
+1. **Live test on rhel10cis** — verify Content tab, SDS optgroups, CPE alert with an actual cross-version SDS file (stage an RHEL 8 or 9 SDS into `/var/lib/cockpit-scap/content/` via scp and exercise the full flow)
+2. **Cross-version tailoring verification** — confirm tailoring tab loads an RHEL 8/9 profile and produces valid XML when a cross-version SDS is selected (REQ-57)
+3. **RPM spec skeleton** — needed before community release (Fedora COPR)
 
 **Upstream engagement (when ready):**
 - Comment on cockpit-project/cockpit issue #19691 with link to repo
