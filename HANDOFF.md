@@ -58,9 +58,13 @@
 
 ## What Is NOT Done (Remaining Before Community Release)
 
+Nothing blocking. Module is live on Fedora COPR.
+
+### Optional / Future
 | Item | Requirement | Notes |
 |---|---|---|
-| RPM spec | — | Needed for Fedora/COPR packaging before community release |
+| Upload button | REQ-53 | In-browser SDS upload to `/var/lib/cockpit-scap/content/`; deferred, SCP-first works |
+| v3 container scanning | — | `oscap-podman` integration; requires its own design session |
 
 ---
 
@@ -100,33 +104,33 @@
 | 2026-05-29 | v2.0 | Satellite content | 5 SDS files (RHEL 6–10) pulled from satellite.beastmode.localdomain (`scap-security-guide-satellite` package) → staged to local `content/` dir and `/var/lib/cockpit-scap/content/` on rhel10cis; files chowned root:root; `content/` added to .gitignore |
 | 2026-05-29 | v2.0 | Bug fixes | Content detection hang: removed eager `oscap info` from `getUserContentMeta` (was parsing 5×20MB files on page load); CPE detection: `oscap info` output has no CPE lines for satellite SSG files — switched to filename regex; CPE race condition: `hostOsVersion` now cached at startup, `checkCpeCompat` is synchronous; profile description suppressed for cross-version content: fixed by separating description load from scan button gate |
 | 2026-05-29 | v2.0 | Security | Root-owned content files (chown root:root on rhel10cis); uploaded-content warning in results card; "uploaded content" badge in scan history; documented spoofed-file remediation risk and mitigations |
+| 2026-05-29 | v2.0 | Release | RPM spec written, LICENSE (GPL-2.0-or-later) added; built and tested on rhel10cis; GitHub repo (pbuchan-rh/cockpit-scap) created with clean release branch; v2.0 tag + GitHub Release with RPM/SRPM assets |
+| 2026-05-29 | v2.0 | Code review | Multi-angle review: 15 findings; fixed concurrent scan guard, remediation null path crash, innerHTML XSS in content lists, NaN score guard, Promise.all returns, DOMParser validation, download error visibility, JSON.parse clarity, Makefile uninstall gap, %post silent failure; openscap-scanner moved to Recommends (spec bug found during clean install test) |
+| 2026-05-29 | v2.0 | Clean install test | Fresh RHEL 10 VM (rhel10test, 10.0.0.214) on virt3; RPM install from zero, SELinux labeling confirmed, prereq detection on all 3 tabs, full scan workflow, clean rpm -e uninstall — all passed |
+| 2026-05-29 | v2.0 | COPR | Submitted to Fedora COPR (pbuchan-rh/cockpit-scap); build succeeded; publicly installable via `dnf copr enable pbuchan-rh/cockpit-scap && dnf install cockpit-scap` |
 
 ---
 
 ## Next Session — Suggested Order
 
-**Goal:** RPM spec + community release prep
+**Goal:** Community engagement + v3 planning
 
-1. **RPM spec** (`cockpit-scap.spec`) — packages module files, runs SELinux `restorecon` in `%post`, creates `/var/lib/cockpit-scap/{results,tailoring,content}/` in `%install`. Required before Fedora COPR submission.
+1. **Community engagement** — comment on cockpit-project/cockpit issue #19691 with link to repo; contact OpenSCAP project about listing as community tool
 2. **Upload button** (REQ-53, optional) — in-browser SDS file upload to `/var/lib/cockpit-scap/content/`; validate Cockpit file size limits first
-3. **Community engagement** — comment on cockpit-project/cockpit issue #19691; submit to Fedora COPR; contact OpenSCAP project
+3. **v3 design session** — `oscap-podman` container image scanning; requires Podman, image enumeration, OS detection from image metadata
 
-**Upstream engagement (when ready):**
-- Comment on cockpit-project/cockpit issue #19691 with link to repo
-- Publish to Fedora COPR
-- Contact OpenSCAP project about listing as community tool
+**Published locations:**
+- GitHub: https://github.com/pbuchan-rh/cockpit-scap
+- COPR: https://copr.fedorainfracloud.org/coprs/pbuchan-rh/cockpit-scap/
+- Gitea: http://git.beastmode.localdomain (internal)
 
 ---
 
 ## Backlog (Priority Order)
 
-### Pre-release
-1. **RPM spec** — required for Fedora COPR; see Next Session
-2. **Upload button** (REQ-53) — optional but rounds out the content management story
-3. **Silent remediation failure** — `oscap xccdf generate fix` non-fatal; a visible UI warning for tailored-scan remediation failures would be better than silent console.error
-
-### v3 — Container Image Scanning
-4. **`oscap-podman` integration** — enabled by v2 content management; scan RHEL 7/8/9 images with matching SSG content; requires Podman installed; image enumeration + OS detection from image metadata; requires its own design session
+1. **Upload button** (REQ-53) — optional but rounds out the content management story
+2. **Community engagement** — cockpit-project/cockpit issue #19691, OpenSCAP project listing
+3. **v3 `oscap-podman`** — container image scanning; own design session required
 
 ---
 
@@ -139,17 +143,18 @@
 | `CLAUDE.md` | ✅ Current |
 | `DESIGN.md` | ✅ Current |
 | `HANDOFF.md` | ✅ This file — updated v2.0 |
-| `README.md` | ⚠️ Written for v0.9 — needs v2 content tab / multi-version SDS section |
-| `REQUIREMENTS.md` | ⚠️ v2 items need status update |
-| `PROMPT_DASHBOARD.md` | ✅ Current |
+| `README.md` | ✅ Updated — v2.0, COPR install instructions |
+| `REQUIREMENTS.md` | ✅ Current |
+| `PROMPT_DASHBOARD.md` | ⚠️ Stale — written for v0.9, not critical |
 | `WORKBENCH_FEATURES.md` | ✅ Current |
 | `ECOSYSTEM.md` | ✅ Current |
 | `SCAP_TUI_DESIGN.md` | ✅ Current |
 | `manifest.json` | ✅ Complete |
-| `index.html` | ✅ v2.0 |
-| `index.js` | ✅ v2.0 |
+| `index.html` | ✅ v2.0 (code review hardened) |
+| `index.js` | ✅ v2.0 (code review hardened) |
 | `style.css` | ✅ v2.0 |
 | `viewer.html` | ✅ Complete |
-| `selinux/cockpit-scap.fc` | ✅ Complete — covers content/ path, SELinux enforcing confirmed |
-| `Makefile` | ✅ Complete — creates content/ dir, clean install tested |
-| `cockpit-scap.spec` | ❌ Not yet written — next deliverable |
+| `selinux/cockpit-scap.fc` | ✅ Complete |
+| `Makefile` | ✅ Complete — uninstall gap fixed |
+| `cockpit-scap.spec` | ✅ Complete — built, tested, submitted to COPR |
+| `LICENSE` | ✅ GPL-2.0-or-later |
