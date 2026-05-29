@@ -14,6 +14,10 @@ compliance scanning without leaving their management console.
 ## Features
 
 - **Auto-detection** of installed SSG data stream files from `/usr/share/xml/scap/ssg/content/`
+- **Multi-version content** — stage RHEL 6–9 SDS files in `/var/lib/cockpit-scap/content/` and scan
+  with the correct content for any RHEL version; system and user content shown in grouped selector
+- **CPE compatibility check** — cross-version content is detected automatically; scan is blocked with
+  an inline explanation; tailoring remains available for cross-version profile work
 - **Profile selection** with full profile description display
 - **Scan execution** via `oscap xccdf eval` with cancel support
 - **Results summary** — pass, fail, error, and not-checked counts with compliance score
@@ -23,6 +27,7 @@ compliance scanning without leaving their management console.
 - **Profile tailoring** — rule tree editor with enable/disable, variable value adjustment, search,
   expand/collapse; saves valid XCCDF tailoring XML; upload/download/edit/delete saved files
 - **Tailored scans** — select a saved tailoring file at scan time; remediation artifacts respect the tailoring
+- **Content tab** — manage user-staged SDS files with per-entry delete and SCP staging instructions
 
 ## Requirements
 
@@ -48,26 +53,25 @@ failing silently.
 
 ## Installation
 
-> **Note:** A Makefile and RPM spec are planned. Until then, install manually.
-
-**1. Create the runtime directory:**
+**From source (Makefile):**
 
 ```bash
-sudo mkdir -p /var/lib/cockpit-scap/results
-sudo mkdir -p /var/lib/cockpit-scap/tailoring
-sudo chown -R root:root /var/lib/cockpit-scap
-sudo chmod 755 /var/lib/cockpit-scap
+git clone https://github.com/pbuchan-rh/cockpit-scap.git
+cd cockpit-scap
+sudo make install
 ```
 
-**2. Install the module files:**
+The Makefile creates `/var/lib/cockpit-scap/{results,tailoring,content}/`, installs module files to
+`/usr/share/cockpit/cockpit-scap/`, and configures the SELinux file context automatically.
+
+**RPM (COPR — coming soon):**
 
 ```bash
-sudo mkdir -p /usr/share/cockpit/cockpit-scap
-sudo cp index.html index.js style.css manifest.json viewer.html \
-    /usr/share/cockpit/cockpit-scap/
+# dnf copr enable pbuchan-rh/cockpit-scap
+# dnf install cockpit-scap
 ```
 
-**3. Reload Cockpit and navigate to SCAP Compliance in the sidebar.**
+Reload Cockpit and navigate to **SCAP Compliance** in the sidebar.
 
 No firewall changes are required. The module operates entirely over Cockpit's existing `9090/tcp`.
 
@@ -106,18 +110,21 @@ All runtime data is written to `/var/lib/cockpit-scap/`:
 │       ├── results.xml       # oscap XML results
 │       ├── remediation.sh    # Bash remediation script
 │       └── remediation.yml   # Ansible remediation playbook
-└── tailoring/
-    ├── <name>-<timestamp>.xml   # XCCDF tailoring file
-    └── <name>-<timestamp>.json  # Sidecar metadata
+├── tailoring/
+│   ├── <name>-<timestamp>.xml   # XCCDF tailoring file
+│   └── <name>-<timestamp>.json  # Sidecar metadata
+└── content/
+    └── ssg-rhel<N>-ds.xml    # User-staged SDS files (root:root ownership required)
 ```
 
 Scan history is pruned automatically to the 10 most recent entries.
 
 ## SELinux
 
-The module is tested with SELinux in enforcing mode. All file I/O is scoped to
-`/var/lib/cockpit-scap/` which carries the appropriate file context. A formal SELinux file context
-definition (`.fc`) and install-time `restorecon` are planned deliverables before community release.
+The module is tested and confirmed working with SELinux in enforcing mode. All file I/O is scoped to
+`/var/lib/cockpit-scap/` which carries the `cockpit_var_lib_t` context. The SELinux file context
+definition (`selinux/cockpit-scap.fc`) is shipped with the module and applied automatically at
+install time via `semanage fcontext` and `restorecon` — no manual SELinux steps are required.
 
 ## Privilege model
 
@@ -130,8 +137,8 @@ No polkit action file, sudoers entry, or setuid binary is required.
 ## What this module does not do
 
 - Remote scanning via SSH (`oscap-ssh`) — explicitly out of scope
-- Container/image scanning (`oscap-podman`) — out of scope; OS profile mismatch makes results
-  unreliable across RHEL 8/9/10 images
+- Container/image scanning (`oscap-podman`) — deferred to v3; requires Podman, image enumeration,
+  and OS detection from image metadata — enough new surface to warrant its own milestone
 - OVAL vulnerability scanning — not in scope
 - One-click in-place remediation apply — deferred; stub button present in the UI
 - Ansible remediation apply — deferred
@@ -139,17 +146,15 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 ## Development status
 
-**Current version:** v1.1
+**Current version:** v2.0
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
-
-SELinux `.fc` deliverable and Makefile install target are complete. RPM spec planned before community release.
 
 ### Roadmap
 
 | Version | Theme |
 |---|---|
-| **v1** *(current)* | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
-| **v2** | Multi-version SDS content — tailor RHEL 7/8/9 profiles from a RHEL 10 host, CPE-aware scan blocking |
+| **v1** | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
+| **v2** *(current)* | Multi-version SDS content management — stage and use RHEL 6–9 content from a RHEL 10 host, CPE-aware scan blocking, Content tab |
 | **v3** | Container image scanning — `oscap-podman` integration with correct cross-version content |
