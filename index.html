@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=20">
+    <link rel="stylesheet" href="style.css?v=21">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=20" defer></script>
+    <script src="index.js?v=21" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -34,6 +34,12 @@
             <button class="pf-v6-c-tabs__link" type="button" role="tab"
                     aria-selected="false" data-panel="panel-tailoring" id="tab-btn-tailoring">
               <span class="pf-v6-c-tabs__item-text">Tailoring</span>
+            </button>
+          </li>
+          <li class="pf-v6-c-tabs__item" role="presentation">
+            <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                    aria-selected="false" data-panel="panel-content" id="tab-btn-content">
+              <span class="pf-v6-c-tabs__item-text">Content</span>
             </button>
           </li>
         </ul>
@@ -95,6 +101,16 @@
                       <option value="">Detecting content&hellip;</option>
                     </select>
                   </span>
+                </div>
+              </div>
+
+              <!-- Cross-version content alert (hidden unless CPE mismatch) -->
+              <div class="pf-v6-c-alert pf-m-warning ct-cpe-alert hidden"
+                   id="ct-cpe-alert" aria-label="Cross-version content">
+                <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+                <div>
+                  <h4 class="pf-v6-c-alert__title">Cross-version content</h4>
+                  <div class="pf-v6-c-alert__description" id="ct-cpe-alert-text"></div>
                 </div>
               </div>
 
@@ -468,6 +484,46 @@
 
     </section>
     <!-- END TAILORING TAB PANEL -->
+
+    <!-- ================================================== -->
+    <!-- CONTENT TAB PANEL                                  -->
+    <!-- ================================================== -->
+    <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-content"
+             role="tabpanel" aria-labelledby="tab-btn-content">
+
+      <!-- System content -->
+      <div class="pf-v6-c-card">
+        <div class="pf-v6-c-card__title">
+          <h2 class="pf-v6-c-card__title-text">System Content</h2>
+        </div>
+        <div class="pf-v6-c-card__body">
+          <p class="ct-content-help">SCAP content installed by packages. Managed via <code>dnf install scap-security-guide</code>. Read-only.</p>
+          <div id="ct-system-content-list"></div>
+        </div>
+      </div>
+
+      <!-- User-staged content -->
+      <div class="pf-v6-c-card">
+        <div class="pf-v6-c-card__title">
+          <div class="ct-tailor-rules-header">
+            <h2 class="pf-v6-c-card__title-text">Uploaded Content</h2>
+            <button class="pf-v6-c-button pf-m-secondary" type="button"
+                    id="ct-content-refresh-btn">Refresh</button>
+          </div>
+        </div>
+        <div class="pf-v6-c-card__body">
+          <p class="ct-content-help">
+            Stage SDS files for other RHEL versions by copying them to
+            <code>/var/lib/cockpit-scap/content/</code>. Tailoring works for any version;
+            scanning is blocked for content that does not match this host.
+          </p>
+          <pre class="ct-content-scp-hint">scp ssg-rhel8-ds.xml user@host:/var/lib/cockpit-scap/content/</pre>
+          <div id="ct-user-content-list"></div>
+        </div>
+      </div>
+
+    </section>
+    <!-- END CONTENT TAB PANEL -->
 
     </div><!-- end pf-v6-c-page__main-container -->
   </main>

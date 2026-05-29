@@ -1,9 +1,10 @@
 'use strict';
 
-const MODULE_VERSION = 'v1.1';
+const MODULE_VERSION = 'v2.0';
 const SSG_CONTENT_DIR = '/usr/share/xml/scap/ssg/content/';
 const RESULTS_BASE    = '/var/lib/cockpit-scap/results/';
 const TAILORING_BASE  = '/var/lib/cockpit-scap/tailoring/';
+const CONTENT_BASE    = '/var/lib/cockpit-scap/content/';
 
 const SDS_DISPLAY_NAMES = {
     'ssg-rhel10-ds.xml':     'Red Hat Enterprise Linux 10',
@@ -84,6 +85,9 @@ let tailorRuleChanges   = {};
 let tailorValueChanges  = {};
 let tailoringFilesMap   = {};
 
+/* Module state — content */
+let cpeBlocksScan = false;
+
 /* Module state — confirm modal */
 let confirmCallback = null;
 
@@ -92,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     detectContent();
     loadHistory();
     detectTailoringFiles();
+    renderContentTab();
 
     /* Scan tab */
     document.getElementById('ct-content-select')
@@ -175,6 +180,10 @@ document.addEventListener('DOMContentLoaded', () => {
             e.target.value = '';
         });
 
+    /* Content tab */
+    document.getElementById('ct-content-refresh-btn')
+        .addEventListener('click', () => { renderContentTab(); detectContent(); });
+
     /* Confirm modal */
     document.getElementById('ct-confirm-ok')
         .addEventListener('click', () => {
@@ -231,56 +240,107 @@ function detectContent() {
     const scanSelect   = document.getElementById('ct-content-select');
     const tailorSelect = document.getElementById('ct-tailor-content-select');
 
-    cockpit.spawn(['ls', SSG_CONTENT_DIR], { err: 'message' })
-        .then(output => {
-            const files = output.trim().split('\n')
-                .filter(f => f.endsWith('-ds.xml'));
-
+    Promise.all([listSystemContent(), listUserContent()])
+        .then(([sysFiles, userFiles]) => {
             scanSelect.innerHTML   = '';
             tailorSelect.innerHTML = '';
 
-            if (files.length === 0) {
+            const total = sysFiles.length + userFiles.length;
+
+            if (total === 0) {
                 showNoContentAlert();
                 appendOption(scanSelect,   '', 'No content found');
                 appendOption(tailorSelect, '', 'No content found');
-                tailorSelect.disabled = true;
                 return;
             }
 
-            if (files.length === 1) {
-                const sdsPath = SSG_CONTENT_DIR + files[0];
-                const name    = sdsDisplayName(files[0]);
+            if (total === 1) {
+                const item = sysFiles.length ? sysFiles[0] : userFiles[0];
 
-                appendOption(scanSelect, sdsPath, name);
-                scanSelect.value = sdsPath;
-                currentSdsPath   = sdsPath;
-                loadProfiles(sdsPath);
+                appendOption(scanSelect, item.path, item.name);
+                scanSelect.value = item.path;
+                currentSdsPath   = item.path;
+                loadProfiles(item.path).then(out => { if (out) checkCpeCompat(out); });
                 detectTailoringFiles();
 
-                appendOption(tailorSelect, sdsPath, name);
-                tailorSelect.value = sdsPath;
-                tailorSdsPath      = sdsPath;
-                loadProfiles(sdsPath, 'ct-tailor-profile-select');
+                appendOption(tailorSelect, item.path, item.name);
+                tailorSelect.value = item.path;
+                tailorSdsPath      = item.path;
+                loadProfiles(item.path, 'ct-tailor-profile-select');
                 return;
             }
 
             appendOption(scanSelect,   '', 'Select content…');
             appendOption(tailorSelect, '', 'Select content…');
-            files.forEach(file => {
-                const sdsPath = SSG_CONTENT_DIR + file;
-                const name    = sdsDisplayName(file);
-                appendOption(scanSelect,   sdsPath, name);
-                appendOption(tailorSelect, sdsPath, name);
-            });
-        })
-        .catch(() => {
-            showNoContentAlert();
-            scanSelect.innerHTML   = '';
-            tailorSelect.innerHTML = '';
-            appendOption(scanSelect,   '', 'Content directory not found');
-            appendOption(tailorSelect, '', 'Content directory not found');
-            tailorSelect.disabled = true;
+            populateContentOptGroups(scanSelect,   sysFiles, userFiles);
+            populateContentOptGroups(tailorSelect, sysFiles, userFiles);
         });
+}
+
+function populateContentOptGroups(sel, sysFiles, userFiles) {
+    if (sysFiles.length > 0) {
+        const grp = document.createElement('optgroup');
+        grp.label = 'System Content';
+        sysFiles.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f.path;
+            opt.textContent = f.name;
+            grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+    }
+    if (userFiles.length > 0) {
+        const grp = document.createElement('optgroup');
+        grp.label = 'Uploaded Content';
+        userFiles.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f.path;
+            opt.textContent = f.name;
+            grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+    }
+}
+
+function listSystemContent() {
+    return cockpit.spawn(['ls', SSG_CONTENT_DIR], { err: 'message' })
+        .then(output => output.trim().split('\n')
+            .filter(f => f.endsWith('-ds.xml'))
+            .map(f => ({ path: SSG_CONTENT_DIR + f, name: sdsDisplayName(f) }))
+        )
+        .catch(() => []);
+}
+
+function listUserContent() {
+    return cockpit.spawn(['ls', CONTENT_BASE], { err: 'message' })
+        .then(output => {
+            const files = output.trim().split('\n').filter(f => f.endsWith('.xml'));
+            if (files.length === 0) return [];
+            return Promise.all(files.map(f => getUserContentMeta(f)));
+        })
+        .then(entries => entries.filter(Boolean))
+        .catch(() => []);
+}
+
+function getUserContentMeta(filename) {
+    const xmlPath  = CONTENT_BASE + filename;
+    const jsonPath = CONTENT_BASE + filename.replace(/\.xml$/, '.json');
+
+    return cockpit.file(jsonPath).read()
+        .then(content => {
+            const meta = JSON.parse(content);
+            return { path: xmlPath, name: meta.title || sdsDisplayName(filename), filename };
+        })
+        .catch(() =>
+            cockpit.spawn(['oscap', 'info', xmlPath], { err: 'out' })
+                .then(output => {
+                    const title = parseOscapTitle(output) || sdsDisplayName(filename);
+                    const meta  = { title, filename, added: new Date().toISOString() };
+                    return cockpit.file(jsonPath, { superuser: 'require' }).replace(JSON.stringify(meta, null, 2))
+                        .then(() => ({ path: xmlPath, name: title, filename }));
+                })
+                .catch(() => ({ path: xmlPath, name: sdsDisplayName(filename), filename }))
+        );
 }
 
 function onContentChange() {
@@ -288,6 +348,7 @@ function onContentChange() {
 
     resetProfileSelect();
     hideProfileDescription();
+    clearCpeAlert();
     setScanButtonEnabled(false);
     currentSdsPath = null;
 
@@ -297,8 +358,46 @@ function onContentChange() {
     }
 
     currentSdsPath = sdsPath;
-    loadProfiles(sdsPath);
+    loadProfiles(sdsPath).then(out => { if (out) checkCpeCompat(out); });
     detectTailoringFiles();
+}
+
+/* ---- CPE / OS compatibility -------------------------------- */
+
+function parseCpeVersion(output) {
+    const m = output.match(/cpe:\/o:redhat:enterprise_linux:(\d+)/);
+    return m ? parseInt(m[1], 10) : null;
+}
+
+function checkCpeCompat(oscapOutput) {
+    const sdsVer = parseCpeVersion(oscapOutput);
+    if (!sdsVer) return;
+
+    cockpit.file('/etc/os-release').read()
+        .then(content => {
+            const m = content.match(/^VERSION_ID="?(\d+)/m);
+            const hostVer = m ? parseInt(m[1], 10) : null;
+            if (hostVer && sdsVer !== hostVer) {
+                cpeBlocksScan = true;
+                setScanButtonEnabled(false);
+                showCpeAlert(sdsVer, hostVer);
+            } else {
+                clearCpeAlert();
+            }
+        })
+        .catch(() => {});
+}
+
+function showCpeAlert(sdsVer, hostVer) {
+    document.getElementById('ct-cpe-alert-text').textContent =
+        'This content targets RHEL ' + sdsVer + '. This host is RHEL ' + hostVer +
+        '. Scanning is not supported for cross-version content. Tailoring is still available.';
+    document.getElementById('ct-cpe-alert').classList.remove('hidden');
+}
+
+function clearCpeAlert() {
+    cpeBlocksScan = false;
+    document.getElementById('ct-cpe-alert').classList.add('hidden');
 }
 
 /* ---- Profile loading --------------------------------------- */
@@ -319,7 +418,7 @@ function loadProfiles(sdsPath, selectId) {
             if (profiles.length === 0) {
                 appendOption(select, '', 'No profiles found');
                 select.disabled = true;
-                return;
+                return output;
             }
 
             appendOption(select, '', 'Select a profile…');
@@ -328,6 +427,7 @@ function loadProfiles(sdsPath, selectId) {
             });
 
             select.disabled = false;
+            return output;
         })
         .catch(err => {
             select.innerHTML = '';
@@ -388,7 +488,7 @@ function onProfileChange() {
     hideProfileDescription();
     setScanButtonEnabled(false);
 
-    if (!profileId || !currentSdsPath) return;
+    if (!profileId || !currentSdsPath || cpeBlocksScan) return;
 
     setScanButtonEnabled(true);
     loadProfileDescription(currentSdsPath, profileId);
@@ -759,6 +859,14 @@ function sdsDisplayName(filename) {
         filename.replace(/^ssg-/, '').replace(/-ds\.xml$/, '').replace(/-/g, ' ');
 }
 
+function parseOscapTitle(output) {
+    for (const line of output.split('\n')) {
+        const m = line.match(/^\s*Title:\s+(.+)$/);
+        if (m) return m[1].trim();
+    }
+    return null;
+}
+
 /* ---- Scan history ------------------------------------------ */
 
 function loadHistory() {
@@ -935,6 +1043,7 @@ function detectTailoringFiles() {
 }
 
 function onTailorFileSelectChange() {
+    if (cpeBlocksScan) return;
     const tailoringPath = document.getElementById('ct-tailor-file-select').value;
     if (tailoringPath) {
         setScanButtonEnabled(true);
@@ -1554,4 +1663,85 @@ function handleTailoringUpload(file) {
             .catch(err => console.error('Upload failed:', err.message || err));
     };
     reader.readAsText(file);
+}
+
+/* ---- Content tab ------------------------------------------- */
+
+function renderContentTab() {
+    renderSystemContentList();
+    renderUserContentList();
+}
+
+function renderSystemContentList() {
+    const container = document.getElementById('ct-system-content-list');
+    cockpit.spawn(['ls', SSG_CONTENT_DIR], { err: 'message' })
+        .then(output => {
+            const files = output.trim().split('\n').filter(f => f.endsWith('-ds.xml'));
+            if (files.length === 0) {
+                container.innerHTML = '<p class="ct-content-empty">No system SCAP content found. Install <code>scap-security-guide</code>.</p>';
+                return;
+            }
+            const rows = files.map(f =>
+                '<tr><td>' + sdsDisplayName(f) + '</td>' +
+                '<td><code>' + SSG_CONTENT_DIR + f + '</code></td></tr>'
+            ).join('');
+            container.innerHTML =
+                '<table class="pf-v6-c-table pf-m-compact" aria-label="System SCAP content">' +
+                '<thead><tr><th scope="col">Name</th><th scope="col">Path</th></tr></thead>' +
+                '<tbody>' + rows + '</tbody></table>';
+        })
+        .catch(() => {
+            container.innerHTML = '<p class="ct-content-empty">System content directory not found.</p>';
+        });
+}
+
+function renderUserContentList() {
+    const container = document.getElementById('ct-user-content-list');
+    cockpit.spawn(['ls', CONTENT_BASE], { err: 'message' })
+        .then(output => {
+            const files = output.trim().split('\n').filter(f => f.endsWith('.xml'));
+            if (files.length === 0) {
+                container.innerHTML = '<p class="ct-content-empty">No SDS files found. Stage files using the instructions above, then click Refresh.</p>';
+                return;
+            }
+            return Promise.all(files.map(f => getUserContentMeta(f)))
+                .then(entries => {
+                    const rows = entries.filter(Boolean).map(e => {
+                        const safeName = e.name.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+                        return '<tr>' +
+                            '<td>' + e.name.replace(/&/g, '&amp;') + '</td>' +
+                            '<td><code>' + e.filename + '</code></td>' +
+                            '<td><button class="pf-v6-c-button pf-m-link ct-danger-link" type="button"' +
+                            ' data-xml="' + CONTENT_BASE + e.filename + '"' +
+                            ' data-json="' + CONTENT_BASE + e.filename.replace(/\.xml$/, '.json') + '"' +
+                            ' data-name="' + safeName + '">Delete</button></td>' +
+                            '</tr>';
+                    }).join('');
+                    container.innerHTML =
+                        '<table class="pf-v6-c-table pf-m-compact" aria-label="Uploaded SCAP content">' +
+                        '<thead><tr><th scope="col">Name</th><th scope="col">File</th><th scope="col">Actions</th></tr></thead>' +
+                        '<tbody>' + rows + '</tbody></table>';
+                    container.querySelectorAll('[data-xml]').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            showConfirmModal(
+                                'Delete content file',
+                                'Delete "' + btn.dataset.name + '"? This cannot be undone.',
+                                () => deleteUserContent(btn.dataset.xml, btn.dataset.json)
+                            );
+                        });
+                    });
+                });
+        })
+        .catch(() => {
+            container.innerHTML = '<p class="ct-content-empty">Could not read content directory.</p>';
+        });
+}
+
+function deleteUserContent(xmlPath, jsonPath) {
+    cockpit.spawn(['rm', '-f', xmlPath, jsonPath], { superuser: 'require', err: 'message' })
+        .then(() => {
+            renderUserContentList();
+            detectContent();
+        })
+        .catch(err => console.error('Failed to delete content file:', err.message || err));
 }
