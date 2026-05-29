@@ -1,0 +1,81 @@
+Name:           cockpit-scap
+Version:        2.0
+Release:        1%{?dist}
+Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
+
+License:        GPL-2.0-or-later
+URL:            https://github.com/pbuchan-rh/cockpit-scap
+Source0:        https://github.com/pbuchan-rh/%{name}/archive/v%{version}/%{name}-%{version}.tar.gz
+
+BuildArch:      noarch
+
+Requires:       cockpit >= 344
+Requires:       openscap-scanner
+Requires(post): policycoreutils-python-utils
+Recommends:     scap-security-guide
+Recommends:     openscap-utils
+
+%description
+cockpit-scap is a native Cockpit module for SCAP compliance scanning, reporting,
+and tailoring on RHEL systems. It replaces the archived SCAP Workbench GUI,
+integrating directly into the Cockpit web console.
+
+Features:
+  - Auto-detects system-installed SCAP Security Guide data stream files
+  - Multi-version content: system and user-staged SDS files with optgroup selector
+  - Cross-version OS compatibility detection with inline warning
+  - Full XCCDF tailoring editor: rule tree, variables, saved profiles, upload/download
+  - Scan history with CSP-compliant HTML report viewer and remediation downloads
+  - Generates bash and Ansible remediation scripts from scan results
+  - Operates correctly with SELinux in enforcing mode
+
+%prep
+%autosetup
+
+%build
+# nothing to build — vanilla JS module
+
+%install
+# Module files → /usr/share/cockpit/cockpit-scap/
+install -d -m 755 %{buildroot}%{_datadir}/cockpit/%{name}
+install -m 644 index.html index.js style.css manifest.json viewer.html \
+    %{buildroot}%{_datadir}/cockpit/%{name}/
+
+# SELinux file context definitions (shipped as a formal deliverable)
+install -d -m 755 %{buildroot}%{_datadir}/%{name}/selinux
+install -m 644 selinux/cockpit-scap.fc \
+    %{buildroot}%{_datadir}/%{name}/selinux/
+
+# Runtime directories — created here so %post restorecon has paths to label
+install -d -m 755 %{buildroot}/var/lib/%{name}
+install -d -m 755 %{buildroot}/var/lib/%{name}/results
+install -d -m 755 %{buildroot}/var/lib/%{name}/tailoring
+install -d -m 755 %{buildroot}/var/lib/%{name}/content
+
+%post
+# Set SELinux file context for /var/lib/cockpit-scap/ and apply it
+semanage fcontext -a -t cockpit_var_lib_t '/var/lib/cockpit-scap(/.*)?' 2>/dev/null || \
+    semanage fcontext -m -t cockpit_var_lib_t '/var/lib/cockpit-scap(/.*)?'
+restorecon -Rv /var/lib/cockpit-scap 2>/dev/null || true
+
+%postun
+# Remove the fcontext entry only on full uninstall, not on upgrade
+if [ $1 -eq 0 ]; then
+    semanage fcontext -d '/var/lib/cockpit-scap(/.*)?' 2>/dev/null || true
+fi
+
+%files
+%license LICENSE
+%doc README.md
+%{_datadir}/cockpit/%{name}/
+%{_datadir}/%{name}/
+%dir /var/lib/%{name}
+%dir /var/lib/%{name}/results
+%dir /var/lib/%{name}/tailoring
+%dir /var/lib/%{name}/content
+
+%changelog
+* Thu May 29 2026 Patrick Buchan <pjbuchan@gmail.com> - 2.0-1
+- Initial package release
+- v2.0: content tab, multi-version SDS support, CPE compatibility detection,
+  satellite content staging, uploaded-content security warnings
