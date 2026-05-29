@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=23">
+    <link rel="stylesheet" href="style.css?v=24">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=23" defer></script>
+    <script src="index.js?v=24" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -198,6 +198,19 @@
             <div class="ct-result-summary-row">
               <div class="ct-result-badges" id="ct-result-badges"></div>
               <div class="ct-result-score" id="ct-result-score"></div>
+            </div>
+            <!-- Shown only when scan used uploaded (not system-package) content -->
+            <div class="pf-v6-c-alert pf-m-warning ct-uploaded-warn hidden"
+                 id="ct-uploaded-content-warning" aria-label="Uploaded content warning">
+              <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+              <div>
+                <h4 class="pf-v6-c-alert__title">Remediation from uploaded content</h4>
+                <div class="pf-v6-c-alert__description">
+                  This scan used content staged in <code>/var/lib/cockpit-scap/content/</code>,
+                  not a system-installed package. Review the remediation script carefully
+                  before applying it.
+                </div>
+              </div>
             </div>
           </div>
           <div class="pf-v6-c-card__footer">

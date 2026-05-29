@@ -994,6 +994,24 @@ details.ct-tailor-group .ct-tailor-rule {
   margin-bottom: var(--ct-space-sm);
 }
 
+.ct-uploaded-warn {
+  margin-top: var(--ct-space-md);
+}
+
+.ct-history-uploaded-badge {
+  display: inline-block;
+  margin-left: var(--ct-space-sm);
+  padding: 1px 6px;
+  border-radius: var(--ct-border-radius-pill);
+  background: var(--ct-color-warning-light);
+  color: var(--ct-color-text-secondary);
+  font-size: var(--ct-font-size-sm);
+  font-weight: 400;
+  border: 1px solid var(--ct-color-warning);
+  vertical-align: middle;
+  cursor: default;
+}
+
 .ct-content-help {
   color: var(--ct-color-text-secondary);
   margin-bottom: var(--ct-space-md);
