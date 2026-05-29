@@ -73,8 +73,6 @@ The Makefile creates `/var/lib/cockpit-scap/{results,tailoring,content}/`, insta
 
 Reload Cockpit and navigate to **SCAP Compliance** in the sidebar.
 
-No firewall changes are required. The module operates entirely over Cockpit's existing `9090/tcp`.
-
 ## Usage
 
 ### Scan tab
