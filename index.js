@@ -262,7 +262,8 @@ function detectContent() {
                 appendOption(scanSelect, item.path, item.name);
                 scanSelect.value = item.path;
                 currentSdsPath   = item.path;
-                loadProfiles(item.path).then(out => { if (out) checkCpeCompat(out); });
+                loadProfiles(item.path);
+                checkCpeCompat(item.path);
                 detectTailoringFiles();
 
                 appendOption(tailorSelect, item.path, item.name);
@@ -337,19 +338,20 @@ function onContentChange() {
     }
 
     currentSdsPath = sdsPath;
-    loadProfiles(sdsPath).then(out => { if (out) checkCpeCompat(out); });
+    loadProfiles(sdsPath);
+    checkCpeCompat(sdsPath);
     detectTailoringFiles();
 }
 
 /* ---- CPE / OS compatibility -------------------------------- */
 
-function parseCpeVersion(output) {
-    const m = output.match(/cpe:\/o:redhat:enterprise_linux:(\d+)/);
+function detectSdsVersion(sdsPath) {
+    const m = sdsPath.match(/ssg-rhel(\d+)-ds\.xml$/);
     return m ? parseInt(m[1], 10) : null;
 }
 
-function checkCpeCompat(oscapOutput) {
-    const sdsVer = parseCpeVersion(oscapOutput);
+function checkCpeCompat(sdsPath) {
+    const sdsVer = detectSdsVersion(sdsPath);
     if (!sdsVer) return;
 
     cockpit.file('/etc/os-release').read()
