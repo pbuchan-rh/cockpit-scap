@@ -10,8 +10,8 @@ Source0:        https://github.com/pbuchan-rh/%{name}/archive/v%{version}/%{name
 BuildArch:      noarch
 
 Requires:       cockpit >= 344
-Requires:       openscap-scanner
 Requires(post): policycoreutils-python-utils
+Recommends:     openscap-scanner
 Recommends:     scap-security-guide
 Recommends:     openscap-utils
 
