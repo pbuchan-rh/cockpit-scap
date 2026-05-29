@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "require": {
+    "cockpit": "344"
+  },
+  "content-security-policy": "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+  "tools": {
+    "": {
+      "label": "SCAP Compliance",
+      "order": 50
+    }
+  }
+}
