@@ -4,13 +4,19 @@
 
 ## Current State
 
-**Version:** v1.0
+**Version:** v1.1
 **Last session:** 2026-05-29
 **Deployed to:** rhel10cis.beastmode.localdomain
 
 ---
 
 ## What Is Built
+
+### Tailoring Tab — UI (v1.1 additions)
+- Unified editor: 3 separate cards replaced with 1 card, sticky header shows profile name + Save/Cancel always visible
+- Variables section: Collapse/Expand toggle, search/filter input
+- Unsaved changes guard: confirmation modal fires before Load Profile or Edit discards in-progress changes
+- Base profile description panel: two-column layout matching Scan tab — description updates on profile select, clears on cancel/content change/edit
 
 ### Scan Tab
 - Auto-detect SSG data stream files from `/usr/share/xml/scap/ssg/content/`
@@ -75,6 +81,7 @@
 | 2026-05-29 | v0.9 | Implementation | Scan history delete, confirmation modal on all destructive actions, README.md |
 | 2026-05-29 | v0.9 | Planning | Workbench feature audit (WORKBENCH_FEATURES.md), scap-tui concept (SCAP_TUI_DESIGN.md), v2/v3 roadmap locked, OVAL scanning explicitly out of scope, container scanning deferred to v3 |
 | 2026-05-29 | v1.0 | Release | SELinux .fc file, Makefile install/uninstall, clean install test on rhel10cis — all v1 acceptance criteria met, SELinux enforcing mode confirmed, project checked into Gitea |
+| 2026-05-29 | v1.1 | UI Polish | Page alignment fix; unified tailoring editor (3 cards → 1 sticky card); variables Collapse/Expand + search; unsaved-changes guard on Load Profile and Edit; base profile description panel on Tailoring tab matching Scan tab pattern; bug fixes: stray div, description state not clearing on Cancel/Edit |
 
 ---
 
