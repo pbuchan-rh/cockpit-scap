@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=18">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=12" defer></script>
+    <script src="index.js?v=18" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -401,16 +401,18 @@
               <h3 class="ct-tailor-section-title">Variables</h3>
               <p class="ct-tailor-editor-hint">Adjust variable values to customize profile behavior.</p>
             </div>
+            <div class="ct-tailor-tree-controls">
+              <button class="pf-v6-c-button pf-m-link" type="button"
+                      id="ct-tailor-values-collapse">Collapse</button>
+            </div>
           </div>
-          <div class="ct-tailor-search-wrap">
+          <div class="ct-tailor-search-wrap ct-tailor-values-search-wrap">
             <span class="pf-v6-c-form-control ct-tailor-search-control">
               <input type="text" id="ct-tailor-values-search" placeholder="Search variables&hellip;">
             </span>
           </div>
           <div class="ct-tailor-values-grid" id="ct-tailor-values-grid"></div>
         </div>
-
-      </div>
 
       </div>
       <!-- END editor -->

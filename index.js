@@ -157,6 +157,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.classList.toggle('hidden', term.length > 0 && !text.includes(term));
             });
         });
+    document.getElementById('ct-tailor-values-collapse')
+        .addEventListener('click', function () {
+            const grid   = document.getElementById('ct-tailor-values-grid');
+            const search = document.getElementById('ct-tailor-values-search')
+                               .closest('.ct-tailor-search-wrap');
+            const isCollapsed = grid.classList.toggle('hidden');
+            search.classList.toggle('hidden', isCollapsed);
+            this.textContent = isCollapsed ? 'Expand' : 'Collapse';
+        });
     document.getElementById('ct-tailor-upload-btn')
         .addEventListener('click', () => document.getElementById('ct-tailor-upload-input').click());
     document.getElementById('ct-tailor-upload-input')
@@ -203,9 +212,10 @@ function initTabs() {
 
 /* ---- Confirmation modal ------------------------------------ */
 
-function showConfirmModal(title, body, onConfirm) {
+function showConfirmModal(title, body, onConfirm, confirmLabel = 'Delete') {
     document.getElementById('ct-confirm-title').textContent = title;
     document.getElementById('ct-confirm-body').textContent  = body;
+    document.getElementById('ct-confirm-ok').textContent    = confirmLabel;
     confirmCallback = onConfirm;
     document.getElementById('ct-confirm-backdrop').classList.remove('hidden');
 }
@@ -996,6 +1006,22 @@ function onTailorLoadClick() {
     const profileId = document.getElementById('ct-tailor-profile-select').value;
     if (!profileId || !tailorSdsPath) return;
 
+    const hasUnsaved = Object.keys(tailorRuleChanges).length > 0 ||
+                       Object.keys(tailorValueChanges).length > 0;
+
+    if (hasUnsaved) {
+        showConfirmModal(
+            'Discard unsaved changes?',
+            'Loading a new profile will discard your current changes. This cannot be undone.',
+            () => doLoadProfile(profileId),
+            'Discard Changes'
+        );
+    } else {
+        doLoadProfile(profileId);
+    }
+}
+
+function doLoadProfile(profileId) {
     document.getElementById('ct-tailor-editor').classList.add('hidden');
     document.getElementById('ct-tailor-error-alert').classList.add('hidden');
     document.getElementById('ct-tailor-loading').classList.remove('hidden');
@@ -1018,10 +1044,14 @@ function onTailorLoadClick() {
 }
 
 function renderTailorEditor(data) {
-    document.getElementById('ct-tailor-search').value       = '';
+    document.getElementById('ct-tailor-search').value        = '';
     document.getElementById('ct-tailor-values-search').value = '';
     document.getElementById('ct-tailor-editor-title').textContent =
         document.getElementById('ct-tailor-name-input').value.trim();
+    document.getElementById('ct-tailor-values-grid').classList.remove('hidden');
+    document.getElementById('ct-tailor-values-search')
+        .closest('.ct-tailor-search-wrap').classList.remove('hidden');
+    document.getElementById('ct-tailor-values-collapse').textContent = 'Collapse';
     renderTailorTree(data);
     renderTailorValues(data.values || []);
     const statusEl = document.getElementById('ct-tailor-save-status');
@@ -1299,6 +1329,22 @@ function renderTailoringList(sidecars) {
 }
 
 function onEditTailoringFile(sidecar) {
+    const hasUnsaved = Object.keys(tailorRuleChanges).length > 0 ||
+                       Object.keys(tailorValueChanges).length > 0;
+
+    if (hasUnsaved) {
+        showConfirmModal(
+            'Discard unsaved changes?',
+            'Loading a new profile will discard your current changes. This cannot be undone.',
+            () => doEditTailoringFile(sidecar),
+            'Discard Changes'
+        );
+    } else {
+        doEditTailoringFile(sidecar);
+    }
+}
+
+function doEditTailoringFile(sidecar) {
     tailorSdsPath      = sidecar.sds_path;
     tailorRuleChanges  = {};
     tailorValueChanges = {};
