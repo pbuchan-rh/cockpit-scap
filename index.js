@@ -958,6 +958,23 @@ function resetTailorForm() {
     document.getElementById('ct-tailor-name-input').value     = '';
     document.getElementById('ct-tailor-name-input').disabled  = true;
     document.getElementById('ct-tailor-load-btn').disabled    = true;
+    hideTailorProfileDesc();
+}
+
+function showTailorProfileDesc(profileTitle, descText) {
+    document.getElementById('ct-tailor-desc-title').textContent = profileTitle;
+    document.getElementById('ct-tailor-desc-placeholder').classList.add('hidden');
+    const el = document.getElementById('ct-tailor-desc-text');
+    el.textContent = descText;
+    el.classList.remove('hidden');
+}
+
+function hideTailorProfileDesc() {
+    document.getElementById('ct-tailor-desc-title').textContent = 'Base Profile';
+    document.getElementById('ct-tailor-desc-placeholder').classList.remove('hidden');
+    const el = document.getElementById('ct-tailor-desc-text');
+    el.classList.add('hidden');
+    el.textContent = '';
 }
 
 function onTailorContentChange() {
@@ -974,6 +991,7 @@ function onTailorContentChange() {
     document.getElementById('ct-tailor-load-btn').disabled   = true;
     document.getElementById('ct-tailor-editor').classList.add('hidden');
     document.getElementById('ct-tailor-error-alert').classList.add('hidden');
+    hideTailorProfileDesc();
 
     if (!sdsPath) return;
     loadProfiles(sdsPath, 'ct-tailor-profile-select');
@@ -987,6 +1005,7 @@ function onTailorProfileChange() {
     if (!profileId) {
         nameInput.disabled = true;
         document.getElementById('ct-tailor-load-btn').disabled = true;
+        hideTailorProfileDesc();
         return;
     }
 
@@ -994,6 +1013,13 @@ function onTailorProfileChange() {
     nameInput.value      = profileTitle + ' — Custom';
     nameInput.disabled   = false;
     updateTailorLoadBtn();
+
+    cockpit.spawn(['oscap', 'info', '--profile', profileId, tailorSdsPath], { err: 'out' })
+        .then(output => {
+            const desc = parseProfileDescription(output);
+            if (desc) showTailorProfileDesc(profileTitle, desc);
+        })
+        .catch(() => hideTailorProfileDesc());
 }
 
 function updateTailorLoadBtn() {
@@ -1368,7 +1394,17 @@ function doEditTailoringFile(sidecar) {
         })
         .then(() => loadProfiles(sidecar.sds_path, 'ct-tailor-profile-select'))
         .then(() => {
-            document.getElementById('ct-tailor-profile-select').value = sidecar.base_profile_id;
+            const profileSelect = document.getElementById('ct-tailor-profile-select');
+            profileSelect.value = sidecar.base_profile_id;
+            const profileTitle  = profileSelect.options[profileSelect.selectedIndex]?.text
+                                  || sidecar.base_profile_id;
+            cockpit.spawn(['oscap', 'info', '--profile', sidecar.base_profile_id, sidecar.sds_path],
+                          { err: 'out' })
+                .then(out => {
+                    const desc = parseProfileDescription(out);
+                    if (desc) showTailorProfileDesc(profileTitle, desc);
+                })
+                .catch(() => {});
         })
         .then(() => cockpit.spawn(
             ['python3', '-c', PY_EXTRACT_PROFILE, sidecar.base_profile_id, sidecar.sds_path],
