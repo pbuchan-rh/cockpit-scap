@@ -160,7 +160,7 @@ v1 is considered complete when all of the following are true:
 - [x] Scan history persists across Cockpit sessions and renders correctly (with delete)
 - [x] Apply Remediation button is visibly stubbed
 - [x] Tailoring tab delivered in full (exceeded original stub scope)
-- [ ] All of the above work with SELinux in **enforcing** mode — tested in practice, formal `.fc` deliverable pending
+- [x] All of the above work with SELinux in **enforcing** mode — tested and confirmed; formal `.fc` deliverable shipped
 - [x] Module is visually consistent with native Cockpit pages
 - [x] No CSP violations in browser console
 - [x] No inline styles or inline event handlers anywhere in the codebase

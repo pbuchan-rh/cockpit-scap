@@ -1,6 +1,6 @@
 # cockpit-scap — Design Document
 
-**Status:** Implementation complete — v0.9 | Roadmap locked through v3  
+**Status:** v1.0 complete | Roadmap locked through v3  
 **Last updated:** 2026-05-29
 
 ---
