@@ -126,4 +126,4 @@
 | `index.js` | ✅ v0.9 |
 | `style.css` | ✅ v0.9 |
 | `viewer.html` | ✅ Complete |
-| `selinux/cockpit-scap.fc` | ⬜ Not started |
+| `selinux/cockpit-scap.fc` | ✅ Written — pending install test on rhel10cis |
