@@ -725,6 +725,13 @@ function showResults(manifest) {
 
     document.getElementById('ct-result-score').textContent = score.toFixed(1) + '%';
 
+    const uploadedWarn = document.getElementById('ct-uploaded-content-warning');
+    if (currentSdsPath && currentSdsPath.startsWith(CONTENT_BASE)) {
+        uploadedWarn.classList.remove('hidden');
+    } else {
+        uploadedWarn.classList.add('hidden');
+    }
+
     document.getElementById('ct-scan-progress').classList.add('hidden');
     document.getElementById('ct-results').classList.remove('hidden');
     loadHistory();
@@ -901,15 +908,24 @@ function buildHistoryRow(manifest) {
         .replace('T', ' ')
         .replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
 
+    const isUploaded = manifest.sds_file && manifest.sds_file.startsWith(CONTENT_BASE);
+
     [
         date,
         manifest.profile_title,
         String(manifest.counts.pass),
         String(manifest.counts.fail),
         (manifest.score || 0).toFixed(1) + '%',
-    ].forEach(text => {
+    ].forEach((text, i) => {
         const td = document.createElement('td');
         td.textContent = text;
+        if (i === 1 && isUploaded) {
+            const badge = document.createElement('span');
+            badge.className   = 'ct-history-uploaded-badge';
+            badge.textContent = 'uploaded content';
+            badge.title       = manifest.sds_file;
+            td.appendChild(badge);
+        }
         tr.appendChild(td);
     });
 
