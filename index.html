@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>SCAP Compliance</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="style.css?v=11">
+    <link rel="stylesheet" href="../../static/branding.css">
+    <script src="../base1/cockpit.js" defer></script>
+    <script src="index.js?v=11" defer></script>
+</head>
+<body class="pf-v6-m-tabular-nums">
+
+<div class="pf-v6-c-page">
+  <main class="pf-v6-c-page__main" id="ct-main" tabindex="-1">
+    <div class="pf-v6-c-page__main-container">
+
+    <!-- Page title -->
+    <div class="pf-v6-c-page__main-breadcrumb">
+      <h1 class="ct-page-title">SCAP Compliance</h1>
+    </div>
+
+    <!-- Tab navigation -->
+    <div class="pf-v6-c-page__main-tabs">
+      <nav class="pf-v6-c-tabs" aria-label="SCAP navigation">
+        <ul class="pf-v6-c-tabs__list" role="tablist">
+          <li class="pf-v6-c-tabs__item pf-m-current" role="presentation">
+            <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                    aria-selected="true" data-panel="panel-scan" id="tab-btn-scan">
+              <span class="pf-v6-c-tabs__item-text">Scan</span>
+            </button>
+          </li>
+          <li class="pf-v6-c-tabs__item" role="presentation">
+            <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                    aria-selected="false" data-panel="panel-tailoring" id="tab-btn-tailoring">
+              <span class="pf-v6-c-tabs__item-text">Tailoring</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+    <!-- ================================================== -->
+    <!-- SCAN TAB PANEL                                      -->
+    <!-- ================================================== -->
+    <section class="pf-v6-c-page__main-section ct-tab-panel" id="panel-scan"
+             role="tabpanel" aria-labelledby="tab-btn-scan">
+
+      <!-- Prerequisite missing alert (hidden unless needed) -->
+      <div class="pf-v6-c-alert pf-m-warning ct-alert-prereq hidden"
+           id="ct-no-content-alert" aria-label="No SCAP content found">
+        <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+        <div>
+          <h4 class="pf-v6-c-alert__title">No SCAP content found</h4>
+          <div class="pf-v6-c-alert__description">
+            <p>Install the required packages before using this module:</p>
+            <p><code>dnf install scap-security-guide openscap-scanner openscap-utils</code></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scan error alert (hidden unless scan fails) -->
+      <div class="pf-v6-c-alert pf-m-danger ct-alert-prereq hidden"
+           id="ct-scan-error-alert" aria-label="Scan failed">
+        <div class="pf-v6-c-alert__icon" aria-hidden="true">&#10005;</div>
+        <div class="ct-alert-body">
+          <h4 class="pf-v6-c-alert__title">Scan failed</h4>
+          <div class="pf-v6-c-alert__description" id="ct-scan-error-message"></div>
+        </div>
+        <button class="pf-v6-c-button pf-m-link ct-alert-close" type="button"
+                id="ct-scan-error-close" aria-label="Dismiss">&#10005;</button>
+      </div>
+
+      <!-- Scan configuration row: config card + description card side by side -->
+      <div class="ct-scan-row" id="ct-scan-row">
+
+        <!-- Left: Scan configuration -->
+        <div class="pf-v6-c-card ct-scan-setup-card" id="ct-scan-setup">
+          <div class="pf-v6-c-card__title">
+            <h2 class="pf-v6-c-card__title-text">Scan Configuration</h2>
+          </div>
+          <div class="pf-v6-c-card__body">
+            <div class="pf-v6-c-form ct-scan-form">
+
+              <!-- Content (SDS file) selection -->
+              <div class="pf-v6-c-form__group">
+                <div class="pf-v6-c-form__group-label">
+                  <label class="pf-v6-c-form__label" for="ct-content-select">
+                    <span class="pf-v6-c-form__label-text">Content</span>
+                  </label>
+                </div>
+                <div class="pf-v6-c-form__group-control">
+                  <span class="pf-v6-c-form-control">
+                    <select id="ct-content-select">
+                      <option value="">Detecting content&hellip;</option>
+                    </select>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Profile selection -->
+              <div class="pf-v6-c-form__group">
+                <div class="pf-v6-c-form__group-label">
+                  <label class="pf-v6-c-form__label" for="ct-profile-select">
+                    <span class="pf-v6-c-form__label-text">Profile</span>
+                  </label>
+                </div>
+                <div class="pf-v6-c-form__group-control">
+                  <span class="pf-v6-c-form-control">
+                    <select id="ct-profile-select" disabled>
+                      <option value="">Select content first</option>
+                    </select>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Tailoring file (hidden until tailoring files exist) -->
+              <div class="pf-v6-c-form__group hidden" id="ct-tailor-file-group">
+                <div class="pf-v6-c-form__group-label">
+                  <label class="pf-v6-c-form__label" for="ct-tailor-file-select">
+                    <span class="pf-v6-c-form__label-text">Tailoring File</span>
+                  </label>
+                </div>
+                <div class="pf-v6-c-form__group-control">
+                  <span class="pf-v6-c-form-control">
+                    <select id="ct-tailor-file-select">
+                      <option value="">(No tailoring — use full profile)</option>
+                    </select>
+                  </span>
+                  <p class="pf-v6-c-form__helper-text">Apply a saved tailoring file to customize the selected profile.</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          <div class="pf-v6-c-card__footer">
+            <button class="pf-v6-c-button pf-m-primary" type="button"
+                    id="ct-scan-btn" disabled>
+              Run Scan
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Profile description -->
+        <div class="pf-v6-c-card ct-profile-desc-card" id="ct-profile-desc-card">
+          <div class="pf-v6-c-card__title">
+            <h2 class="pf-v6-c-card__title-text" id="ct-profile-desc-title">Profile</h2>
+          </div>
+          <div class="pf-v6-c-card__body">
+            <p class="ct-profile-desc-placeholder" id="ct-profile-desc-placeholder">
+              Select a profile to see its description.
+            </p>
+            <p class="hidden" id="ct-profile-description"></p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Scan in progress (hidden until scan starts) -->
+      <div class="pf-v6-c-card ct-scan-progress hidden" id="ct-scan-progress">
+        <div class="pf-v6-c-card__body ct-scan-progress-body">
+          <span class="pf-v6-c-spinner" aria-label="Scan in progress"
+                role="progressbar" aria-valuetext="Scanning&hellip;">
+            <span class="pf-v6-c-spinner__clipper"></span>
+            <span class="pf-v6-c-spinner__lead-ball"></span>
+            <span class="pf-v6-c-spinner__tail-ball"></span>
+          </span>
+          <p>Scan in progress&hellip;</p>
+          <button class="pf-v6-c-button pf-m-secondary" type="button"
+                  id="ct-cancel-btn">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Results (hidden until scan complete) -->
+      <div class="hidden" id="ct-results">
+        <div class="pf-v6-c-card">
+          <div class="pf-v6-c-card__title">
+            <h2 class="pf-v6-c-card__title-text">Scan Results</h2>
+            <p class="ct-results-profile" id="ct-results-profile-title"></p>
+          </div>
+          <div class="pf-v6-c-card__body">
+            <div class="ct-result-summary-row">
+              <div class="ct-result-badges" id="ct-result-badges"></div>
+              <div class="ct-result-score" id="ct-result-score"></div>
+            </div>
+          </div>
+          <div class="pf-v6-c-card__footer">
+            <div class="ct-result-actions">
+              <button class="pf-v6-c-button pf-m-primary" type="button"
+                      id="ct-view-report-btn">View Full Report</button>
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="ct-download-report-btn">Download Report</button>
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="ct-download-bash-btn">Download Bash Remediation</button>
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="ct-download-ansible-btn">Download Ansible Remediation</button>
+              <span class="ct-stub-wrap">
+                <button class="pf-v6-c-button pf-m-secondary" type="button"
+                        id="ct-apply-remediation-btn" disabled>Apply Remediation</button>
+                <span class="ct-stub-note">Coming in a future release</span>
+              </span>
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="ct-new-scan-btn">New Scan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scan history -->
+      <div class="pf-v6-c-card" id="ct-history-card">
+        <div class="pf-v6-c-card__title">
+          <h2 class="pf-v6-c-card__title-text">Scan History</h2>
+        </div>
+        <div class="pf-v6-c-card__body">
+
+          <!-- Empty state (shown until first scan completes) -->
+          <div class="pf-v6-c-empty-state" id="ct-history-empty">
+            <div class="pf-v6-c-empty-state__content">
+              <div class="pf-v6-c-empty-state__icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"
+                     viewBox="0 0 512 512" fill="currentColor" aria-hidden="true">
+                  <path d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111
+                           248-248S393 8 256 8zm0 448c-110.5 0-200-89.5-200-200S145.5
+                           56 256 56s200 89.5 200 200-89.5 200-200 200zm61.8-104.4
+                           l-84.9-61.7c-3.1-2.3-4.9-5.9-4.9-9.7V116c0-6.6
+                           5.4-12 12-12h32c6.6 0 12 5.4 12 12v141.7l66.8
+                           48.6c5.4 3.9 6.5 11.4 2.6 16.8L334.6
+                           349c-3.9 5.3-11.4 6.5-16.8 2.6z"/>
+                </svg>
+              </div>
+              <h3 class="pf-v6-c-empty-state__title">No scans yet</h3>
+              <div class="pf-v6-c-empty-state__body">
+                Configure a content file and profile above, then run your first scan.
+                Results will appear here after each completed scan.
+              </div>
+            </div>
+          </div>
+
+          <!-- History table -->
+          <table class="pf-v6-c-table pf-m-compact hidden" id="ct-history-table"
+                 aria-label="Scan history">
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Profile</th>
+                <th scope="col">Pass</th>
+                <th scope="col">Fail</th>
+                <th scope="col">Score</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ct-history-tbody"></tbody>
+          </table>
+
+        </div>
+      </div>
+
+
+    </section>
+    <!-- END SCAN TAB PANEL -->
+
+    <!-- ================================================== -->
+    <!-- TAILORING TAB PANEL                                 -->
+    <!-- ================================================== -->
+    <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-tailoring"
+             role="tabpanel" aria-labelledby="tab-btn-tailoring">
+
+      <!-- Setup card -->
+      <div class="pf-v6-c-card">
+        <div class="pf-v6-c-card__title">
+          <h2 class="pf-v6-c-card__title-text">Create Tailoring Profile</h2>
+        </div>
+        <div class="pf-v6-c-card__body">
+          <div class="pf-v6-c-form ct-scan-form">
+
+            <!-- Content selection -->
+            <div class="pf-v6-c-form__group">
+              <div class="pf-v6-c-form__group-label">
+                <label class="pf-v6-c-form__label" for="ct-tailor-content-select">
+                  <span class="pf-v6-c-form__label-text">Content</span>
+                </label>
+              </div>
+              <div class="pf-v6-c-form__group-control">
+                <span class="pf-v6-c-form-control">
+                  <select id="ct-tailor-content-select">
+                    <option value="">Detecting content&hellip;</option>
+                  </select>
+                </span>
+              </div>
+            </div>
+
+            <!-- Base profile selection -->
+            <div class="pf-v6-c-form__group">
+              <div class="pf-v6-c-form__group-label">
+                <label class="pf-v6-c-form__label" for="ct-tailor-profile-select">
+                  <span class="pf-v6-c-form__label-text">Base Profile</span>
+                </label>
+              </div>
+              <div class="pf-v6-c-form__group-control">
+                <span class="pf-v6-c-form-control">
+                  <select id="ct-tailor-profile-select" disabled>
+                    <option value="">Select content first</option>
+                  </select>
+                </span>
+              </div>
+            </div>
+
+            <!-- New profile name -->
+            <div class="pf-v6-c-form__group">
+              <div class="pf-v6-c-form__group-label">
+                <label class="pf-v6-c-form__label" for="ct-tailor-name-input">
+                  <span class="pf-v6-c-form__label-text">Tailored Profile Name</span>
+                </label>
+              </div>
+              <div class="pf-v6-c-form__group-control">
+                <span class="pf-v6-c-form-control">
+                  <input type="text" id="ct-tailor-name-input"
+                         placeholder="e.g. CIS Level 1 &mdash; Custom" disabled>
+                </span>
+                <p class="pf-v6-c-form__helper-text">Give your tailored profile a descriptive name.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        <div class="pf-v6-c-card__footer">
+          <button class="pf-v6-c-button pf-m-primary" type="button"
+                  id="ct-tailor-load-btn" disabled>Load Profile</button>
+        </div>
+      </div>
+
+      <!-- Loading indicator -->
+      <div class="pf-v6-c-card hidden" id="ct-tailor-loading">
+        <div class="pf-v6-c-card__body ct-scan-progress-body">
+          <span class="pf-v6-c-spinner" aria-label="Loading profile"
+                role="progressbar" aria-valuetext="Loading&hellip;">
+            <span class="pf-v6-c-spinner__clipper"></span>
+            <span class="pf-v6-c-spinner__lead-ball"></span>
+            <span class="pf-v6-c-spinner__tail-ball"></span>
+          </span>
+          <p>Loading profile&hellip; (this may take a moment for large content files)</p>
+        </div>
+      </div>
+
+      <!-- Load error -->
+      <div class="pf-v6-c-alert pf-m-danger hidden" id="ct-tailor-error-alert"
+           aria-label="Load failed">
+        <div class="pf-v6-c-alert__icon" aria-hidden="true">&#10005;</div>
+        <div class="ct-alert-body">
+          <h4 class="pf-v6-c-alert__title">Failed to load profile</h4>
+          <div class="pf-v6-c-alert__description" id="ct-tailor-error-message"></div>
+        </div>
+      </div>
+
+      <!-- Editor (hidden until profile loaded) -->
+      <div class="hidden" id="ct-tailor-editor">
+
+        <!-- Rule tree card -->
+        <div class="pf-v6-c-card">
+          <div class="pf-v6-c-card__title">
+            <div class="ct-tailor-rules-header">
+              <div>
+                <h2 class="pf-v6-c-card__title-text">Rules</h2>
+                <p class="ct-tailor-editor-hint">Check or uncheck rules to enable or disable them.</p>
+              </div>
+              <div class="ct-tailor-tree-controls">
+                <button class="pf-v6-c-button pf-m-link" type="button"
+                        id="ct-tailor-expand-all">Expand All</button>
+                <button class="pf-v6-c-button pf-m-link" type="button"
+                        id="ct-tailor-collapse-all">Collapse All</button>
+              </div>
+            </div>
+            <div class="ct-tailor-search-wrap">
+              <span class="pf-v6-c-form-control ct-tailor-search-control">
+                <input type="text" id="ct-tailor-search" placeholder="Search rules&hellip;">
+              </span>
+            </div>
+          </div>
+          <div class="pf-v6-c-card__body ct-tailor-tree-body" id="ct-tailor-tree"></div>
+        </div>
+
+        <!-- Variables card (hidden if no variables) -->
+        <div class="pf-v6-c-card hidden" id="ct-tailor-values-card">
+          <div class="pf-v6-c-card__title">
+            <h2 class="pf-v6-c-card__title-text">Variables</h2>
+            <p class="ct-tailor-editor-hint">Adjust variable values to customize profile behavior.</p>
+          </div>
+          <div class="pf-v6-c-card__body">
+            <div class="ct-tailor-values-grid" id="ct-tailor-values-grid"></div>
+          </div>
+        </div>
+
+        <!-- Save card -->
+        <div class="pf-v6-c-card">
+          <div class="pf-v6-c-card__body">
+            <div class="ct-tailor-save-row">
+              <button class="pf-v6-c-button pf-m-primary" type="button"
+                      id="ct-tailor-save-btn">Save Tailoring File</button>
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="ct-tailor-cancel-btn">Cancel</button>
+              <span class="ct-tailor-save-status hidden" id="ct-tailor-save-status"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- END editor -->
+
+      <!-- Saved tailoring files list -->
+      <div class="pf-v6-c-card" id="ct-tailor-list-card">
+        <div class="pf-v6-c-card__title">
+          <div class="ct-tailor-rules-header">
+            <h2 class="pf-v6-c-card__title-text">Saved Tailoring Files</h2>
+            <div class="ct-tailor-tree-controls">
+              <input type="file" id="ct-tailor-upload-input" accept=".xml" class="hidden">
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="ct-tailor-upload-btn">Upload</button>
+            </div>
+          </div>
+        </div>
+        <div class="pf-v6-c-card__body">
+          <p class="ct-tailor-list-empty" id="ct-tailor-list-empty">
+            No tailoring files saved yet. Load a profile above to create one, or upload an existing file.
+          </p>
+          <table class="pf-v6-c-table pf-m-compact hidden" id="ct-tailor-list-table"
+                 aria-label="Saved tailoring files">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Base Profile</th>
+                <th scope="col">Created</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ct-tailor-list-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+    <!-- END TAILORING TAB PANEL -->
+
+    </div><!-- end pf-v6-c-page__main-container -->
+  </main>
+</div>
+
+
+<!-- Confirmation modal -->
+<div class="ct-confirm-backdrop hidden" id="ct-confirm-backdrop"
+     role="dialog" aria-modal="true" aria-labelledby="ct-confirm-title">
+  <div class="ct-confirm-dialog">
+    <p class="ct-confirm-title" id="ct-confirm-title"></p>
+    <p class="ct-confirm-body" id="ct-confirm-body"></p>
+    <div class="ct-confirm-footer">
+      <button class="pf-v6-c-button pf-m-danger" type="button" id="ct-confirm-ok">Delete</button>
+      <button class="pf-v6-c-button pf-m-link" type="button" id="ct-confirm-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

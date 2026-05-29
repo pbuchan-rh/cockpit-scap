@@ -1,0 +1,12 @@
+# Claude Code working directory — user-specific, not project code
+.claude/
+
+# Session artifacts
+summary.txt
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store

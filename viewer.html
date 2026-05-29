@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SCAP Report</title>
+<script>
+(function () {
+    var req = indexedDB.open('cockpit-scap', 1);
+    req.onupgradeneeded = function (e) {
+        e.target.result.createObjectStore('reports');
+    };
+    req.onsuccess = function (e) {
+        var db = e.target.result;
+        var tx = db.transaction('reports', 'readwrite');
+        var store = tx.objectStore('reports');
+        var getReq = store.get('current');
+        getReq.onsuccess = function () {
+            var html = getReq.result;
+            if (!html) { db.close(); return; }
+            store.delete('current');
+            tx.oncomplete = function () {
+                db.close();
+                document.open();
+                document.write(html);
+                document.close();
+            };
+        };
+    };
+}());
+</script>
+</head>
+<style>body{font-family:sans-serif;padding:2em;color:#333}</style>
+<body>
+<p>Loading report&hellip;</p>
+</body>
+</html>
