@@ -168,17 +168,12 @@ code {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: var(--ct-space-sm);
 }
 
 .pf-v6-c-page__main-container {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  background-color: var(--ct-color-bg-card);
-  border: var(--ct-border);
-  border-radius: var(--ct-border-radius);
-  overflow: hidden;
 }
 
 .ct-page-title {
@@ -194,7 +189,7 @@ code {
 }
 
 .pf-v6-c-page__main-section {
-  padding: var(--ct-space-lg);
+  padding: var(--ct-space-md) var(--ct-space-lg);
 }
 
 .pf-v6-c-page__main-section.pf-m-no-padding {
@@ -203,8 +198,7 @@ code {
 
 /* ---- Tabs -------------------------------------------------- */
 .pf-v6-c-tabs {
-  background-color: var(--ct-color-bg-card);
-  border-bottom: var(--ct-border);
+  background-color: var(--ct-color-bg-page);
 }
 
 .pf-v6-c-tabs__list {
@@ -761,7 +755,6 @@ code {
    and has a clear visual end before Saved Tailoring Files below */
 #ct-tailor-editor {
   border: 1px solid var(--ct-color-border);
-  border-radius: var(--ct-border-radius-md);
   margin-bottom: var(--ct-space-lg);
   overflow: hidden;
 }
