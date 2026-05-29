@@ -264,6 +264,8 @@ function detectContent() {
                 return;
             }
 
+            hideNoContentAlert();
+
             if (total === 1) {
                 const item = sysFiles.length ? sysFiles[0] : userFiles[0];
 
@@ -823,7 +825,11 @@ function showScanSetup() {
 /* ---- UI helpers -------------------------------------------- */
 
 function showNoContentAlert() {
-    document.getElementById('ct-no-content-alert').classList.remove('hidden');
+    document.getElementById('ct-no-content-alert-section').classList.remove('hidden');
+}
+
+function hideNoContentAlert() {
+    document.getElementById('ct-no-content-alert-section').classList.add('hidden');
 }
 
 function resetProfileSelect() {

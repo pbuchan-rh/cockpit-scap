@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=28">
+    <link rel="stylesheet" href="style.css?v=29">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=28" defer></script>
+    <script src="index.js?v=29" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -46,14 +46,10 @@
       </nav>
     </div>
 
-    <!-- ================================================== -->
-    <!-- SCAN TAB PANEL                                      -->
-    <!-- ================================================== -->
-    <section class="pf-v6-c-page__main-section ct-tab-panel" id="panel-scan"
-             role="tabpanel" aria-labelledby="tab-btn-scan">
-
-      <!-- Prerequisite missing alert (hidden unless needed) -->
-      <div class="pf-v6-c-alert pf-m-warning ct-alert-prereq hidden"
+    <!-- Prerequisite missing alert — page-level, shows on all tabs -->
+    <section class="pf-v6-c-page__main-section ct-alert-prereq-section hidden"
+             id="ct-no-content-alert-section">
+      <div class="pf-v6-c-alert pf-m-warning ct-alert-prereq"
            id="ct-no-content-alert" aria-label="No SCAP content found">
         <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
         <div>
@@ -64,6 +60,13 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- ================================================== -->
+    <!-- SCAN TAB PANEL                                      -->
+    <!-- ================================================== -->
+    <section class="pf-v6-c-page__main-section ct-tab-panel" id="panel-scan"
+             role="tabpanel" aria-labelledby="tab-btn-scan">
 
       <!-- Scan error alert (hidden unless scan fails) -->
       <div class="pf-v6-c-alert pf-m-danger ct-alert-prereq hidden"
