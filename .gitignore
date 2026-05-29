@@ -1,6 +1,9 @@
 # Claude Code working directory — user-specific, not project code
 .claude/
 
+# Local SDS content staging (large binary files — not committed)
+content/
+
 # Session artifacts
 summary.txt
 
