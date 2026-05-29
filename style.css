@@ -757,7 +757,15 @@ code {
   margin: var(--ct-space-xs) 0 0;
 }
 
-/* Unified editor card */
+/* Unified editor card — explicit border so the editor reads as one surface
+   and has a clear visual end before Saved Tailoring Files below */
+#ct-tailor-editor {
+  border: 1px solid var(--ct-color-border);
+  border-radius: var(--ct-border-radius-md);
+  margin-bottom: var(--ct-space-lg);
+  overflow: hidden;
+}
+
 .ct-tailor-editor-header {
   position: sticky;
   top: 0;
@@ -813,6 +821,10 @@ code {
 
 .ct-tailor-search-control {
   max-width: 100%;
+}
+
+.ct-tailor-values-search-wrap {
+  max-width: 24rem;
 }
 
 /* Rule tree */
