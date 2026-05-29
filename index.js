@@ -315,25 +315,11 @@ function listSystemContent() {
 
 function listUserContent() {
     return cockpit.spawn(['ls', CONTENT_BASE], { err: 'message' })
-        .then(output => {
-            const files = output.trim().split('\n').filter(f => f.endsWith('.xml'));
-            if (files.length === 0) return [];
-            return Promise.all(files.map(f => getUserContentMeta(f)));
-        })
-        .then(entries => entries.filter(Boolean))
+        .then(output => output.trim().split('\n')
+            .filter(f => f.endsWith('.xml'))
+            .map(f => ({ path: CONTENT_BASE + f, name: sdsDisplayName(f), filename: f }))
+        )
         .catch(() => []);
-}
-
-function getUserContentMeta(filename) {
-    const xmlPath  = CONTENT_BASE + filename;
-    const jsonPath = CONTENT_BASE + filename.replace(/\.xml$/, '.json');
-
-    return cockpit.file(jsonPath).read()
-        .then(content => {
-            const meta = JSON.parse(content);
-            return { path: xmlPath, name: meta.title || sdsDisplayName(filename), filename };
-        })
-        .catch(() => ({ path: xmlPath, name: sdsDisplayName(filename), filename }));
 }
 
 function onContentChange() {
@@ -1697,33 +1683,36 @@ function renderUserContentList() {
                 container.innerHTML = '<p class="ct-content-empty">No SDS files found. Stage files using the instructions above, then click Refresh.</p>';
                 return;
             }
-            return Promise.all(files.map(f => getUserContentMeta(f)))
-                .then(entries => {
-                    const rows = entries.filter(Boolean).map(e => {
-                        const safeName = e.name.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-                        return '<tr>' +
-                            '<td>' + e.name.replace(/&/g, '&amp;') + '</td>' +
-                            '<td><code>' + e.filename + '</code></td>' +
-                            '<td><button class="pf-v6-c-button pf-m-link ct-danger-link" type="button"' +
-                            ' data-xml="' + CONTENT_BASE + e.filename + '"' +
-                            ' data-json="' + CONTENT_BASE + e.filename.replace(/\.xml$/, '.json') + '"' +
-                            ' data-name="' + safeName + '">Delete</button></td>' +
-                            '</tr>';
-                    }).join('');
-                    container.innerHTML =
-                        '<table class="pf-v6-c-table pf-m-compact" aria-label="Uploaded SCAP content">' +
-                        '<thead><tr><th scope="col">Name</th><th scope="col">File</th><th scope="col">Actions</th></tr></thead>' +
-                        '<tbody>' + rows + '</tbody></table>';
-                    container.querySelectorAll('[data-xml]').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            showConfirmModal(
-                                'Delete content file',
-                                'Delete "' + btn.dataset.name + '"? This cannot be undone.',
-                                () => deleteUserContent(btn.dataset.xml, btn.dataset.json)
-                            );
-                        });
-                    });
+            const entries = files.map(f => ({
+                filename: f,
+                name:     sdsDisplayName(f),
+                xmlPath:  CONTENT_BASE + f,
+                jsonPath: CONTENT_BASE + f.replace(/\.xml$/, '.json'),
+            }));
+            const rows = entries.map(e => {
+                const safeName = e.name.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+                return '<tr>' +
+                    '<td>' + e.name.replace(/&/g, '&amp;') + '</td>' +
+                    '<td><code>' + e.filename + '</code></td>' +
+                    '<td><button class="pf-v6-c-button pf-m-link ct-danger-link" type="button"' +
+                    ' data-xml="' + e.xmlPath + '"' +
+                    ' data-json="' + e.jsonPath + '"' +
+                    ' data-name="' + safeName + '">Delete</button></td>' +
+                    '</tr>';
+            }).join('');
+            container.innerHTML =
+                '<table class="pf-v6-c-table pf-m-compact" aria-label="Uploaded SCAP content">' +
+                '<thead><tr><th scope="col">Name</th><th scope="col">File</th><th scope="col">Actions</th></tr></thead>' +
+                '<tbody>' + rows + '</tbody></table>';
+            container.querySelectorAll('[data-xml]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    showConfirmModal(
+                        'Delete content file',
+                        'Delete "' + btn.dataset.name + '"? This cannot be undone.',
+                        () => deleteUserContent(btn.dataset.xml, btn.dataset.json)
+                    );
                 });
+            });
         })
         .catch(() => {
             container.innerHTML = '<p class="ct-content-empty">Could not read content directory.</p>';
