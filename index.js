@@ -10,6 +10,8 @@ const SDS_DISPLAY_NAMES = {
     'ssg-rhel10-ds.xml':     'Red Hat Enterprise Linux 10',
     'ssg-rhel9-ds.xml':      'Red Hat Enterprise Linux 9',
     'ssg-rhel8-ds.xml':      'Red Hat Enterprise Linux 8',
+    'ssg-rhel7-ds.xml':      'Red Hat Enterprise Linux 7',
+    'ssg-rhel6-ds.xml':      'Red Hat Enterprise Linux 6',
     'ssg-fedora-ds.xml':     'Fedora',
     'ssg-ol8-ds.xml':        'Oracle Linux 8',
     'ssg-ol9-ds.xml':        'Oracle Linux 9',
@@ -331,16 +333,7 @@ function getUserContentMeta(filename) {
             const meta = JSON.parse(content);
             return { path: xmlPath, name: meta.title || sdsDisplayName(filename), filename };
         })
-        .catch(() =>
-            cockpit.spawn(['oscap', 'info', xmlPath], { err: 'out' })
-                .then(output => {
-                    const title = parseOscapTitle(output) || sdsDisplayName(filename);
-                    const meta  = { title, filename, added: new Date().toISOString() };
-                    return cockpit.file(jsonPath, { superuser: 'require' }).replace(JSON.stringify(meta, null, 2))
-                        .then(() => ({ path: xmlPath, name: title, filename }));
-                })
-                .catch(() => ({ path: xmlPath, name: sdsDisplayName(filename), filename }))
-        );
+        .catch(() => ({ path: xmlPath, name: sdsDisplayName(filename), filename }));
 }
 
 function onContentChange() {
