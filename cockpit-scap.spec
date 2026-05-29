@@ -75,7 +75,7 @@ fi
 %dir /var/lib/%{name}/content
 
 %changelog
-* Thu May 29 2026 Patrick Buchan <pjbuchan@gmail.com> - 2.0-1
+* Fri May 29 2026 Patrick Buchan <pjbuchan@gmail.com> - 2.0-1
 - Initial package release
 - v2.0: content tab, multi-version SDS support, CPE compatibility detection,
   satellite content staging, uploaded-content security warnings
