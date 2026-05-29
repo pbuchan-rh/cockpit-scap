@@ -53,6 +53,13 @@ failing silently.
 
 ## Installation
 
+**RPM via Fedora COPR (recommended):**
+
+```bash
+sudo dnf copr enable pbuchan-rh/cockpit-scap
+sudo dnf install cockpit-scap
+```
+
 **From source (Makefile):**
 
 ```bash
@@ -63,13 +70,6 @@ sudo make install
 
 The Makefile creates `/var/lib/cockpit-scap/{results,tailoring,content}/`, installs module files to
 `/usr/share/cockpit/cockpit-scap/`, and configures the SELinux file context automatically.
-
-**RPM (COPR — coming soon):**
-
-```bash
-# dnf copr enable pbuchan-rh/cockpit-scap
-# dnf install cockpit-scap
-```
 
 Reload Cockpit and navigate to **SCAP Compliance** in the sidebar.
 
