@@ -784,6 +784,7 @@ function viewReportFromPath(reportPath) {
 }
 
 function downloadArtifact(filePath, filename, mimeType) {
+    if (!filePath) return;
     cockpit.file(filePath).read()
         .then(content => {
             const blob = new Blob([content], { type: mimeType });
@@ -796,7 +797,10 @@ function downloadArtifact(filePath, filename, mimeType) {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         })
-        .catch(err => console.error('Failed to download:', err));
+        .catch(err => {
+            console.error('Failed to download:', err);
+            alert('Download failed — file may not exist: ' + (err.message || String(err)));
+        });
 }
 
 /* ---- Scan state transitions -------------------------------- */
@@ -1177,7 +1181,11 @@ function doLoadProfile(profileId) {
 
     cockpit.spawn(['python3', '-c', PY_EXTRACT_PROFILE, profileId, tailorSdsPath], { err: 'out' })
         .then(output => {
-            tailorData = JSON.parse(output);
+            try {
+                tailorData = JSON.parse(output);
+            } catch (e) {
+                throw new Error('Failed to parse profile data from oscap: ' + e.message);
+            }
             document.getElementById('ct-tailor-loading').classList.add('hidden');
             renderTailorEditor(tailorData);
         })
