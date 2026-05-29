@@ -108,16 +108,19 @@ Nothing blocking. Module is live on Fedora COPR.
 | 2026-05-29 | v2.0 | Code review | Multi-angle review: 15 findings; fixed concurrent scan guard, remediation null path crash, innerHTML XSS in content lists, NaN score guard, Promise.all returns, DOMParser validation, download error visibility, JSON.parse clarity, Makefile uninstall gap, %post silent failure; openscap-scanner moved to Recommends (spec bug found during clean install test) |
 | 2026-05-29 | v2.0 | Clean install test | Fresh RHEL 10 VM (rhel10test, 10.0.0.214) on virt3; RPM install from zero, SELinux labeling confirmed, prereq detection on all 3 tabs, full scan workflow, clean rpm -e uninstall — all passed |
 | 2026-05-29 | v2.0 | COPR | Submitted to Fedora COPR (pbuchan-rh/cockpit-scap); build succeeded; publicly installable via `dnf copr enable pbuchan-rh/cockpit-scap && dnf install cockpit-scap` |
+| 2026-05-29 | v2.0 | COPR validation | Clean install validated via `dnf copr enable` + `dnf install` on rhel10test — GPG key import, SELinux %post labeling, and full scan workflow all confirmed from COPR |
+| 2026-05-29 | v2.0 | UI overhaul | Playwright-assisted layout audit: identified and fixed native Cockpit alignment (PF6 section padding 16px/24px, container margins); removed redundant ct-page-title heading; restructured to single-panel design (transparent container, page background = unified gray panel, cards float on top); tab bar background matches page; removed edge-to-edge tab border-bottom; editor card border-radius fixed to 16px |
 
 ---
 
 ## Next Session — Suggested Order
 
-**Goal:** Community engagement + v3 planning
+**Goal:** Dark mode support
 
-1. **Community engagement** — comment on cockpit-project/cockpit issue #19691 with link to repo; contact OpenSCAP project about listing as community tool
-2. **Upload button** (REQ-53, optional) — in-browser SDS file upload to `/var/lib/cockpit-scap/content/`; validate Cockpit file size limits first
-3. **v3 design session** — `oscap-podman` container image scanning; requires Podman, image enumeration, OS detection from image metadata
+1. **Dark mode** — CSS variable overrides for `@media (prefers-color-scheme: dark)` AND `.pf-v6-theme-dark` (Cockpit's own toggle); key colors: bg-page `#1b1d21`, bg-card `#212427`, border `#444`, text `#e0e0e0`; all `--ct-color-*` vars need dark variants; viewer.html needs separate handling
+2. **Community engagement** — comment on cockpit-project/cockpit issue #19691 with link to repo; contact OpenSCAP project about listing as community tool
+3. **Upload button** (REQ-53, optional) — in-browser SDS file upload to `/var/lib/cockpit-scap/content/`; validate Cockpit file size limits first
+4. **v3 design session** — `oscap-podman` container image scanning; requires Podman, image enumeration, OS detection from image metadata
 
 **Published locations:**
 - GitHub: https://github.com/pbuchan-rh/cockpit-scap
@@ -128,9 +131,10 @@ Nothing blocking. Module is live on Fedora COPR.
 
 ## Backlog (Priority Order)
 
-1. **Upload button** (REQ-53) — optional but rounds out the content management story
-2. **Community engagement** — cockpit-project/cockpit issue #19691, OpenSCAP project listing
-3. **v3 `oscap-podman`** — container image scanning; own design session required
+1. **Dark mode** — next session; Cockpit uses `.pf-v6-theme-dark` on html + `prefers-color-scheme: dark`; all `--ct-color-*` vars need dark overrides
+2. **Upload button** (REQ-53) — optional but rounds out the content management story
+3. **Community engagement** — cockpit-project/cockpit issue #19691, OpenSCAP project listing
+4. **v3 `oscap-podman`** — container image scanning; own design session required
 
 ---
 
