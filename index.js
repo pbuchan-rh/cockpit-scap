@@ -471,9 +471,9 @@ function onProfileChange() {
     hideProfileDescription();
     setScanButtonEnabled(false);
 
-    if (!profileId || !currentSdsPath || cpeBlocksScan) return;
+    if (!profileId || !currentSdsPath) return;
 
-    setScanButtonEnabled(true);
+    if (!cpeBlocksScan) setScanButtonEnabled(true);
     loadProfileDescription(currentSdsPath, profileId);
 }
 
