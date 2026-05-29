@@ -52,6 +52,7 @@ uninstall:
 
 	@echo "--- Removing module files"
 	rm -rf $(COCKPIT_DIR)
+	rm -rf $(PREFIX)/share/cockpit-scap
 
 	@echo "--- Removing SELinux file context"
 	semanage fcontext -d '$(SELINUX_PATH)' 2>/dev/null || true

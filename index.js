@@ -250,7 +250,7 @@ function detectContent() {
     const scanSelect   = document.getElementById('ct-content-select');
     const tailorSelect = document.getElementById('ct-tailor-content-select');
 
-    Promise.all([listSystemContent(), listUserContent()])
+    return Promise.all([listSystemContent(), listUserContent()])
         .then(([sysFiles, userFiles]) => {
             scanSelect.innerHTML   = '';
             tailorSelect.innerHTML = '';
@@ -514,6 +514,7 @@ function makeTimestamp() {
 }
 
 function onScanClick() {
+    if (currentScanProc) return;
     const profileSelect  = document.getElementById('ct-profile-select');
     const tailorSelect   = document.getElementById('ct-tailor-file-select');
     const tailoringPath  = tailorSelect.value;
@@ -604,7 +605,11 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 .then(() => manifest);
         })
         .then(manifest => generateRemediation(manifest.result_id, resultsXmlPath, tailoringPath)
-            .catch(err => console.error('Remediation generation failed:', err.message || err))
+            .catch(err => {
+                console.error('Remediation generation failed:', err.message || err);
+                currentRemBashPath    = null;
+                currentRemAnsiblePath = null;
+            })
             .then(() => manifest))
         .then(manifest => pruneHistory().then(() => manifest))
         .then(manifest => relaxResultsPerms().then(() => manifest))
@@ -688,7 +693,8 @@ function parseResultsXml(content) {
 
     const resultId = testResult ? (testResult.getAttribute('id') || '') : '';
     const scoreEl  = testResult ? byTag(testResult, 'score') : null;
-    const score    = scoreEl ? parseFloat(scoreEl.textContent) : 0;
+    const rawScore = scoreEl ? parseFloat(scoreEl.textContent) : 0;
+    const score    = isNaN(rawScore) ? 0 : rawScore;
 
     const counts = { pass: 0, fail: 0, error: 0, notchecked: 0, notapplicable: 0, notselected: 0 };
     if (testResult) {
@@ -726,6 +732,12 @@ function showResults(manifest) {
     });
 
     document.getElementById('ct-result-score').textContent = score.toFixed(1) + '%';
+
+    const remFailed = !currentRemBashPath;
+    document.getElementById('ct-download-bash-btn').disabled    = remFailed;
+    document.getElementById('ct-download-ansible-btn').disabled = remFailed;
+    document.getElementById('ct-download-bash-btn').title       = remFailed ? 'Remediation generation failed' : '';
+    document.getElementById('ct-download-ansible-btn').title    = remFailed ? 'Remediation generation failed' : '';
 
     const uploadedWarn = document.getElementById('ct-uploaded-content-warning');
     if (currentSdsPath && currentSdsPath.startsWith(CONTENT_BASE)) {
@@ -870,7 +882,7 @@ function loadHistory() {
                 return;
             }
 
-            Promise.all(
+            return Promise.all(
                 dirs.map(dir =>
                     cockpit.file(RESULTS_BASE + dir + '/manifest.json').read()
                         .then(content => JSON.parse(content))
@@ -1617,9 +1629,13 @@ function handleTailoringUpload(file) {
         const NS  = 'http://checklists.nist.gov/xccdf/1.2';
         const doc = new DOMParser().parseFromString(xmlContent, 'application/xml');
 
+        if (doc.getElementsByTagName('parsererror').length) {
+            alert('The uploaded file is not valid XML and cannot be imported.');
+            return;
+        }
         const profileEl = doc.getElementsByTagNameNS(NS, 'Profile')[0];
         if (!profileEl) {
-            console.error('Uploaded file does not appear to be a valid XCCDF tailoring file');
+            alert('The uploaded file does not appear to be a valid XCCDF tailoring file (no Profile element found).');
             return;
         }
 
@@ -1680,14 +1696,29 @@ function renderSystemContentList() {
                 container.innerHTML = '<p class="ct-content-empty">No system SCAP content found. Install <code>scap-security-guide</code>.</p>';
                 return;
             }
-            const rows = files.map(f =>
-                '<tr><td>' + sdsDisplayName(f) + '</td>' +
-                '<td><code>' + SSG_CONTENT_DIR + f + '</code></td></tr>'
-            ).join('');
-            container.innerHTML =
-                '<table class="pf-v6-c-table pf-m-compact" aria-label="System SCAP content">' +
-                '<thead><tr><th scope="col">Name</th><th scope="col">Path</th></tr></thead>' +
-                '<tbody>' + rows + '</tbody></table>';
+            const table = document.createElement('table');
+            table.className = 'pf-v6-c-table pf-m-compact';
+            table.setAttribute('aria-label', 'System SCAP content');
+            const thead = table.createTHead();
+            const hr = thead.insertRow();
+            ['Name', 'Path'].forEach(h => {
+                const th = document.createElement('th');
+                th.scope = 'col';
+                th.textContent = h;
+                hr.appendChild(th);
+            });
+            const tbody = table.createTBody();
+            files.forEach(f => {
+                const tr   = tbody.insertRow();
+                const tdN  = tr.insertCell();
+                tdN.textContent = sdsDisplayName(f);
+                const tdP  = tr.insertCell();
+                const code = document.createElement('code');
+                code.textContent = SSG_CONTENT_DIR + f;
+                tdP.appendChild(code);
+            });
+            container.innerHTML = '';
+            container.appendChild(table);
         })
         .catch(() => {
             container.innerHTML = '<p class="ct-content-empty">System content directory not found.</p>';
@@ -1709,30 +1740,42 @@ function renderUserContentList() {
                 xmlPath:  CONTENT_BASE + f,
                 jsonPath: CONTENT_BASE + f.replace(/\.xml$/, '.json'),
             }));
-            const rows = entries.map(e => {
-                const safeName = e.name.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-                return '<tr>' +
-                    '<td>' + e.name.replace(/&/g, '&amp;') + '</td>' +
-                    '<td><code>' + e.filename + '</code></td>' +
-                    '<td><button class="pf-v6-c-button pf-m-link ct-danger-link" type="button"' +
-                    ' data-xml="' + e.xmlPath + '"' +
-                    ' data-json="' + e.jsonPath + '"' +
-                    ' data-name="' + safeName + '">Delete</button></td>' +
-                    '</tr>';
-            }).join('');
-            container.innerHTML =
-                '<table class="pf-v6-c-table pf-m-compact" aria-label="Uploaded SCAP content">' +
-                '<thead><tr><th scope="col">Name</th><th scope="col">File</th><th scope="col">Actions</th></tr></thead>' +
-                '<tbody>' + rows + '</tbody></table>';
-            container.querySelectorAll('[data-xml]').forEach(btn => {
+            const table = document.createElement('table');
+            table.className = 'pf-v6-c-table pf-m-compact';
+            table.setAttribute('aria-label', 'Uploaded SCAP content');
+            const thead = table.createTHead();
+            const hr = thead.insertRow();
+            ['Name', 'File', 'Actions'].forEach(h => {
+                const th = document.createElement('th');
+                th.scope = 'col';
+                th.textContent = h;
+                hr.appendChild(th);
+            });
+            const tbody = table.createTBody();
+            entries.forEach(e => {
+                const tr     = tbody.insertRow();
+                const tdN    = tr.insertCell();
+                tdN.textContent = e.name;
+                const tdF    = tr.insertCell();
+                const code   = document.createElement('code');
+                code.textContent = e.filename;
+                tdF.appendChild(code);
+                const tdA    = tr.insertCell();
+                const btn    = document.createElement('button');
+                btn.className = 'pf-v6-c-button pf-m-link ct-danger-link';
+                btn.type      = 'button';
+                btn.textContent = 'Delete';
                 btn.addEventListener('click', () => {
                     showConfirmModal(
                         'Delete content file',
-                        'Delete "' + btn.dataset.name + '"? This cannot be undone.',
-                        () => deleteUserContent(btn.dataset.xml, btn.dataset.json)
+                        'Delete "' + e.name + '"? This cannot be undone.',
+                        () => deleteUserContent(e.xmlPath, e.jsonPath)
                     );
                 });
+                tdA.appendChild(btn);
             });
+            container.innerHTML = '';
+            container.appendChild(table);
         })
         .catch(() => {
             container.innerHTML = '<p class="ct-content-empty">Could not read content directory.</p>';
