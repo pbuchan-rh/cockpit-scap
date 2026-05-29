@@ -127,3 +127,4 @@
 | `style.css` | ✅ v0.9 |
 | `viewer.html` | ✅ Complete |
 | `selinux/cockpit-scap.fc` | ✅ Written — pending install test on rhel10cis |
+| `Makefile` | ✅ Written — pending install test on rhel10cis |
