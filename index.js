@@ -88,12 +88,20 @@ let tailorValueChanges  = {};
 let tailoringFilesMap   = {};
 
 /* Module state — content */
-let cpeBlocksScan = false;
+let cpeBlocksScan  = false;
+let hostOsVersion  = null;   /* cached from /etc/os-release at startup */
 
 /* Module state — confirm modal */
 let confirmCallback = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    cockpit.file('/etc/os-release').read()
+        .then(content => {
+            const m = content && content.match(/^VERSION_ID="?(\d+)/m);
+            hostOsVersion = m ? parseInt(m[1], 10) : null;
+        })
+        .catch(() => {});
+
     initTabs();
     detectContent();
     loadHistory();
@@ -352,21 +360,15 @@ function detectSdsVersion(sdsPath) {
 
 function checkCpeCompat(sdsPath) {
     const sdsVer = detectSdsVersion(sdsPath);
-    if (!sdsVer) return;
+    if (!sdsVer || !hostOsVersion) return;
 
-    cockpit.file('/etc/os-release').read()
-        .then(content => {
-            const m = content.match(/^VERSION_ID="?(\d+)/m);
-            const hostVer = m ? parseInt(m[1], 10) : null;
-            if (hostVer && sdsVer !== hostVer) {
-                cpeBlocksScan = true;
-                setScanButtonEnabled(false);
-                showCpeAlert(sdsVer, hostVer);
-            } else {
-                clearCpeAlert();
-            }
-        })
-        .catch(() => {});
+    if (sdsVer !== hostOsVersion) {
+        cpeBlocksScan = true;
+        setScanButtonEnabled(false);
+        showCpeAlert(sdsVer, hostOsVersion);
+    } else {
+        clearCpeAlert();
+    }
 }
 
 function showCpeAlert(sdsVer, hostVer) {
