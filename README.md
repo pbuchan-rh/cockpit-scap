@@ -139,7 +139,7 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 ## Development status
 
-**Current version:** v1.0
+**Current version:** v1.1
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
