@@ -139,12 +139,12 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 ## Development status
 
-**Current version:** v0.9 (pre-release)
+**Current version:** v1.0
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
 
-Planned before community release: SELinux `.fc` deliverable, Makefile install target, RPM spec.
+SELinux `.fc` deliverable and Makefile install target are complete. RPM spec planned before community release.
 
 ### Roadmap
 

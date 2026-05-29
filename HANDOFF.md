@@ -4,8 +4,8 @@
 
 ## Current State
 
-**Version:** v0.9
-**Last session:** 2026-05-28
+**Version:** v1.0
+**Last session:** 2026-05-29
 **Deployed to:** rhel10cis.beastmode.localdomain
 
 ---
@@ -44,9 +44,7 @@
 
 | Item | Requirement | Notes |
 |---|---|---|
-| SELinux `.fc` file | REQ-50, REQ-58 | File contexts for `results/`, `tailoring/`, and `content/` — include v2 path now |
-| SELinux install automation | REQ-33 | `semanage fcontext` + `restorecon` at install time — zero manual admin steps |
-| Install mechanism | REQ-49 | Makefile with `install` / `uninstall` targets at minimum; RPM spec for community/COPR release |
+| RPM spec | — | Needed for Fedora/COPR packaging before community release |
 
 ---
 
@@ -76,19 +74,24 @@
 | 2026-05-28 | v0.8 | Implementation | Full tailoring tab — rule tree, variables, save/load/edit/delete/upload/download, tailored scans |
 | 2026-05-29 | v0.9 | Implementation | Scan history delete, confirmation modal on all destructive actions, README.md |
 | 2026-05-29 | v0.9 | Planning | Workbench feature audit (WORKBENCH_FEATURES.md), scap-tui concept (SCAP_TUI_DESIGN.md), v2/v3 roadmap locked, OVAL scanning explicitly out of scope, container scanning deferred to v3 |
+| 2026-05-29 | v1.0 | Release | SELinux .fc file, Makefile install/uninstall, clean install test on rhel10cis — all v1 acceptance criteria met, SELinux enforcing mode confirmed, project checked into Gitea |
 
 ---
 
 ## Next Session — Suggested Order
 
-**Goal:** SELinux deliverable + install mechanism + source control
+**Goal:** v2 — Multi-version SDS content management
 
-1. Write `selinux/cockpit-scap.fc` — file contexts for `results/`, `tailoring/`, and `content/` (cover v2 path now)
-2. Write Makefile with `install` and `uninstall` targets — copies module files, runs `semanage fcontext` + `restorecon`
-3. Test a clean install from the Makefile on rhel10cis
-4. RPM spec skeleton (needed before community release, not during dev)
+1. Content directory UI — list files in `/var/lib/cockpit-scap/content/`, upload button, delete with confirmation modal
+2. CPE / target OS detection — parse `oscap info` on SDS selection, block scan for cross-version content with clear message
+3. SDS selector — group system content vs uploaded content visually
+4. Cross-version tailoring — verify tailoring tab works identically for RHEL 7/8/9 SDS files
+5. RPM spec skeleton — needed before community release
 
-**Source control:** Project is now in Gitea at `git.beastmode.localdomain`
+**Upstream engagement (when ready):**
+- Comment on cockpit-project/cockpit issue #19691 with link to repo
+- Publish to Fedora COPR
+- Contact OpenSCAP project about listing as community tool
 
 ---
 
@@ -126,5 +129,5 @@
 | `index.js` | ✅ v0.9 |
 | `style.css` | ✅ v0.9 |
 | `viewer.html` | ✅ Complete |
-| `selinux/cockpit-scap.fc` | ✅ Written — pending install test on rhel10cis |
-| `Makefile` | ✅ Written — pending install test on rhel10cis |
+| `selinux/cockpit-scap.fc` | ✅ Complete — tested on rhel10cis, SELinux enforcing confirmed |
+| `Makefile` | ✅ Complete — clean install tested on rhel10cis |
