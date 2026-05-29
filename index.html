@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=11">
+    <link rel="stylesheet" href="style.css?v=12">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=11" defer></script>
+    <script src="index.js?v=12" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -16,9 +16,9 @@
     <div class="pf-v6-c-page__main-container">
 
     <!-- Page title -->
-    <div class="pf-v6-c-page__main-breadcrumb">
+    <section class="pf-v6-c-page__main-section pf-m-light">
       <h1 class="ct-page-title">SCAP Compliance</h1>
-    </div>
+    </section>
 
     <!-- Tab navigation -->
     <div class="pf-v6-c-page__main-tabs">
@@ -352,47 +352,15 @@
         </div>
       </div>
 
-      <!-- Editor (hidden until profile loaded) -->
-      <div class="hidden" id="ct-tailor-editor">
+      <!-- Editor (hidden until profile loaded) — unified single card -->
+      <div class="pf-v6-c-card hidden" id="ct-tailor-editor">
 
-        <!-- Rule tree card -->
-        <div class="pf-v6-c-card">
-          <div class="pf-v6-c-card__title">
-            <div class="ct-tailor-rules-header">
-              <div>
-                <h2 class="pf-v6-c-card__title-text">Rules</h2>
-                <p class="ct-tailor-editor-hint">Check or uncheck rules to enable or disable them.</p>
-              </div>
-              <div class="ct-tailor-tree-controls">
-                <button class="pf-v6-c-button pf-m-link" type="button"
-                        id="ct-tailor-expand-all">Expand All</button>
-                <button class="pf-v6-c-button pf-m-link" type="button"
-                        id="ct-tailor-collapse-all">Collapse All</button>
-              </div>
-            </div>
-            <div class="ct-tailor-search-wrap">
-              <span class="pf-v6-c-form-control ct-tailor-search-control">
-                <input type="text" id="ct-tailor-search" placeholder="Search rules&hellip;">
-              </span>
-            </div>
-          </div>
-          <div class="pf-v6-c-card__body ct-tailor-tree-body" id="ct-tailor-tree"></div>
-        </div>
-
-        <!-- Variables card (hidden if no variables) -->
-        <div class="pf-v6-c-card hidden" id="ct-tailor-values-card">
-          <div class="pf-v6-c-card__title">
-            <h2 class="pf-v6-c-card__title-text">Variables</h2>
-            <p class="ct-tailor-editor-hint">Adjust variable values to customize profile behavior.</p>
-          </div>
-          <div class="pf-v6-c-card__body">
-            <div class="ct-tailor-values-grid" id="ct-tailor-values-grid"></div>
-          </div>
-        </div>
-
-        <!-- Save card -->
-        <div class="pf-v6-c-card">
-          <div class="pf-v6-c-card__body">
+        <!-- Sticky header: profile name being edited + save/cancel always visible -->
+        <div class="pf-v6-c-card__title ct-tailor-editor-header">
+          <div class="ct-tailor-editor-header-inner">
+            <h2 class="pf-v6-c-card__title-text">
+              Editing: <span id="ct-tailor-editor-title"></span>
+            </h2>
             <div class="ct-tailor-save-row">
               <button class="pf-v6-c-button pf-m-primary" type="button"
                       id="ct-tailor-save-btn">Save Tailoring File</button>
@@ -402,6 +370,47 @@
             </div>
           </div>
         </div>
+
+        <!-- Rules section -->
+        <div class="pf-v6-c-card__body ct-tailor-editor-section">
+          <div class="ct-tailor-rules-header">
+            <div>
+              <h3 class="ct-tailor-section-title">Rules</h3>
+              <p class="ct-tailor-editor-hint">Check or uncheck rules to enable or disable them.</p>
+            </div>
+            <div class="ct-tailor-tree-controls">
+              <button class="pf-v6-c-button pf-m-link" type="button"
+                      id="ct-tailor-expand-all">Expand All</button>
+              <button class="pf-v6-c-button pf-m-link" type="button"
+                      id="ct-tailor-collapse-all">Collapse All</button>
+            </div>
+          </div>
+          <div class="ct-tailor-search-wrap">
+            <span class="pf-v6-c-form-control ct-tailor-search-control">
+              <input type="text" id="ct-tailor-search" placeholder="Search rules&hellip;">
+            </span>
+          </div>
+          <div class="ct-tailor-tree-body" id="ct-tailor-tree"></div>
+        </div>
+
+        <!-- Variables section (hidden if no variables) -->
+        <hr class="ct-tailor-section-divider hidden" id="ct-tailor-values-divider">
+        <div class="pf-v6-c-card__body ct-tailor-editor-section hidden" id="ct-tailor-values-section">
+          <div class="ct-tailor-rules-header">
+            <div>
+              <h3 class="ct-tailor-section-title">Variables</h3>
+              <p class="ct-tailor-editor-hint">Adjust variable values to customize profile behavior.</p>
+            </div>
+          </div>
+          <div class="ct-tailor-search-wrap">
+            <span class="pf-v6-c-form-control ct-tailor-search-control">
+              <input type="text" id="ct-tailor-values-search" placeholder="Search variables&hellip;">
+            </span>
+          </div>
+          <div class="ct-tailor-values-grid" id="ct-tailor-values-grid"></div>
+        </div>
+
+      </div>
 
       </div>
       <!-- END editor -->

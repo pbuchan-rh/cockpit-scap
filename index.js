@@ -148,6 +148,15 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', collapseAllGroups);
     document.getElementById('ct-tailor-search')
         .addEventListener('input', onTailorSearch);
+    document.getElementById('ct-tailor-values-search')
+        .addEventListener('input', function () {
+            const term = this.value.toLowerCase();
+            document.querySelectorAll('#ct-tailor-values-grid .ct-tailor-value-row').forEach(row => {
+                const label = row.querySelector('.ct-tailor-value-label');
+                const text  = label ? label.textContent.toLowerCase() : '';
+                row.classList.toggle('hidden', term.length > 0 && !text.includes(term));
+            });
+        });
     document.getElementById('ct-tailor-upload-btn')
         .addEventListener('click', () => document.getElementById('ct-tailor-upload-input').click());
     document.getElementById('ct-tailor-upload-input')
@@ -1009,7 +1018,10 @@ function onTailorLoadClick() {
 }
 
 function renderTailorEditor(data) {
-    document.getElementById('ct-tailor-search').value = '';
+    document.getElementById('ct-tailor-search').value       = '';
+    document.getElementById('ct-tailor-values-search').value = '';
+    document.getElementById('ct-tailor-editor-title').textContent =
+        document.getElementById('ct-tailor-name-input').value.trim();
     renderTailorTree(data);
     renderTailorValues(data.values || []);
     const statusEl = document.getElementById('ct-tailor-save-status');
@@ -1076,16 +1088,19 @@ function renderTailorTree(data) {
 }
 
 function renderTailorValues(values) {
-    const grid = document.getElementById('ct-tailor-values-grid');
-    const card = document.getElementById('ct-tailor-values-card');
+    const grid    = document.getElementById('ct-tailor-values-grid');
+    const section = document.getElementById('ct-tailor-values-section');
+    const divider = document.getElementById('ct-tailor-values-divider');
     grid.innerHTML = '';
 
     if (!values || values.length === 0) {
-        card.classList.add('hidden');
+        section.classList.add('hidden');
+        divider.classList.add('hidden');
         return;
     }
 
-    card.classList.remove('hidden');
+    section.classList.remove('hidden');
+    divider.classList.remove('hidden');
     values.forEach(val => {
         const row     = document.createElement('div');
         row.className = 'ct-tailor-value-row';

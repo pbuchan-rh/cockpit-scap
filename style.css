@@ -181,10 +181,6 @@ code {
   overflow: hidden;
 }
 
-.pf-v6-c-page__main-breadcrumb {
-  padding: var(--ct-space-md) var(--ct-space-lg) var(--ct-space-sm);
-}
-
 .ct-page-title {
   font-family: var(--ct-font-heading);
   font-size: var(--ct-font-size-2xl);
@@ -759,6 +755,40 @@ code {
   font-size: var(--ct-font-size-sm);
   color: var(--ct-color-text-secondary);
   margin: var(--ct-space-xs) 0 0;
+}
+
+/* Unified editor card */
+.ct-tailor-editor-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--ct-color-bg-card);
+  border-bottom: 1px solid var(--ct-color-border);
+}
+
+.ct-tailor-editor-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ct-space-md);
+  flex-wrap: wrap;
+}
+
+.ct-tailor-section-title {
+  font-size: var(--ct-font-size-lg);
+  font-weight: 700;
+  color: var(--ct-color-text);
+  margin: 0 0 var(--ct-space-xs);
+}
+
+.ct-tailor-editor-section {
+  padding: var(--ct-space-lg);
+}
+
+.ct-tailor-section-divider {
+  border: 0;
+  border-top: 1px solid var(--ct-color-border);
+  margin: 0;
 }
 
 /* Rules card header row */
