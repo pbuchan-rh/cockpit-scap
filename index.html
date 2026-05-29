@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=18">
+    <link rel="stylesheet" href="style.css?v=20">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=18" defer></script>
+    <script src="index.js?v=20" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -265,68 +265,86 @@
     <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-tailoring"
              role="tabpanel" aria-labelledby="tab-btn-tailoring">
 
-      <!-- Setup card -->
-      <div class="pf-v6-c-card">
-        <div class="pf-v6-c-card__title">
-          <h2 class="pf-v6-c-card__title-text">Create Tailoring Profile</h2>
-        </div>
-        <div class="pf-v6-c-card__body">
-          <div class="pf-v6-c-form ct-scan-form">
+      <!-- Setup row: form card + description card side by side -->
+      <div class="ct-scan-row">
 
-            <!-- Content selection -->
-            <div class="pf-v6-c-form__group">
-              <div class="pf-v6-c-form__group-label">
-                <label class="pf-v6-c-form__label" for="ct-tailor-content-select">
-                  <span class="pf-v6-c-form__label-text">Content</span>
-                </label>
+        <!-- Left: Create Tailoring Profile form -->
+        <div class="pf-v6-c-card ct-scan-setup-card">
+          <div class="pf-v6-c-card__title">
+            <h2 class="pf-v6-c-card__title-text">Create Tailoring Profile</h2>
+          </div>
+          <div class="pf-v6-c-card__body">
+            <div class="pf-v6-c-form ct-scan-form">
+
+              <!-- Content selection -->
+              <div class="pf-v6-c-form__group">
+                <div class="pf-v6-c-form__group-label">
+                  <label class="pf-v6-c-form__label" for="ct-tailor-content-select">
+                    <span class="pf-v6-c-form__label-text">Content</span>
+                  </label>
+                </div>
+                <div class="pf-v6-c-form__group-control">
+                  <span class="pf-v6-c-form-control">
+                    <select id="ct-tailor-content-select">
+                      <option value="">Detecting content&hellip;</option>
+                    </select>
+                  </span>
+                </div>
               </div>
-              <div class="pf-v6-c-form__group-control">
-                <span class="pf-v6-c-form-control">
-                  <select id="ct-tailor-content-select">
-                    <option value="">Detecting content&hellip;</option>
-                  </select>
-                </span>
+
+              <!-- Base profile selection -->
+              <div class="pf-v6-c-form__group">
+                <div class="pf-v6-c-form__group-label">
+                  <label class="pf-v6-c-form__label" for="ct-tailor-profile-select">
+                    <span class="pf-v6-c-form__label-text">Base Profile</span>
+                  </label>
+                </div>
+                <div class="pf-v6-c-form__group-control">
+                  <span class="pf-v6-c-form-control">
+                    <select id="ct-tailor-profile-select" disabled>
+                      <option value="">Select content first</option>
+                    </select>
+                  </span>
+                </div>
               </div>
+
+              <!-- New profile name -->
+              <div class="pf-v6-c-form__group">
+                <div class="pf-v6-c-form__group-label">
+                  <label class="pf-v6-c-form__label" for="ct-tailor-name-input">
+                    <span class="pf-v6-c-form__label-text">Tailored Profile Name</span>
+                  </label>
+                </div>
+                <div class="pf-v6-c-form__group-control">
+                  <span class="pf-v6-c-form-control">
+                    <input type="text" id="ct-tailor-name-input"
+                           placeholder="e.g. CIS Level 1 &mdash; Custom" disabled>
+                  </span>
+                  <p class="pf-v6-c-form__helper-text">Give your tailored profile a descriptive name.</p>
+                </div>
+              </div>
+
             </div>
-
-            <!-- Base profile selection -->
-            <div class="pf-v6-c-form__group">
-              <div class="pf-v6-c-form__group-label">
-                <label class="pf-v6-c-form__label" for="ct-tailor-profile-select">
-                  <span class="pf-v6-c-form__label-text">Base Profile</span>
-                </label>
-              </div>
-              <div class="pf-v6-c-form__group-control">
-                <span class="pf-v6-c-form-control">
-                  <select id="ct-tailor-profile-select" disabled>
-                    <option value="">Select content first</option>
-                  </select>
-                </span>
-              </div>
-            </div>
-
-            <!-- New profile name -->
-            <div class="pf-v6-c-form__group">
-              <div class="pf-v6-c-form__group-label">
-                <label class="pf-v6-c-form__label" for="ct-tailor-name-input">
-                  <span class="pf-v6-c-form__label-text">Tailored Profile Name</span>
-                </label>
-              </div>
-              <div class="pf-v6-c-form__group-control">
-                <span class="pf-v6-c-form-control">
-                  <input type="text" id="ct-tailor-name-input"
-                         placeholder="e.g. CIS Level 1 &mdash; Custom" disabled>
-                </span>
-                <p class="pf-v6-c-form__helper-text">Give your tailored profile a descriptive name.</p>
-              </div>
-            </div>
-
+          </div>
+          <div class="pf-v6-c-card__footer">
+            <button class="pf-v6-c-button pf-m-primary" type="button"
+                    id="ct-tailor-load-btn" disabled>Load Profile</button>
           </div>
         </div>
-        <div class="pf-v6-c-card__footer">
-          <button class="pf-v6-c-button pf-m-primary" type="button"
-                  id="ct-tailor-load-btn" disabled>Load Profile</button>
+
+        <!-- Right: Base profile description -->
+        <div class="pf-v6-c-card ct-profile-desc-card">
+          <div class="pf-v6-c-card__title">
+            <h2 class="pf-v6-c-card__title-text" id="ct-tailor-desc-title">Base Profile</h2>
+          </div>
+          <div class="pf-v6-c-card__body">
+            <p class="ct-profile-desc-placeholder" id="ct-tailor-desc-placeholder">
+              Select a base profile to see its description.
+            </p>
+            <p class="hidden" id="ct-tailor-desc-text"></p>
+          </div>
         </div>
+
       </div>
 
       <!-- Loading indicator -->
