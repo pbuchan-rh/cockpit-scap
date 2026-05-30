@@ -684,6 +684,10 @@ code {
   flex-wrap: wrap;
 }
 
+.ct-new-scan-btn {
+  margin-left: auto;
+}
+
 .ct-alert-prereq {
   max-width: 800px;
 }
@@ -1063,5 +1067,97 @@ details.ct-tailor-group .ct-tailor-rule {
 .ct-confirm-footer {
   display: flex;
   gap: var(--ct-space-sm);
+}
+
+/* ---- Dark mode --------------------------------------------- */
+/* Token values matched to PF6's own dark-mode token chain.    */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ct-color-primary:           #b9dafc;   /* pf link/accent dark */
+    --ct-color-primary-dark:      #92c5f9;   /* button bg dark */
+    --ct-color-primary-light:     #1a3a5c;
+    --ct-color-danger:            #f0561d;   /* pf status--danger dark */
+    --ct-color-danger-light:      #3d1210;
+    --ct-color-success:           #87bb62;   /* pf status--success dark */
+    --ct-color-success-light:     #1b2e1a;
+    --ct-color-warning:           #ffcc17;   /* pf status--warning dark */
+    --ct-color-warning-light:     #322b10;
+    --ct-color-info:              #b6a6e9;   /* pf status--info dark (purple) */
+    --ct-color-info-light:        #1e1a2e;
+
+    --ct-color-text:              #ffffff;   /* pf text--color--regular dark */
+    --ct-color-text-secondary:    #c7c7c7;   /* pf text--color--subtle dark */
+    --ct-color-text-disabled:     #707070;   /* pf text--color--disabled dark */
+    --ct-color-bg-page:           #151515;   /* pf bg--secondary dark */
+    --ct-color-bg-card:           #292929;   /* pf bg--primary dark */
+    --ct-color-border:            #444649;
+    --ct-color-border-dark:       #a3a3a3;   /* pf border--color--default dark */
+    --ct-shadow-sm:               0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  /* PF6 dark: primary button flips to light bg + dark text */
+  .pf-v6-c-button.pf-m-primary {
+    background-color: var(--ct-color-primary-dark);
+    border-color: var(--ct-color-primary-dark);
+    color: #1f1f1f;
+  }
+  .pf-v6-c-button.pf-m-primary:hover:not(:disabled) {
+    background-color: var(--ct-color-primary);
+    border-color: var(--ct-color-primary);
+    color: #1f1f1f;
+  }
+
+  /* Badge: match button pattern */
+  .pf-v6-c-badge {
+    background-color: var(--ct-color-primary-dark);
+    color: #1f1f1f;
+  }
+
+  /* Yellow bg needs dark text for contrast */
+  .ct-badge-error {
+    color: #1f1f1f;
+  }
+}
+
+html.pf-v6-theme-dark {
+  --ct-color-primary:           #b9dafc;
+  --ct-color-primary-dark:      #92c5f9;
+  --ct-color-primary-light:     #1a3a5c;
+  --ct-color-danger:            #f0561d;
+  --ct-color-danger-light:      #3d1210;
+  --ct-color-success:           #87bb62;
+  --ct-color-success-light:     #1b2e1a;
+  --ct-color-warning:           #ffcc17;
+  --ct-color-warning-light:     #322b10;
+  --ct-color-info:              #b6a6e9;
+  --ct-color-info-light:        #1e1a2e;
+
+  --ct-color-text:              #ffffff;
+  --ct-color-text-secondary:    #c7c7c7;
+  --ct-color-text-disabled:     #707070;
+  --ct-color-bg-page:           #151515;
+  --ct-color-bg-card:           #292929;
+  --ct-color-border:            #444649;
+  --ct-color-border-dark:       #a3a3a3;
+  --ct-shadow-sm:               0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+html.pf-v6-theme-dark .pf-v6-c-button.pf-m-primary {
+  background-color: var(--ct-color-primary-dark);
+  border-color: var(--ct-color-primary-dark);
+  color: #1f1f1f;
+}
+html.pf-v6-theme-dark .pf-v6-c-button.pf-m-primary:hover:not(:disabled) {
+  background-color: var(--ct-color-primary);
+  border-color: var(--ct-color-primary);
+  color: #1f1f1f;
+}
+html.pf-v6-theme-dark .pf-v6-c-badge {
+  background-color: var(--ct-color-primary-dark);
+  color: #1f1f1f;
+}
+html.pf-v6-theme-dark .ct-badge-error {
+  color: #1f1f1f;
 }
 

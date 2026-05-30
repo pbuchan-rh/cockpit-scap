@@ -28,6 +28,7 @@ compliance scanning without leaving their management console.
   expand/collapse; saves valid XCCDF tailoring XML; upload/download/edit/delete saved files
 - **Tailored scans** — select a saved tailoring file at scan time; remediation artifacts respect the tailoring
 - **Content tab** — manage user-staged SDS files with per-entry delete and SCP staging instructions
+- **Dark mode** — full support for `prefers-color-scheme: dark` and Cockpit's own dark theme toggle; all colors matched to PatternFly 6's dark token chain
 
 ## Requirements
 
@@ -144,7 +145,7 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 ## Development status
 
-**Current version:** v2.0
+**Current version:** v2.0 (with dark mode)
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
