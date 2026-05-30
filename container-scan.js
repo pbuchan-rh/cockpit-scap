@@ -111,10 +111,9 @@ function csCheckPrereqs() {
 
         .catch(reason => {
             if (!reason || !reason.step) {
-                csShowPrereq('No container images found', [
-                    'Pull images into the system (root) Podman store:',
-                    { code: 'sudo podman pull <image>' },
-                    'Note: per-user (rootless) images cannot be accessed by oscap-podman.',
+                csShowPrereq('Initialization error', [
+                    'An unexpected error occurred while loading the container scan interface.',
+                    'Reload the page to try again.',
                 ]);
                 return;
             }
@@ -191,7 +190,7 @@ function csDetectTailoringFiles() {
     cockpit.spawn(['ls', TAILORING_BASE], { err: 'message' })
         .then(output => {
             const files = output.trim().split('\n').filter(f => f && f.endsWith('.json'));
-            if (!files.length) { group.classList.add('hidden'); return; }
+            if (!files.length) { return; }
 
             return Promise.all(
                 files.map(f =>
@@ -264,6 +263,7 @@ function onCsContentChange() {
 
     csHideProfileDesc();
     csTailoringMap = {};
+    document.getElementById('cs-tailor-file-select').value = '';
     csCheckVersionMatch();
     csUpdateScanBtn();
 
@@ -333,7 +333,7 @@ function onCsScanClick() {
 
     cockpit.spawn(['mkdir', '-p', csResultsDir], { superuser: 'require' })
         .then(() => {
-            const args = ['oscap-podman', csImageName, 'xccdf', 'eval'];
+            const args = ['oscap-podman', csImageId || csImageName, 'xccdf', 'eval'];
             if (tailoringPath) args.push('--tailoring-file', tailoringPath);
             args.push(
                 '--profile', profileId,
@@ -404,13 +404,17 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 resultsXmlPath,
             ], { superuser: 'require', err: 'out' });
 
-            return Promise.all([genFix('bash', csBashPath), genFix('ansible', csAnsiblePath)])
+            const genBash    = genFix('bash', csBashPath)
                 .catch(err => {
-                    console.error('Container remediation generation failed:', err.message || err);
-                    csBashPath    = null;
+                    console.error('Container bash remediation failed:', err.message || err);
+                    csBashPath = null;
+                });
+            const genAnsible = genFix('ansible', csAnsiblePath)
+                .catch(err => {
+                    console.error('Container ansible remediation failed:', err.message || err);
                     csAnsiblePath = null;
-                })
-                .then(() => manifest);
+                });
+            return Promise.all([genBash, genAnsible]).then(() => manifest);
         })
         .then(manifest => {
             return cockpit.spawn(['chmod', '755', csResultsDir], { superuser: 'require' })
@@ -421,7 +425,7 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 .catch(err => console.error('chmod failed:', err.message || err))
                 .then(() => manifest);
         })
-        .then(manifest => csShowResults(manifest))
+        .then(manifest => { pruneHistory(); csShowResults(manifest); })
         .catch(err => csScanError('Failed to process results: ' + (err.message || String(err))));
 }
 
