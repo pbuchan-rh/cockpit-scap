@@ -1,7 +1,7 @@
 # cockpit-scap — Design Document
 
 **Status:** v1.0 complete | Roadmap locked through v3  
-**Last updated:** 2026-05-29
+**Last updated:** 2026-05-29 (v3 container scanning design added)
 
 ---
 
@@ -250,6 +250,37 @@ remediation.yml   # ansible remediation playbook
 
 **Critical note:** Always pass both `--report` and `--results` to every scan. The `results.xml` file
 is required for remediation generation and must be preserved in the scan history directory.
+
+---
+
+### Container Scanning — `oscap-podman` (v3)
+
+**Decision:** Container image scanning uses `oscap-podman` against the root Podman image store only. Rootless (per-user) image stores are out of scope.
+
+**How it works:**
+`oscap-podman` is a shell wrapper that mounts a container image filesystem, sets `OSCAP_PROBE_ROOT` to the mount point, and runs `oscap` directly against it. The output format — `results.xml`, `report.html`, remediation scripts — is identical to a host scan.
+
+**The rootless image store limitation:**
+
+`oscap-podman` explicitly requires root (`id -u == 0`) and uses plain `podman` commands with no `--root` flag. When run as root, Podman resolves images from root's store at `/var/lib/containers/storage/`. Rootless images stored in individual users' `~/.local/share/containers/storage/` are invisible to this path and cannot be targeted without specifying a non-default storage root — which `oscap-podman` does not support.
+
+**Why we didn't work around it:**
+- Red Hat's own RHEL 10 Security Hardening guide (section 5.2.5) documents `# podman images` (root) as the canonical enumeration method — no mention of rootless stores
+- Bypassing `oscap-podman` and replicating its mount logic manually would require us to maintain a fragile copy of upstream behavior across Podman version changes
+- The correct workaround is an upstream fix to `oscap-podman`, not a UI-layer hack
+
+**Documented workaround for users:**
+Images intended for compliance scanning should be pulled into the root store:
+```bash
+sudo podman pull <image>
+```
+This is the Red Hat-documented approach and consistent with how compliance tooling is managed at the system level.
+
+**`notapplicable` results in container scans:**
+Per the RHEL 10 Security Hardening guide: *"rules marked as notapplicable apply only to bare metal and virtual systems and not to containers or container images."* Container scans will show a significantly higher `notapplicable` count than host scans. The results card surfaces a contextual note explaining this so users aren't alarmed.
+
+**Privilege model:**
+No new polkit rules or sudoers entries required. Both image enumeration (`podman images`) and scan execution (`oscap-podman`) run under Cockpit's existing `{ superuser: "require" }` mechanism — the same prompt already used for host scans.
 
 ---
 

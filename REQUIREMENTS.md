@@ -119,12 +119,50 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 ---
 
+## v3 Requirements
+
+### Container Image Scanning (`oscap-podman`)
+
+- **REQ-59:** ⬜ Tab layout MUST be updated: "Scan" tab renamed to "Host Scan"; new "Container Scan" tab added between "Host Scan" and "Tailoring"
+
+- **REQ-60:** ⬜ Container Scan tab MUST enumerate images from the root Podman store via `podman images --format json` with `{ superuser: "require" }` — no other image stores are enumerated
+
+- **REQ-61:** ⬜ Container Scan tab MUST display a graceful prereq empty state for three distinct failure conditions: (a) `oscap-podman` binary not found, (b) Podman not installed, (c) no images exist in root's store — each condition shows a specific message with install or fix instructions
+
+- **REQ-62:** ⬜ Container Scan tab MUST support SDS file selection from both system and uploaded content — same sources and `<optgroup>` grouping as Host Scan
+
+- **REQ-63:** ⬜ Container Scan tab MUST NOT apply the CPE/OS compatibility check — cross-version scanning of container images is the intended use case and scanning a RHEL 8 image with the RHEL 8 SDS from a RHEL 10 host is correct behavior
+
+- **REQ-64:** ⬜ Container Scan tab MUST support profile selection with description display, matching Host Scan behavior
+
+- **REQ-65:** ⬜ Container Scan tab MUST support optional tailoring file selection, matching Host Scan behavior
+
+- **REQ-66:** ⬜ Scan execution MUST use `oscap-podman <image-id> xccdf eval` with `{ superuser: "require" }` — no new polkit action files, sudoers entries, or system configuration required beyond what Host Scan already uses
+
+- **REQ-67:** ⬜ Results card MUST display a contextual note explaining that rules marked `notapplicable` apply only to bare metal and virtual systems, not container images (per RHEL 10 Security Hardening guide §5.2.5) — this count will be significantly higher than in host scans
+
+- **REQ-68:** ⬜ Container scan artifacts MUST be identical in format to host scan artifacts: `results.xml`, `report.html`, `remediation.sh`, `remediation.yml`, `manifest.json`
+
+- **REQ-69:** ⬜ `manifest.json` MUST include `scan_type: "container"`, `image_name`, and `image_id` fields for container scans; existing host scan manifests without this field MUST be treated as `scan_type: "host"` for backwards compatibility — no migration of old entries required
+
+- **REQ-70:** ⬜ Scan history table MUST display a "Container" badge on container scan rows and show the image name where the host scan identifier would appear
+
+- **REQ-71:** ⬜ Rootless per-user Podman image stores MUST NOT be enumerated or scanned; the UI MUST display an inline note on the Container Scan tab explaining the limitation and the workaround (`sudo podman pull <image>`) — full rationale documented in DESIGN.md
+
+- **REQ-72:** ⬜ Registry image pull during the scan workflow is out of scope — local images in root's store only
+
+- **REQ-73:** ⬜ Apply Remediation MUST remain disabled/stubbed for container scans — `oscap-podman` explicitly rejects `--remediate`; container image remediation requires a separate image build workflow outside this tool's scope
+
+**Implementation note:** All container scan logic MUST live in a separate `container-scan.js` file with a single `initContainerScan()` entry point wired from `index.js`. The feature MUST be developed on a dedicated git branch and merged to main only after validation on rhel10test. Full removal surface: delete `container-scan.js`, remove tab/panel from `index.html`, remove one call from `index.js`, delete one CSS block.
+
+---
+
 ## Out of Scope — v1
 
 The following are explicitly NOT requirements for v1. Do not implement without formal design discussion:
 
 - Remote SSH scanning (`oscap-ssh`)
-- Container / container image scanning (`oscap-podman`) — deferred to v3; original OS mismatch exclusion is superseded by v2 multi-version SDS support (correct content for the image OS will be available), but the feature introduces a second optional system dependency (Podman), image enumeration, and OS detection from image metadata — enough new surface to warrant its own milestone
+- Container / container image scanning (`oscap-podman`) — implemented in v3; see REQ-59 through REQ-73
 - Multi-version SDS content management (REQ-51 through REQ-58) — v2
 - One-click in-place remediation application
 - Ansible remediation application

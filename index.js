@@ -21,6 +21,29 @@ const SDS_DISPLAY_NAMES = {
 
 const HISTORY_MAX = 10;
 
+/* Python script: parse results.xml server-side — avoids sending the
+ * full file (15–18 MB) over WebSocket which exceeds Cockpit's limit. */
+const PY_PARSE_RESULTS = [
+    'import xml.etree.ElementTree as ET, json, sys',
+    'path = sys.argv[1]',
+    'result_id = ""; score = 0.0',
+    'counts = {"pass":0,"fail":0,"error":0,"notchecked":0,"notapplicable":0,"notselected":0}',
+    'def t(tag): return tag.split("}")[-1] if "}" in tag else tag',
+    'for _, el in ET.iterparse(path, events=("end",)):',
+    '    tag = t(el.tag)',
+    '    if tag == "TestResult": result_id = el.get("id", "")',
+    '    elif tag == "score":',
+    '        try: score = float(el.text or "0")',
+    '        except: pass',
+    '    elif tag == "rule-result":',
+    '        for ch in el:',
+    '            if t(ch.tag) == "result":',
+    '                v = (ch.text or "").strip()',
+    '                if v in counts: counts[v] += 1',
+    '        el.clear()',
+    'print(json.dumps({"result_id": result_id, "score": score, "counts": counts}))',
+].join('\n');
+
 /* Python script: parse an SDS file, extract a profile's rule tree and values.
  * Uses iterparse with early break to avoid loading the ~35MB OVAL section.
  * Args: sys.argv[1]=profileId  sys.argv[2]=sdsPath
@@ -107,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadHistory();
     detectTailoringFiles();
     renderContentTab();
+    initContainerScan();
 
     /* Scan tab */
     document.getElementById('ct-content-select')
@@ -590,15 +614,16 @@ function onScanCancelled() {
 function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) {
     currentScanProc = null;
 
-    cockpit.file(resultsXmlPath, { superuser: 'require' }).read()
-        .then(content => {
-            const parsed   = parseResultsXml(content);
+    cockpit.spawn(['python3', '-c', PY_PARSE_RESULTS, resultsXmlPath],
+                  { superuser: 'require', err: 'out' })
+        .then(output => {
+            const parsed   = JSON.parse(output);
             const manifest = {
                 timestamp:     currentTimestamp,
                 sds_file:      currentSdsPath,
                 profile_id:    profileId,
                 profile_title: profileTitle,
-                result_id:     parsed.resultId,
+                result_id:     parsed.result_id,
                 counts:        parsed.counts,
                 score:         parsed.score,
             };
@@ -613,7 +638,7 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 currentRemAnsiblePath = null;
             })
             .then(() => manifest))
-        .then(manifest => pruneHistory().then(() => manifest))
+        .then(manifest => pruneHistoryByType('host').then(() => manifest))
         .then(manifest => relaxResultsPerms().then(() => manifest))
         .then(manifest => showResults(manifest))
         .catch(err => onScanError('Failed to process results: ' + (err.message || String(err))));
@@ -638,21 +663,35 @@ function generateRemediation(resultId, resultsXmlPath, tailoringPath) {
     return Promise.all([run('bash', currentRemBashPath), run('ansible', currentRemAnsiblePath)]);
 }
 
-function pruneHistory() {
+function pruneHistoryByType(scanType) {
     return cockpit.spawn(['ls', RESULTS_BASE], { err: 'message' })
         .then(output => {
             const dirs = output.trim().split('\n')
-                .filter(d => /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/.test(d))
-                .sort()
-                .reverse();
-            const toDelete = dirs.slice(HISTORY_MAX);
-            if (toDelete.length === 0) return;
+                .filter(d => /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/.test(d));
+            if (!dirs.length) return;
+
             return Promise.all(
-                toDelete.map(dir =>
-                    cockpit.spawn(['rm', '-rf', RESULTS_BASE + dir], { superuser: 'require' })
-                        .catch(e => console.error('Failed to prune', dir, e))
+                dirs.map(dir =>
+                    cockpit.file(RESULTS_BASE + dir + '/manifest.json').read()
+                        .then(c => {
+                            const m = JSON.parse(c);
+                            /* Old host scan manifests predate scan_type field — treat as host */
+                            const type = (m && m.scan_type) || 'host';
+                            return type === scanType ? dir : null;
+                        })
+                        .catch(() => null)
                 )
-            );
+            ).then(results => {
+                const matching = results.filter(Boolean).sort().reverse();
+                const toDelete = matching.slice(HISTORY_MAX);
+                if (!toDelete.length) return;
+                return Promise.all(
+                    toDelete.map(dir =>
+                        cockpit.spawn(['rm', '-rf', RESULTS_BASE + dir], { superuser: 'require' })
+                            .catch(e => console.error('Failed to prune', dir, e))
+                    )
+                );
+            });
         })
         .catch(() => {});
 }
@@ -895,7 +934,10 @@ function loadHistory() {
             return Promise.all(
                 dirs.map(dir =>
                     cockpit.file(RESULTS_BASE + dir + '/manifest.json').read()
-                        .then(content => JSON.parse(content))
+                        .then(content => {
+                            const m = JSON.parse(content);
+                            return (m && m.scan_type === 'container') ? null : m;
+                        })
                         .catch(() => null)
                 )
             ).then(manifests => {
@@ -1008,7 +1050,6 @@ function onDeleteHistoryEntry(manifest) {
 function detectTailoringFiles() {
     tailoringFilesMap = {};
     const scanSelect = document.getElementById('ct-tailor-file-select');
-    const scanGroup  = document.getElementById('ct-tailor-file-group');
 
     cockpit.spawn(['ls', TAILORING_BASE], { err: 'message' })
         .then(output => {
@@ -1016,7 +1057,6 @@ function detectTailoringFiles() {
                 .filter(f => f && f.endsWith('.json'));
 
             if (files.length === 0) {
-                scanGroup.classList.add('hidden');
                 scanSelect.innerHTML = '';
                 appendOption(scanSelect, '', '(No tailoring — use full profile)');
                 renderTailoringList([]);
@@ -1046,9 +1086,6 @@ function detectTailoringFiles() {
                         const label = created ? sc.name + ' (' + created + ')' : sc.name;
                         appendOption(scanSelect, sc.path, label);
                     });
-                    scanGroup.classList.remove('hidden');
-                } else {
-                    scanGroup.classList.add('hidden');
                 }
 
                 /* Tailoring tab list: all files */
@@ -1058,7 +1095,6 @@ function detectTailoringFiles() {
         .catch(() => {
             scanSelect.innerHTML = '';
             appendOption(scanSelect, '', '(No tailoring — use full profile)');
-            scanGroup.classList.add('hidden');
             renderTailoringList([]);
         });
 }
