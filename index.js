@@ -1,6 +1,6 @@
 'use strict';
 
-const MODULE_VERSION = 'v2.1';
+const MODULE_VERSION = 'v3.0';
 const SSG_CONTENT_DIR = '/usr/share/xml/scap/ssg/content/';
 const RESULTS_BASE    = '/var/lib/cockpit-scap/results/';
 const TAILORING_BASE  = '/var/lib/cockpit-scap/tailoring/';
@@ -20,6 +20,29 @@ const SDS_DISPLAY_NAMES = {
 };
 
 const HISTORY_MAX = 10;
+
+/* Python script: parse results.xml server-side — avoids sending the
+ * full file (15–18 MB) over WebSocket which exceeds Cockpit's limit. */
+const PY_PARSE_RESULTS = [
+    'import xml.etree.ElementTree as ET, json, sys',
+    'path = sys.argv[1]',
+    'result_id = ""; score = 0.0',
+    'counts = {"pass":0,"fail":0,"error":0,"notchecked":0,"notapplicable":0,"notselected":0}',
+    'def t(tag): return tag.split("}")[-1] if "}" in tag else tag',
+    'for _, el in ET.iterparse(path, events=("end",)):',
+    '    tag = t(el.tag)',
+    '    if tag == "TestResult": result_id = el.get("id", "")',
+    '    elif tag == "score":',
+    '        try: score = float(el.text or "0")',
+    '        except: pass',
+    '    elif tag == "rule-result":',
+    '        for ch in el:',
+    '            if t(ch.tag) == "result":',
+    '                v = (ch.text or "").strip()',
+    '                if v in counts: counts[v] += 1',
+    '        el.clear()',
+    'print(json.dumps({"result_id": result_id, "score": score, "counts": counts}))',
+].join('\n');
 
 /* Python script: parse an SDS file, extract a profile's rule tree and values.
  * Uses iterparse with early break to avoid loading the ~35MB OVAL section.
@@ -107,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadHistory();
     detectTailoringFiles();
     renderContentTab();
+    initContainerScan();
 
     /* Scan tab */
     document.getElementById('ct-content-select')
@@ -590,15 +614,16 @@ function onScanCancelled() {
 function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) {
     currentScanProc = null;
 
-    cockpit.file(resultsXmlPath, { superuser: 'require' }).read()
-        .then(content => {
-            const parsed   = parseResultsXml(content);
+    cockpit.spawn(['python3', '-c', PY_PARSE_RESULTS, resultsXmlPath],
+                  { superuser: 'require', err: 'out' })
+        .then(output => {
+            const parsed   = JSON.parse(output);
             const manifest = {
                 timestamp:     currentTimestamp,
                 sds_file:      currentSdsPath,
                 profile_id:    profileId,
                 profile_title: profileTitle,
-                result_id:     parsed.resultId,
+                result_id:     parsed.result_id,
                 counts:        parsed.counts,
                 score:         parsed.score,
             };
@@ -895,7 +920,10 @@ function loadHistory() {
             return Promise.all(
                 dirs.map(dir =>
                     cockpit.file(RESULTS_BASE + dir + '/manifest.json').read()
-                        .then(content => JSON.parse(content))
+                        .then(content => {
+                            const m = JSON.parse(content);
+                            return (m && m.scan_type === 'container') ? null : m;
+                        })
                         .catch(() => null)
                 )
             ).then(manifests => {
@@ -1046,9 +1074,6 @@ function detectTailoringFiles() {
                         const label = created ? sc.name + ' (' + created + ')' : sc.name;
                         appendOption(scanSelect, sc.path, label);
                     });
-                    scanGroup.classList.remove('hidden');
-                } else {
-                    scanGroup.classList.add('hidden');
                 }
 
                 /* Tailoring tab list: all files */
@@ -1058,7 +1083,6 @@ function detectTailoringFiles() {
         .catch(() => {
             scanSelect.innerHTML = '';
             appendOption(scanSelect, '', '(No tailoring — use full profile)');
-            scanGroup.classList.add('hidden');
             renderTailoringList([]);
         });
 }
