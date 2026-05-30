@@ -35,6 +35,8 @@ function initContainerScan() {
         .addEventListener('change', csUpdateScanBtn);
     document.getElementById('cs-scan-btn')
         .addEventListener('click', onCsScanClick);
+    document.getElementById('cs-guide-btn')
+        .addEventListener('click', onCsViewGuideClick);
     document.getElementById('cs-cancel-btn')
         .addEventListener('click', onCsCancelClick);
     document.getElementById('cs-view-report-btn')
@@ -298,6 +300,8 @@ function csUpdateScanBtn() {
     const tailoring = document.getElementById('cs-tailor-file-select').value;
     document.getElementById('cs-scan-btn').disabled =
         !imageVal || (!profileId && !tailoring) || csVersionBlocked;
+    document.getElementById('cs-guide-btn').disabled =
+        !csSdsPath || (!profileId && !tailoring);
 }
 
 /* ---- Scan execution --------------------------------------- */
@@ -601,6 +605,37 @@ function csBuildHistoryRow(manifest) {
     actionsTd.appendChild(delBtn);
     tr.appendChild(actionsTd);
     return tr;
+}
+
+function onCsViewGuideClick() {
+    const btn       = document.getElementById('cs-guide-btn');
+    const profileId = document.getElementById('cs-profile-select').value;
+    const tailoring = document.getElementById('cs-tailor-file-select').value;
+
+    const args = ['oscap', 'xccdf', 'generate', 'guide'];
+    if (tailoring && csTailoringMap[tailoring]) {
+        args.push('--tailoring-file', tailoring,
+                  '--profile', csTailoringMap[tailoring].profile_id);
+    } else {
+        args.push('--profile', profileId);
+    }
+    args.push(csSdsPath);
+
+    btn.disabled    = true;
+    btn.textContent = 'Generating…';
+
+    const win = window.open('about:blank', '_blank');
+    cockpit.spawn(args, { err: 'message' })
+        .then(html => storeReportInDB(html))
+        .then(() => { win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html'; })
+        .catch(err => {
+            win.close();
+            console.error('Guide generation failed:', err.message || err);
+        })
+        .then(() => {
+            btn.disabled    = false;
+            btn.textContent = 'View Guide';
+        });
 }
 
 function csRerunScan(manifest) {

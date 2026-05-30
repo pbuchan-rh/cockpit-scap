@@ -230,6 +230,12 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Info modal */
     document.getElementById('ct-info-ok')
         .addEventListener('click', () => document.getElementById('ct-info-backdrop').classList.add('hidden'));
+
+    /* Guide buttons */
+    document.getElementById('ct-guide-btn')
+        .addEventListener('click', onViewGuideClick);
+    document.getElementById('ct-tailor-guide-btn')
+        .addEventListener('click', onTailorViewGuideClick);
 });
 
 /* ---- Tab wiring -------------------------------------------- */
@@ -368,6 +374,7 @@ function onContentChange() {
     hideProfileDescription();
     clearCpeAlert();
     setScanButtonEnabled(false);
+    updateGuideButton();
     currentSdsPath = null;
 
     if (!sdsPath) {
@@ -500,10 +507,12 @@ function onProfileChange() {
 
     hideProfileDescription();
     setScanButtonEnabled(false);
+    updateGuideButton();
 
     if (!profileId || !currentSdsPath) return;
 
     if (!cpeBlocksScan) setScanButtonEnabled(true);
+    updateGuideButton();
     loadProfileDescription(currentSdsPath, profileId);
 }
 
@@ -903,6 +912,66 @@ function setScanButtonEnabled(enabled) {
     document.getElementById('ct-scan-btn').disabled = !enabled;
 }
 
+function updateGuideButton() {
+    const profileId     = document.getElementById('ct-profile-select').value;
+    const tailoringPath = document.getElementById('ct-tailor-file-select').value;
+    document.getElementById('ct-guide-btn').disabled =
+        !currentSdsPath || (!profileId && !tailoringPath);
+}
+
+function onViewGuideClick() {
+    const btn           = document.getElementById('ct-guide-btn');
+    const profileId     = document.getElementById('ct-profile-select').value;
+    const tailoringPath = document.getElementById('ct-tailor-file-select').value;
+
+    const args = ['oscap', 'xccdf', 'generate', 'guide'];
+    if (tailoringPath && tailoringFilesMap[tailoringPath]) {
+        args.push('--tailoring-file', tailoringPath,
+                  '--profile', tailoringFilesMap[tailoringPath].profile_id);
+    } else {
+        args.push('--profile', profileId);
+    }
+    args.push(currentSdsPath);
+
+    btn.disabled    = true;
+    btn.textContent = 'Generating…';
+
+    const win = window.open('about:blank', '_blank');
+    cockpit.spawn(args, { err: 'message' })
+        .then(html => storeReportInDB(html))
+        .then(() => { win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html'; })
+        .catch(err => {
+            win.close();
+            console.error('Guide generation failed:', err.message || err);
+        })
+        .then(() => {
+            btn.disabled    = false;
+            btn.textContent = 'View Guide';
+        });
+}
+
+function onTailorViewGuideClick() {
+    const btn       = document.getElementById('ct-tailor-guide-btn');
+    const profileId = document.getElementById('ct-tailor-profile-select').value;
+
+    btn.disabled    = true;
+    btn.textContent = 'Generating…';
+
+    const win = window.open('about:blank', '_blank');
+    cockpit.spawn(['oscap', 'xccdf', 'generate', 'guide', '--profile', profileId, tailorSdsPath],
+                  { err: 'message' })
+        .then(html => storeReportInDB(html))
+        .then(() => { win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html'; })
+        .catch(err => {
+            win.close();
+            console.error('Guide generation failed:', err.message || err);
+        })
+        .then(() => {
+            btn.disabled    = false;
+            btn.textContent = 'View Guide';
+        });
+}
+
 function appendOption(select, value, text) {
     const opt       = document.createElement('option');
     opt.value       = value;
@@ -1156,6 +1225,7 @@ function onTailorFileSelectChange() {
         const profileId = document.getElementById('ct-profile-select').value;
         setScanButtonEnabled(!!profileId);
     }
+    updateGuideButton();
 }
 
 /* ---- Tailoring tab ----------------------------------------- */
@@ -1239,7 +1309,8 @@ function onTailorProfileChange() {
 function updateTailorLoadBtn() {
     const profileId = document.getElementById('ct-tailor-profile-select').value;
     const name      = document.getElementById('ct-tailor-name-input').value.trim();
-    document.getElementById('ct-tailor-load-btn').disabled = !profileId || !name;
+    document.getElementById('ct-tailor-load-btn').disabled  = !profileId || !name;
+    document.getElementById('ct-tailor-guide-btn').disabled = !profileId || !tailorSdsPath;
 }
 
 function onTailorLoadClick() {
