@@ -1180,11 +1180,5 @@ html.pf-v6-theme-dark .ct-badge-error {
 #cs-prereq-body p {
   margin: 6px 0;
 }
-.cs-profile-cell {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 /* ---- End Container Scan ----------------------------------- */
 
