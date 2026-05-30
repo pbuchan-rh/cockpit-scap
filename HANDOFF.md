@@ -4,9 +4,10 @@
 
 ## Current State
 
-**Version:** v2.1 (final v2 release)
+**Version:** v3.0-dev (active development, branch: `v3-container-scan`)
 **Last session:** 2026-05-29
-**Deployed to:** rhel10cis.beastmode.localdomain (user-space) + rhel10test (COPR install validated)
+**Deployed to:** rhel10cis.beastmode.localdomain (user-space, `~/.local/share/cockpit/cockpit-scap/`)
+**Published (v2.1):** COPR + GitHub + Gitea — v3 not yet packaged or merged to main
 
 ---
 
@@ -41,6 +42,20 @@
 - **"uploaded content" badge** on history rows for scans that used uploaded SDS
 - Confirmation modal on all destructive actions (history delete, tailoring delete)
 - Prereq detection: shows install instructions if openscap-scanner / SSG are missing
+
+### Container Scan Tab (v3-dev, branch: v3-container-scan)
+- Full `oscap-podman` workflow: prereq check → image selection → content/profile/tailoring → scan → results → history
+- Image enumeration from root Podman store (`sudo podman images --format json`); lazy prereq check fires only on first tab click
+- Three-state prereq empty state: `oscap-podman` not found / Podman not installed / no images in root store
+- Version mismatch detection from image name regex vs SDS filename — shows warning and blocks scan button
+- Results XML parsed server-side via `PY_PARSE_RESULTS` Python script (avoids 15–18 MB WebSocket limit — same fix applied to host scan)
+- `notapplicable` contextual note per RHEL 10 Security Hardening guide §5.2.5
+- History: Date / Image (registry prefix stripped) / Content (RHEL N) / Profile (JS-truncated at 36 chars, full in `title`) / Pass / Fail / Score / Actions
+- `manifest.json` includes `scan_type: "container"`, `image_name`, `image_id`; host history filters container entries out
+- Apply Remediation permanently stubbed — `oscap-podman` rejects `--remediate`
+- Tab layout: Host Scan | Container Scan | Tailoring | Content
+- Tailoring file selector always visible on both Host Scan and Container Scan tabs
+- Test images pulled to rhel10cis root store: `ubi8/ubi-minimal:latest`, `ubi9/ubi-minimal:latest`, `ubi10/ubi-minimal:latest`
 
 ### Tailoring Tab
 - Content + base profile selection, named tailored profile
@@ -113,14 +128,16 @@ Nothing blocking. Module is live on Fedora COPR.
 | 2026-05-29 | v2.0 | Dark mode | Full dark mode via `@media (prefers-color-scheme: dark)` + `html.pf-v6-theme-dark`; all `--ct-color-*` tokens matched to PF6's own dark token chain (measured via Playwright against native Cockpit modules): bg-page `#151515`, bg-card `#292929`, text `#ffffff`, text-secondary `#c7c7c7`, primary `#b9dafc`, border-dark `#a3a3a3`, danger `#f0561d`, success `#87bb62`, warning `#ffcc17`, info `#b6a6e9` (purple); primary button flips to light bg + dark text per PF6 dark pattern; COPR chroot note: must specify `rhel-10-x86_64` not epel when enabling |
 | 2026-05-29 | v2.0 | UI polish | Results card footer: removed "Coming in a future release" label from Apply Remediation; moved text to `title` tooltip; New Scan button pushed to far right with `margin-left: auto` for visual separation |
 | 2026-05-29 | v2.1 | Release | Bumped version to v2.1; RPM built on rhel10cis; tested on rhel10test (remove old + COPR install); SELinux enforcing confirmed clean; COPR build 10525374 succeeded; GitHub release v2.1 + Gitea release v2.1 with RPM/SRPM assets; spec changelog author corrected (Patrick → Peter Buchan) |
+| 2026-05-29 | v3.0-dev | Design | v3 design session: oscap-podman rootless limitation documented and tested; rootless user images confirmed out of scope (oscap-podman has no --root flag, uses root store only); Red Hat docs validate root-store-only approach; DESIGN.md and REQUIREMENTS.md updated with REQ-59–REQ-73 |
+| 2026-05-29 | v3.0-dev | Implementation | Container Scan tab: full oscap-podman workflow, prereq detection, version mismatch warning+block, server-side XML parsing (PY_PARSE_RESULTS, fixes 15–18 MB WebSocket limit for both host and container), history with Image/Content/Profile columns, JS profile truncation; tab renamed Host Scan; tailoring selector always visible; all logic in container-scan.js; committed to branch v3-container-scan |
 
 ---
 
 ## Next Session — Suggested Order
 
-1. **Community engagement** — comment on cockpit-project/cockpit issue #19691 with link to repo; contact OpenSCAP project about listing as community tool
-2. **Upload button** (REQ-53, optional) — in-browser SDS file upload to `/var/lib/cockpit-scap/content/`; validate Cockpit file size limits first
-3. **v3 design session** — `oscap-podman` container image scanning; requires Podman, image enumeration, OS detection from image metadata
+1. **Merge v3 to main** — v3-container-scan branch tested and stable; merge, bump spec to v3.0, rebuild RPM, test on rhel10test, push to COPR + GitHub + Gitea
+2. **Community engagement** — comment on cockpit-project/cockpit issue #19691; contact OpenSCAP project about listing as community tool
+3. **Upload button** (REQ-53, optional) — in-browser SDS file upload to `/var/lib/cockpit-scap/content/`
 
 **Published locations:**
 - GitHub: https://github.com/pbuchan-rh/cockpit-scap
@@ -151,9 +168,10 @@ Nothing blocking. Module is live on Fedora COPR.
 | `ECOSYSTEM.md` | ✅ Current |
 | `SCAP_TUI_DESIGN.md` | ✅ Current |
 | `manifest.json` | ✅ Complete |
-| `index.html` | ✅ v2.1 |
-| `index.js` | ✅ v2.1 |
-| `style.css` | ✅ v2.1 — dark mode, button polish |
+| `index.html` | ✅ v3.0-dev — Container Scan tab, Host Scan rename, tailoring always visible |
+| `index.js` | ✅ v3.0-dev — PY_PARSE_RESULTS, initContainerScan(), host history filter |
+| `container-scan.js` | ✅ v3.0-dev — new file, all container scan logic |
+| `style.css` | ✅ v3.0-dev — container scan CSS block |
 | `viewer.html` | ✅ Complete — do not modify (CSP-sensitive) |
 | `selinux/cockpit-scap.fc` | ✅ Complete |
 | `Makefile` | ✅ Complete |

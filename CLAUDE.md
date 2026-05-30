@@ -19,16 +19,24 @@
 
 ```
 cockpit-scap/
-├── index.html          # Module structure and markup
-├── index.js            # All dashboard logic
-├── style.css           # Custom styles (PatternFly overrides + ct- classes)
-├── manifest.json       # Cockpit module manifest
-├── viewer.html         # IndexedDB-backed report viewer (CSP-compliant)
-├── README.md           # Project documentation
-├── cockpit-scap.spec   # RPM spec (when ready)
+├── index.html            # Module structure and markup
+├── index.js              # Host scan, tailoring, content, history logic
+├── container-scan.js     # Container scan module — single initContainerScan() entry point
+├── style.css             # Custom styles (PatternFly overrides + ct- classes)
+├── manifest.json         # Cockpit module manifest
+├── viewer.html           # IndexedDB-backed report viewer (CSP-compliant)
+├── README.md             # Project documentation
+├── cockpit-scap.spec     # RPM spec
+├── Makefile              # install/uninstall targets
 └── selinux/
-    └── cockpit-scap.fc # SELinux file context definitions (not yet written)
+    └── cockpit-scap.fc   # SELinux file context definitions
 ```
+
+**container-scan.js modularity contract:**
+- All container scan logic lives in this file
+- Single entry point: `initContainerScan()` called from `index.js` DOMContentLoaded
+- Shares globals from `index.js`: `RESULTS_BASE`, `TAILORING_BASE`, `CONTENT_BASE`, `SSG_CONTENT_DIR`, `PY_PARSE_RESULTS`, `appendOption`, `sdsDisplayName`, `detectSdsVersion`, `loadProfiles`, `parseProfileDescription`, `parseResultsXml`, `makeTimestamp`, `showConfirmModal`, `viewReportFromPath`, `downloadArtifact`, `listSystemContent`, `listUserContent`, `populateContentOptGroups`
+- To remove the feature: delete this file, remove `initContainerScan()` call, remove Container Scan tab/panel from HTML, remove CSS block from style.css
 
 ## CSS Rules
 
@@ -90,5 +98,5 @@ cockpit-scap/
 - Arbitrary SDS file upload — deferred to v2
 - One-click remediation apply — deferred, stub UI present in v1
 - Ansible remediation apply — deferred
-- Container/image scanning (`oscap-podman`) — not in scope; OS profile mismatch is a correctness blocker
+- Container/image scanning (`oscap-podman`) — implemented in v3 (branch: v3-container-scan); see container-scan.js
 - RPM package spec — needed before community release, not during active dev
