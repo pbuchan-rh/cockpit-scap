@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.0
+Version:        3.1
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -80,6 +80,18 @@ fi
 %dir /var/lib/%{name}/content
 
 %changelog
+* Fri May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.1-1
+- Run Again action on host and container scan history rows; pre-fills
+  content, profile, and tailoring file from scan manifest
+- View Guide button on Host Scan, Container Scan, and Tailoring tabs;
+  generates oscap security guide directly from profile selection
+- Export CSV for host and container scan history; includes all manifest
+  fields including image info for container scans
+- Content validation: per-file Validate button on uploaded content using
+  oscap ds sds-validate with inline pass/fail and error detail modal
+- Community files: CONTRIBUTING.md, CODE_OF_CONDUCT.md, issue templates
+- History rewrite: clean author identity throughout, private docs removed
+
 * Fri May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.0-1
 - Container image scanning via oscap-podman: image enumeration from root
   Podman store, version mismatch detection, per-image scan history
