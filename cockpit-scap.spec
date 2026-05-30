@@ -38,7 +38,7 @@ Features:
 %install
 # Module files → /usr/share/cockpit/cockpit-scap/
 install -d -m 755 %{buildroot}%{_datadir}/cockpit/%{name}
-install -m 644 index.html index.js container-scan.js style.css manifest.json viewer.html \
+install -m 644 src/index.html src/index.js src/container-scan.js src/style.css src/manifest.json src/viewer.html \
     %{buildroot}%{_datadir}/cockpit/%{name}/
 
 # SELinux file context definitions (shipped as a formal deliverable)

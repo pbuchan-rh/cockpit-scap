@@ -11,6 +11,7 @@ DATA_DIR      = /var/lib/cockpit-scap
 SELINUX_CTX   = cockpit_var_lib_t
 SELINUX_PATH  = /var/lib/cockpit-scap(/.*)?
 
+SRC_DIR       = src
 MODULE_FILES  = index.html index.js container-scan.js style.css manifest.json viewer.html
 
 .PHONY: help install uninstall
@@ -36,7 +37,7 @@ install:
 
 	@echo "--- Installing module files"
 	install -d -m 755 $(COCKPIT_DIR)
-	install -m 644 $(MODULE_FILES) $(COCKPIT_DIR)/
+	install -m 644 $(addprefix $(SRC_DIR)/, $(MODULE_FILES)) $(COCKPIT_DIR)/
 
 	@echo "--- Configuring SELinux file context"
 	semanage fcontext -a -t $(SELINUX_CTX) '$(SELINUX_PATH)' 2>/dev/null || \

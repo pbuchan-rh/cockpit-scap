@@ -38,7 +38,7 @@ cockpit-scap has no build toolchain — no npm, no webpack, no compilation step.
 
 ```bash
 mkdir -p ~/.local/share/cockpit
-ln -s $(pwd) ~/.local/share/cockpit/cockpit-scap
+ln -s $(pwd)/src ~/.local/share/cockpit/cockpit-scap
 ```
 
 Cockpit serves files from `~/.local/share/cockpit/` with higher priority than the system path. Changes to source files are picked up immediately after a browser refresh — no reinstall needed.
@@ -48,7 +48,7 @@ Cockpit serves files from `~/.local/share/cockpit/` with higher priority than th
 If your development machine is different from your test host, use rsync and restart the Cockpit bridge after each deploy:
 
 ```bash
-rsync -av *.js *.html *.css manifest.json user@testhost:~/.local/share/cockpit/cockpit-scap/
+rsync -av src/ user@testhost:~/.local/share/cockpit/cockpit-scap/
 ssh user@testhost "sudo systemctl restart cockpit"
 ```
 
@@ -69,15 +69,18 @@ The bridge restart is required — Cockpit caches the running session and will n
 
 ```
 cockpit-scap/
-├── index.html          # Module markup
-├── index.js            # Host scan, tailoring, content tab logic
-├── container-scan.js   # Container scan tab (self-contained, single entry point)
-├── style.css           # PatternFly overrides and custom styles
-├── manifest.json       # Cockpit module manifest
-├── viewer.html         # CSP-compliant HTML report viewer
+├── src/
+│   ├── index.html          # Module markup
+│   ├── index.js            # Host scan, tailoring, content tab logic
+│   ├── container-scan.js   # Container scan tab (self-contained, single entry point)
+│   ├── style.css           # PatternFly overrides and custom styles
+│   ├── manifest.json       # Cockpit module manifest
+│   └── viewer.html         # CSP-compliant HTML report viewer
 ├── selinux/
-│   └── cockpit-scap.fc # SELinux file context definitions
-└── Makefile            # Install/uninstall targets
+│   └── cockpit-scap.fc     # SELinux file context definitions
+├── docs/
+│   └── screenshots/        # README screenshots
+└── Makefile                # Install/uninstall targets
 ```
 
 ## Submitting changes
