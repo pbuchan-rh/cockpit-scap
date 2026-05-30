@@ -638,7 +638,7 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 currentRemAnsiblePath = null;
             })
             .then(() => manifest))
-        .then(manifest => pruneHistory().then(() => manifest))
+        .then(manifest => pruneHistoryByType('host').then(() => manifest))
         .then(manifest => relaxResultsPerms().then(() => manifest))
         .then(manifest => showResults(manifest))
         .catch(err => onScanError('Failed to process results: ' + (err.message || String(err))));
@@ -663,21 +663,35 @@ function generateRemediation(resultId, resultsXmlPath, tailoringPath) {
     return Promise.all([run('bash', currentRemBashPath), run('ansible', currentRemAnsiblePath)]);
 }
 
-function pruneHistory() {
+function pruneHistoryByType(scanType) {
     return cockpit.spawn(['ls', RESULTS_BASE], { err: 'message' })
         .then(output => {
             const dirs = output.trim().split('\n')
-                .filter(d => /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/.test(d))
-                .sort()
-                .reverse();
-            const toDelete = dirs.slice(HISTORY_MAX);
-            if (toDelete.length === 0) return;
+                .filter(d => /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/.test(d));
+            if (!dirs.length) return;
+
             return Promise.all(
-                toDelete.map(dir =>
-                    cockpit.spawn(['rm', '-rf', RESULTS_BASE + dir], { superuser: 'require' })
-                        .catch(e => console.error('Failed to prune', dir, e))
+                dirs.map(dir =>
+                    cockpit.file(RESULTS_BASE + dir + '/manifest.json').read()
+                        .then(c => {
+                            const m = JSON.parse(c);
+                            /* Old host scan manifests predate scan_type field — treat as host */
+                            const type = (m && m.scan_type) || 'host';
+                            return type === scanType ? dir : null;
+                        })
+                        .catch(() => null)
                 )
-            );
+            ).then(results => {
+                const matching = results.filter(Boolean).sort().reverse();
+                const toDelete = matching.slice(HISTORY_MAX);
+                if (!toDelete.length) return;
+                return Promise.all(
+                    toDelete.map(dir =>
+                        cockpit.spawn(['rm', '-rf', RESULTS_BASE + dir], { superuser: 'require' })
+                            .catch(e => console.error('Failed to prune', dir, e))
+                    )
+                );
+            });
         })
         .catch(() => {});
 }
