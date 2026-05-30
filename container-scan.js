@@ -539,10 +539,11 @@ function csBuildHistoryRow(manifest) {
         (manifest.score || 0).toFixed(1) + '%',
     ].forEach((text, i) => {
         const td = document.createElement('td');
-        td.textContent = text;
-        if (i === 3) {
-            td.className = 'cs-profile-cell';
-            td.title     = text;
+        if (i === 3 && text.length > 36) {
+            td.textContent = text.slice(0, 36) + '…';
+            td.title       = text;
+        } else {
+            td.textContent = text;
         }
         tr.appendChild(td);
     });
