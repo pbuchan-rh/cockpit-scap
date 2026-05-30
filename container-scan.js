@@ -12,6 +12,7 @@
 /* PY_PARSE_RESULTS is defined in index.js (shared global scope) */
 
 let csProc           = null;
+let currentCsHistory = [];
 let csTimestamp   = null;
 let csResultsDir  = null;
 let csReportPath  = null;
@@ -37,6 +38,8 @@ function initContainerScan() {
         .addEventListener('click', onCsScanClick);
     document.getElementById('cs-guide-btn')
         .addEventListener('click', onCsViewGuideClick);
+    document.getElementById('cs-export-csv-btn')
+        .addEventListener('click', exportCsHistoryCSV);
     document.getElementById('cs-cancel-btn')
         .addEventListener('click', onCsCancelClick);
     document.getElementById('cs-view-report-btn')
@@ -504,6 +507,9 @@ function csRenderHistory(manifests) {
     const table = document.getElementById('cs-history-table');
     const tbody = document.getElementById('cs-history-tbody');
 
+    currentCsHistory = manifests;
+    document.getElementById('cs-export-csv-btn').disabled = !manifests.length;
+
     if (!manifests.length) {
         empty.classList.remove('hidden');
         table.classList.add('hidden');
@@ -754,3 +760,28 @@ function csHideProfileDesc() {
     el.classList.add('hidden');
     el.textContent = '';
 }
+
+function exportCsHistoryCSV() {
+    const headers = [
+        'Timestamp', 'Date', 'Image', 'Image ID', 'SDS File',
+        'Profile Title', 'Tailoring File',
+        'Pass', 'Fail', 'Error', 'Not Checked', 'Not Applicable', 'Score %',
+    ];
+    const rows = currentCsHistory.map(m => [
+        m.timestamp,
+        m.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2'),
+        m.image_name       || '',
+        m.image_id         || '',
+        m.sds_file         || '',
+        m.profile_title    || '',
+        m.tailoring_file   || '',
+        m.counts.pass,
+        m.counts.fail,
+        m.counts.error         || 0,
+        m.counts.notchecked    || 0,
+        m.counts.notapplicable || 0,
+        (m.score || 0).toFixed(1),
+    ]);
+    downloadCSV('container-scan-history.csv', [headers, ...rows]);
+}
+

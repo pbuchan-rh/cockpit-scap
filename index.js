@@ -112,7 +112,8 @@ let tailoringFilesMap   = {};
 
 /* Module state — content */
 let cpeBlocksScan  = false;
-let hostOsVersion  = null;   /* cached from /etc/os-release at startup */
+let hostOsVersion     = null;   /* cached from /etc/os-release at startup */
+let currentHostHistory = [];    /* last rendered host scan manifests */
 
 /* Module state — confirm modal */
 let confirmCallback = null;
@@ -236,6 +237,10 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', onViewGuideClick);
     document.getElementById('ct-tailor-guide-btn')
         .addEventListener('click', onTailorViewGuideClick);
+
+    /* CSV export */
+    document.getElementById('ct-export-csv-btn')
+        .addEventListener('click', exportHostHistoryCSV);
 });
 
 /* ---- Tab wiring -------------------------------------------- */
@@ -1027,6 +1032,9 @@ function renderHistory(manifests) {
     const empty = document.getElementById('ct-history-empty');
     const table = document.getElementById('ct-history-table');
     const tbody = document.getElementById('ct-history-tbody');
+
+    currentHostHistory = manifests;
+    document.getElementById('ct-export-csv-btn').disabled = manifests.length === 0;
 
     if (manifests.length === 0) {
         empty.classList.remove('hidden');
@@ -1965,6 +1973,48 @@ function deleteUserContent(xmlPath, jsonPath) {
             detectContent();
         })
         .catch(err => console.error('Failed to delete content file:', err.message || err));
+}
+
+/* ---- CSV export -------------------------------------------- */
+
+function csvEscape(val) {
+    if (val === null || val === undefined) return '';
+    const s = String(val);
+    return (s.includes(',') || s.includes('"') || s.includes('\n'))
+        ? '"' + s.replace(/"/g, '""') + '"'
+        : s;
+}
+
+function downloadCSV(filename, rows) {
+    const csv  = rows.map(r => r.map(csvEscape).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportHostHistoryCSV() {
+    const headers = [
+        'Timestamp', 'Date', 'SDS File', 'Profile Title', 'Tailoring File',
+        'Pass', 'Fail', 'Error', 'Not Checked', 'Not Applicable', 'Score %',
+    ];
+    const rows = currentHostHistory.map(m => [
+        m.timestamp,
+        m.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2'),
+        m.sds_file        || '',
+        m.profile_title   || '',
+        m.tailoring_file  || '',
+        m.counts.pass,
+        m.counts.fail,
+        m.counts.error        || 0,
+        m.counts.notchecked   || 0,
+        m.counts.notapplicable || 0,
+        (m.score || 0).toFixed(1),
+    ]);
+    downloadCSV('host-scan-history.csv', [headers, ...rows]);
 }
 
 function validateContent(entry, btn) {

@@ -256,6 +256,12 @@ code {
   border-bottom: var(--ct-border);
 }
 
+.ct-history-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .pf-v6-c-card__title-text {
   font-size: var(--ct-font-size-lg);
   font-weight: 700;
