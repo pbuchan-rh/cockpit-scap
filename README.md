@@ -28,7 +28,11 @@ compliance scanning without leaving their management console.
   expand/collapse; saves valid XCCDF tailoring XML; upload/download/edit/delete saved files
 - **Tailored scans** — select a saved tailoring file at scan time; remediation artifacts respect the tailoring
 - **Content tab** — manage user-staged SDS files with per-entry delete and SCP staging instructions
-- **Container image scanning** *(v3)* — scan container images via `oscap-podman`; image enumeration from root Podman store; version mismatch detection; per-image scan history
+- **Container image scanning** — scan container images via `oscap-podman`; image enumeration from root Podman store; version mismatch detection; per-image scan history
+- **View Guide** — generate and view the full oscap security guide for any profile, on all three scan tabs
+- **Run Again** — re-run any historical scan with one click; pre-fills content, profile, and tailoring file
+- **Export CSV** — download the full scan history as a CSV file with all metadata fields
+- **Content validation** — validate uploaded SDS files with `oscap ds sds-validate` before scanning
 
 ## Requirements
 
@@ -143,7 +147,7 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 ## Development status
 
-**Current version:** v3.0
+**Current version:** v3.0 (COPR) / v3.1-dev (main branch)
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
@@ -154,5 +158,4 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 |---|---|
 | **v1** | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
 | **v2** | Multi-version SDS content management — stage and use RHEL 6–9 content from a RHEL 10 host, CPE-aware scan blocking, Content tab |
-<<<<<<< HEAD
 | **v3** *(current)* | Container image scanning — `oscap-podman` integration, root Podman store enumeration, version mismatch detection, per-image history |

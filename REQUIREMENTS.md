@@ -123,37 +123,62 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 ### Container Image Scanning (`oscap-podman`)
 
-- **REQ-59:** ⬜ Tab layout MUST be updated: "Scan" tab renamed to "Host Scan"; new "Container Scan" tab added between "Host Scan" and "Tailoring"
+- **REQ-59:** ✅ Tab layout MUST be updated: "Scan" tab renamed to "Host Scan"; new "Container Scan" tab added between "Host Scan" and "Tailoring"
 
-- **REQ-60:** ⬜ Container Scan tab MUST enumerate images from the root Podman store via `podman images --format json` with `{ superuser: "require" }` — no other image stores are enumerated
+- **REQ-60:** ✅ Container Scan tab MUST enumerate images from the root Podman store via `podman images --format json` with `{ superuser: "require" }` — no other image stores are enumerated
 
-- **REQ-61:** ⬜ Container Scan tab MUST display a graceful prereq empty state for three distinct failure conditions: (a) `oscap-podman` binary not found, (b) Podman not installed, (c) no images exist in root's store — each condition shows a specific message with install or fix instructions
+- **REQ-61:** ✅ Container Scan tab MUST display a graceful prereq empty state for three distinct failure conditions: (a) `oscap-podman` binary not found, (b) Podman not installed, (c) no images exist in root's store — each condition shows a specific message with install or fix instructions
 
-- **REQ-62:** ⬜ Container Scan tab MUST support SDS file selection from both system and uploaded content — same sources and `<optgroup>` grouping as Host Scan
+- **REQ-62:** ✅ Container Scan tab MUST support SDS file selection from both system and uploaded content — same sources and `<optgroup>` grouping as Host Scan
 
-- **REQ-63:** ⬜ Container Scan tab MUST NOT apply the CPE/OS compatibility check — cross-version scanning of container images is the intended use case and scanning a RHEL 8 image with the RHEL 8 SDS from a RHEL 10 host is correct behavior
+- **REQ-63:** ✅ Container Scan tab MUST NOT apply the CPE/OS compatibility check — cross-version scanning of container images is the intended use case and scanning a RHEL 8 image with the RHEL 8 SDS from a RHEL 10 host is correct behavior
 
-- **REQ-64:** ⬜ Container Scan tab MUST support profile selection with description display, matching Host Scan behavior
+- **REQ-64:** ✅ Container Scan tab MUST support profile selection with description display, matching Host Scan behavior
 
-- **REQ-65:** ⬜ Container Scan tab MUST support optional tailoring file selection, matching Host Scan behavior
+- **REQ-65:** ✅ Container Scan tab MUST support optional tailoring file selection, matching Host Scan behavior
 
-- **REQ-66:** ⬜ Scan execution MUST use `oscap-podman <image-id> xccdf eval` with `{ superuser: "require" }` — no new polkit action files, sudoers entries, or system configuration required beyond what Host Scan already uses
+- **REQ-66:** ✅ Scan execution MUST use `oscap-podman <image-id> xccdf eval` with `{ superuser: "require" }` — no new polkit action files, sudoers entries, or system configuration required beyond what Host Scan already uses
 
-- **REQ-67:** ⬜ Results card MUST display a contextual note explaining that rules marked `notapplicable` apply only to bare metal and virtual systems, not container images (per RHEL 10 Security Hardening guide §5.2.5) — this count will be significantly higher than in host scans
+- **REQ-67:** ✅ Results card MUST display a contextual note explaining that rules marked `notapplicable` apply only to bare metal and virtual systems, not container images (per RHEL 10 Security Hardening guide §5.2.5) — this count will be significantly higher than in host scans
 
-- **REQ-68:** ⬜ Container scan artifacts MUST be identical in format to host scan artifacts: `results.xml`, `report.html`, `remediation.sh`, `remediation.yml`, `manifest.json`
+- **REQ-68:** ✅ Container scan artifacts MUST be identical in format to host scan artifacts: `results.xml`, `report.html`, `remediation.sh`, `remediation.yml`, `manifest.json`
 
-- **REQ-69:** ⬜ `manifest.json` MUST include `scan_type: "container"`, `image_name`, and `image_id` fields for container scans; existing host scan manifests without this field MUST be treated as `scan_type: "host"` for backwards compatibility — no migration of old entries required
+- **REQ-69:** ✅ `manifest.json` MUST include `scan_type: "container"`, `image_name`, and `image_id` fields for container scans; existing host scan manifests without this field MUST be treated as `scan_type: "host"` for backwards compatibility — no migration of old entries required
 
-- **REQ-70:** ⬜ Scan history table MUST display a "Container" badge on container scan rows and show the image name where the host scan identifier would appear
+- **REQ-70:** ✅ Scan history table MUST display a "Container" badge on container scan rows and show the image name where the host scan identifier would appear
 
-- **REQ-71:** ⬜ Rootless per-user Podman image stores MUST NOT be enumerated or scanned; the UI MUST display an inline note on the Container Scan tab explaining the limitation and the workaround (`sudo podman pull <image>`) — full rationale documented in DESIGN.md
+- **REQ-71:** ✅ Rootless per-user Podman image stores MUST NOT be enumerated or scanned; the UI MUST display an inline note on the Container Scan tab explaining the limitation and the workaround (`sudo podman pull <image>`) — full rationale documented in DESIGN.md
 
-- **REQ-72:** ⬜ Registry image pull during the scan workflow is out of scope — local images in root's store only
+- **REQ-72:** ✅ Registry image pull during the scan workflow is out of scope — local images in root's store only
 
-- **REQ-73:** ⬜ Apply Remediation MUST remain disabled/stubbed for container scans — `oscap-podman` explicitly rejects `--remediate`; container image remediation requires a separate image build workflow outside this tool's scope
+- **REQ-73:** ✅ Apply Remediation MUST remain disabled/stubbed for container scans — `oscap-podman` explicitly rejects `--remediate`; container image remediation requires a separate image build workflow outside this tool's scope
 
 **Implementation note:** All container scan logic MUST live in a separate `container-scan.js` file with a single `initContainerScan()` entry point wired from `index.js`. The feature MUST be developed on a dedicated git branch and merged to main only after validation on rhel10test. Full removal surface: delete `container-scan.js`, remove tab/panel from `index.html`, remove one call from `index.js`, delete one CSS block.
+
+---
+
+## Post-v3 Requirements (v3.1)
+
+### Run Again
+
+- **REQ-74:** ✅ Host and container scan history tables MUST each provide a "Run Again" action that pre-fills the scan form (content, profile, tailoring file) from the scan manifest and switches to the correct tab
+- **REQ-75:** ✅ `manifest.json` MUST store `tailoring_file` for both host and container scans; Run Again with a tailoring file MUST restore the base SDS profile using `base_profile_id` from the tailoring sidecar, not the tailoring profile ID
+- **REQ-76:** ✅ Run Again buttons MUST be disabled while a scan is in progress on their respective tab
+
+### Content Validation
+
+- **REQ-77:** ✅ The Uploaded Content list MUST provide a per-file Validate action that runs `oscap ds sds-validate` and displays inline pass/fail status; on failure a scrollable error modal MUST display the full oscap output
+
+### View Guide
+
+- **REQ-78:** ✅ Host Scan, Container Scan, and Tailoring tabs MUST each provide a "View Guide" button that generates and displays an oscap security guide for the selected content and profile
+- **REQ-79:** ✅ View Guide MUST be active when content and profile (or tailoring file) are selected; it MUST NOT be blocked by CPE version mismatch or scan-in-progress state
+- **REQ-80:** ✅ Guide generation MUST use `oscap xccdf generate guide` stdout directly — no intermediate file write, no superuser required
+
+### Export CSV
+
+- **REQ-81:** ✅ Host and Container scan history tables MUST each provide an Export CSV action that downloads all manifest fields as a properly escaped CSV file
+- **REQ-82:** ✅ Export CSV buttons MUST be disabled when no history entries exist
 
 ---
 
