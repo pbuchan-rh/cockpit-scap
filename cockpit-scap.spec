@@ -80,7 +80,7 @@ fi
 %dir /var/lib/%{name}/content
 
 %changelog
-* Sat May 31 2026 Peter Buchan <pbuchan@redhat.com> - 3.0-1
+* Fri May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.0-1
 - Container image scanning via oscap-podman: image enumeration from root
   Podman store, version mismatch detection, per-image scan history
 - Per-type scan history pruning: host and container scans each retain
