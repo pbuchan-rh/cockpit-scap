@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        2.1
+Version:        3.0
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -38,7 +38,7 @@ Features:
 %install
 # Module files → /usr/share/cockpit/cockpit-scap/
 install -d -m 755 %{buildroot}%{_datadir}/cockpit/%{name}
-install -m 644 index.html index.js style.css manifest.json viewer.html \
+install -m 644 index.html index.js container-scan.js style.css manifest.json viewer.html \
     %{buildroot}%{_datadir}/cockpit/%{name}/
 
 # SELinux file context definitions (shipped as a formal deliverable)
@@ -80,13 +80,22 @@ fi
 %dir /var/lib/%{name}/content
 
 %changelog
-* Fri May 29 2026 Peter Buchan <pjbuchan@gmail.com> - 2.1-1
+* Sat May 31 2026 Peter Buchan <pbuchan@redhat.com> - 3.0-1
+- Container image scanning via oscap-podman: image enumeration from root
+  Podman store, version mismatch detection, per-image scan history
+- Per-type scan history pruning: host and container scans each retain
+  up to 10 entries independently
+- Server-side XML parsing for results (fixes large file WebSocket limit)
+- Code review hardening: stale tailoring selector fix, remediation path
+  fix, pruneHistoryByType, manifest tools key fix for nav highlight
+
+* Fri May 29 2026 Peter Buchan <pbuchan@redhat.com> - 2.1-1
 - Dark mode: full prefers-color-scheme and Cockpit theme toggle support,
   all colors matched to PatternFly 6 dark token chain
 - Results footer: cleaned up Apply Remediation stub, New Scan separated
 - UI polish: native Cockpit layout alignment, single-panel design
 
-* Fri May 29 2026 Peter Buchan <pjbuchan@gmail.com> - 2.0-1
+* Fri May 29 2026 Peter Buchan <pbuchan@redhat.com> - 2.0-1
 - Initial package release
 - v2.0: content tab, multi-version SDS support, CPE compatibility detection,
   satellite content staging, uploaded-content security warnings
