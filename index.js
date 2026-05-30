@@ -226,6 +226,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     document.getElementById('ct-confirm-cancel')
         .addEventListener('click', hideConfirmModal);
+
+    /* Info modal */
+    document.getElementById('ct-info-ok')
+        .addEventListener('click', () => document.getElementById('ct-info-backdrop').classList.add('hidden'));
 });
 
 /* ---- Tab wiring -------------------------------------------- */
@@ -619,13 +623,14 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
         .then(output => {
             const parsed   = JSON.parse(output);
             const manifest = {
-                timestamp:     currentTimestamp,
-                sds_file:      currentSdsPath,
-                profile_id:    profileId,
-                profile_title: profileTitle,
-                result_id:     parsed.result_id,
-                counts:        parsed.counts,
-                score:         parsed.score,
+                timestamp:      currentTimestamp,
+                sds_file:       currentSdsPath,
+                profile_id:     profileId,
+                profile_title:  profileTitle,
+                tailoring_file: tailoringPath || null,
+                result_id:      parsed.result_id,
+                counts:         parsed.counts,
+                score:          parsed.score,
             };
             return cockpit.file(currentResultsDir + 'manifest.json', { superuser: 'require' })
                 .replace(JSON.stringify(manifest, null, 2))
@@ -998,6 +1003,14 @@ function buildHistoryRow(manifest) {
     const actionsTd = document.createElement('td');
     actionsTd.className = 'ct-history-actions';
 
+    const rerunBtn = document.createElement('button');
+    rerunBtn.className   = 'pf-v6-c-button pf-m-link ct-history-rerun-btn';
+    rerunBtn.type        = 'button';
+    rerunBtn.textContent = 'Run Again';
+    rerunBtn.disabled    = !!currentScanProc;
+    rerunBtn.addEventListener('click', () => rerunHostScan(manifest));
+    actionsTd.appendChild(rerunBtn);
+
     [
         ['View Report', () => viewReportFromPath(dir + 'report.html')],
         ['Bash',        () => downloadArtifact(
@@ -1045,13 +1058,48 @@ function onDeleteHistoryEntry(manifest) {
     );
 }
 
+function rerunHostScan(manifest) {
+    if (currentScanProc) return;
+    document.getElementById('tab-btn-scan').click();
+
+    const contentSelect = document.getElementById('ct-content-select');
+    contentSelect.value = manifest.sds_file;
+    if (contentSelect.value !== manifest.sds_file) return;
+
+    currentSdsPath = manifest.sds_file;
+    resetProfileSelect();
+    hideProfileDescription();
+    clearCpeAlert();
+    setScanButtonEnabled(false);
+    checkCpeCompat(manifest.sds_file);
+
+    Promise.all([
+        loadProfiles(manifest.sds_file),
+        detectTailoringFiles(),
+    ]).then(() => {
+        const profileSelect = document.getElementById('ct-profile-select');
+        if (manifest.tailoring_file) {
+            const sidecar = tailoringFilesMap[manifest.tailoring_file];
+            const baseId  = sidecar ? sidecar.base_profile_id : null;
+            if (baseId) {
+                profileSelect.value = baseId;
+                if (profileSelect.value) profileSelect.dispatchEvent(new Event('change'));
+            }
+            document.getElementById('ct-tailor-file-select').value = manifest.tailoring_file;
+        } else {
+            profileSelect.value = manifest.profile_id;
+            if (profileSelect.value) profileSelect.dispatchEvent(new Event('change'));
+        }
+    });
+}
+
 /* ---- Tailoring file detection (scan tab) ------------------- */
 
 function detectTailoringFiles() {
     tailoringFilesMap = {};
     const scanSelect = document.getElementById('ct-tailor-file-select');
 
-    cockpit.spawn(['ls', TAILORING_BASE], { err: 'message' })
+    return cockpit.spawn(['ls', TAILORING_BASE], { err: 'message' })
         .then(output => {
             const files = output.trim().split('\n')
                 .filter(f => f && f.endsWith('.json'));
@@ -1811,6 +1859,13 @@ function renderUserContentList() {
                 code.textContent = e.filename;
                 tdF.appendChild(code);
                 const tdA    = tr.insertCell();
+                const valBtn = document.createElement('button');
+                valBtn.className   = 'pf-v6-c-button pf-m-link';
+                valBtn.type        = 'button';
+                valBtn.textContent = 'Validate';
+                valBtn.addEventListener('click', () => validateContent(e, valBtn));
+                tdA.appendChild(valBtn);
+
                 const btn    = document.createElement('button');
                 btn.className = 'pf-v6-c-button pf-m-link ct-danger-link';
                 btn.type      = 'button';
@@ -1839,4 +1894,30 @@ function deleteUserContent(xmlPath, jsonPath) {
             detectContent();
         })
         .catch(err => console.error('Failed to delete content file:', err.message || err));
+}
+
+function validateContent(entry, btn) {
+    btn.disabled    = true;
+    btn.textContent = 'Validating…';
+    btn.className   = 'pf-v6-c-button pf-m-link';
+
+    cockpit.spawn(['oscap', 'ds', 'sds-validate', entry.xmlPath], { err: 'out' })
+        .then(() => {
+            btn.disabled    = false;
+            btn.textContent = '✓ Valid';
+            btn.className   = 'pf-v6-c-button pf-m-link ct-validate-ok';
+        })
+        .catch(err => {
+            btn.disabled    = false;
+            btn.textContent = '✗ Invalid';
+            btn.className   = 'pf-v6-c-button pf-m-link ct-validate-fail';
+            const detail = (err.message || String(err)).trim() || 'Validation failed with no output.';
+            btn.addEventListener('click', () => showInfoModal('Validation Error: ' + entry.name, detail), { once: true });
+        });
+}
+
+function showInfoModal(title, body) {
+    document.getElementById('ct-info-title').textContent = title;
+    document.getElementById('ct-info-body').textContent  = body;
+    document.getElementById('ct-info-backdrop').classList.remove('hidden');
 }

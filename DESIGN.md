@@ -288,9 +288,9 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 
 | Version | Theme | Key Features |
 |---|---|---|
-| **v1** | Local scanning + tailoring | Everything currently built; SELinux `.fc` + Makefile close this out |
-| **v2** | Multi-version SDS content | RHEL 7/8/9 SDS upload/staging, CPE OS detection, cross-version tailoring and download, content management UI |
-| **v3** | Container image scanning | `oscap-podman` integration enabled by v2 content management; scan RHEL 7/8/9 images with matching SSG content |
+| **v1** ✅ | Local scanning + tailoring | Host scan, tailoring editor, SELinux, Makefile, COPR |
+| **v2** ✅ | Multi-version SDS content | RHEL 6–9 SDS staging, CPE OS detection, content management UI |
+| **v3** ✅ | Container image scanning | `oscap-podman` integration, root Podman store, version mismatch detection, per-image history |
 
 **Explicitly out of scope (any version):**
 - Remote SSH scanning — different tool, different trust model
@@ -303,6 +303,5 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 
 - Not a remote scanning tool (SSH scanning is explicitly out of scope)
 - Not a vulnerability scanner (OVAL/CVE scanning is not in scope — Red Hat Insights and `dnf updateinfo list sec` already serve this for the target audience)
-- Not a container scanner in v1 (deferred to v3; correctness is achievable once v2 multi-version SDS content is in place)
 - Not a Red Hat Satellite replacement
 - Not a tool for applying untested remediations without admin review

@@ -984,6 +984,15 @@ details.ct-tailor-group .ct-tailor-rule {
   text-decoration: underline;
 }
 
+.ct-validate-ok {
+  color: var(--pf-v6-global--success-color--100, #3e8635);
+  cursor: default;
+}
+
+.ct-validate-fail {
+  color: var(--pf-v6-global--danger-color--100, #c9190b);
+}
+
 /* ---- Content tab ------------------------------------------ */
 
 .ct-cpe-alert {
@@ -1067,6 +1076,19 @@ details.ct-tailor-group .ct-tailor-rule {
 .ct-confirm-footer {
   display: flex;
   gap: var(--ct-space-sm);
+}
+
+.ct-info-body {
+  font-size: var(--ct-font-size-sm, 12px);
+  color: var(--ct-color-text-secondary);
+  background: var(--ct-color-bg-page);
+  border-radius: 4px;
+  padding: var(--ct-space-sm);
+  margin: 0 0 var(--ct-space-lg);
+  max-height: 240px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 /* ---- Dark mode --------------------------------------------- */

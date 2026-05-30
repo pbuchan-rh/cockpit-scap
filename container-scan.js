@@ -189,7 +189,7 @@ function csDetectTailoringFiles() {
     const select = document.getElementById('cs-tailor-file-select');
     const group  = document.getElementById('cs-tailor-file-group');
 
-    cockpit.spawn(['ls', TAILORING_BASE], { err: 'message' })
+    return cockpit.spawn(['ls', TAILORING_BASE], { err: 'message' })
         .then(output => {
             const files = output.trim().split('\n').filter(f => f && f.endsWith('.json'));
             if (!files.length) { return; }
@@ -380,16 +380,17 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
         .then(output => {
             const parsed   = JSON.parse(output);
             const manifest = {
-                timestamp:     csTimestamp,
-                scan_type:     'container',
-                image_name:    csImageName,
-                image_id:      csImageId,
-                sds_file:      csSdsPath,
-                profile_id:    profileId,
-                profile_title: profileTitle,
-                result_id:     parsed.result_id,
-                counts:        parsed.counts,
-                score:         parsed.score,
+                timestamp:      csTimestamp,
+                scan_type:      'container',
+                image_name:     csImageName,
+                image_id:       csImageId,
+                sds_file:       csSdsPath,
+                profile_id:     profileId,
+                profile_title:  profileTitle,
+                tailoring_file: tailoringPath || null,
+                result_id:      parsed.result_id,
+                counts:         parsed.counts,
+                score:          parsed.score,
             };
             return cockpit.file(csResultsDir + 'manifest.json', { superuser: 'require' })
                 .replace(JSON.stringify(manifest, null, 2))
@@ -557,6 +558,14 @@ function csBuildHistoryRow(manifest) {
     const actionsTd = document.createElement('td');
     actionsTd.className = 'ct-history-actions';
 
+    const rerunBtn = document.createElement('button');
+    rerunBtn.className   = 'pf-v6-c-button pf-m-link cs-history-rerun-btn';
+    rerunBtn.type        = 'button';
+    rerunBtn.textContent = 'Run Again';
+    rerunBtn.disabled    = !!csProc;
+    rerunBtn.addEventListener('click', () => csRerunScan(manifest));
+    actionsTd.appendChild(rerunBtn);
+
     [
         ['View Report', () => viewReportFromPath(dir + 'report.html')],
         ['Bash',        () => downloadArtifact(
@@ -592,6 +601,54 @@ function csBuildHistoryRow(manifest) {
     actionsTd.appendChild(delBtn);
     tr.appendChild(actionsTd);
     return tr;
+}
+
+function csRerunScan(manifest) {
+    if (csProc) return;
+    document.getElementById('tab-btn-container-scan').click();
+
+    const imageSelect = document.getElementById('cs-image-select');
+    imageSelect.value = manifest.image_name;
+    csImageName = imageSelect.value || null;
+    csImageId   = (imageSelect.options[imageSelect.selectedIndex] || {}).dataset.id || csImageName;
+
+    const contentSelect = document.getElementById('cs-content-select');
+    contentSelect.value = manifest.sds_file;
+    if (contentSelect.value !== manifest.sds_file) {
+        csCheckVersionMatch();
+        csUpdateScanBtn();
+        return;
+    }
+    csSdsPath = manifest.sds_file;
+
+    const profileSelect = document.getElementById('cs-profile-select');
+    profileSelect.innerHTML = '';
+    appendOption(profileSelect, '', 'Loading…');
+    profileSelect.disabled = true;
+    csHideProfileDesc();
+    csTailoringMap = {};
+    document.getElementById('cs-tailor-file-select').value = '';
+    csCheckVersionMatch();
+    csUpdateScanBtn();
+
+    Promise.all([
+        loadProfiles(manifest.sds_file, 'cs-profile-select'),
+        csDetectTailoringFiles(),
+    ]).then(() => {
+        if (manifest.tailoring_file) {
+            const sidecar = csTailoringMap[manifest.tailoring_file];
+            const baseId  = sidecar ? sidecar.base_profile_id : null;
+            if (baseId) {
+                profileSelect.value = baseId;
+                if (profileSelect.value) profileSelect.dispatchEvent(new Event('change'));
+            }
+            document.getElementById('cs-tailor-file-select').value = manifest.tailoring_file;
+        } else {
+            profileSelect.value = manifest.profile_id;
+            if (profileSelect.value) profileSelect.dispatchEvent(new Event('change'));
+        }
+        csUpdateScanBtn();
+    });
 }
 
 /* ---- UI state helpers ------------------------------------- */
