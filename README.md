@@ -154,4 +154,5 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 |---|---|
 | **v1** | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
 | **v2** | Multi-version SDS content management — stage and use RHEL 6–9 content from a RHEL 10 host, CPE-aware scan blocking, Content tab |
+<<<<<<< HEAD
 | **v3** *(current)* | Container image scanning — `oscap-podman` integration, root Podman store enumeration, version mismatch detection, per-image history |

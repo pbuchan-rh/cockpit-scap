@@ -1161,3 +1161,24 @@ html.pf-v6-theme-dark .ct-badge-error {
   color: #1f1f1f;
 }
 
+/* ---- Container Scan --------------------------------------- */
+.cs-notapplicable-note {
+  margin-top: 16px;
+}
+
+.cs-prereq-cmd {
+  background: var(--ct-color-bg-page);
+  border: 1px solid var(--ct-color-border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+#cs-prereq-body p {
+  margin: 6px 0;
+}
+/* ---- End Container Scan ----------------------------------- */
+
