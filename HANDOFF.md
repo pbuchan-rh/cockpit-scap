@@ -4,9 +4,9 @@
 
 ## Current State
 
-**Version:** v2.0 (dark mode + UI polish)
+**Version:** v2.1 (final v2 release)
 **Last session:** 2026-05-29
-**Deployed to:** rhel10cis.beastmode.localdomain
+**Deployed to:** rhel10cis.beastmode.localdomain (user-space) + rhel10test (COPR install validated)
 
 ---
 
@@ -112,6 +112,7 @@ Nothing blocking. Module is live on Fedora COPR.
 | 2026-05-29 | v2.0 | UI overhaul | Playwright-assisted layout audit: identified and fixed native Cockpit alignment (PF6 section padding 16px/24px, container margins); removed redundant ct-page-title heading; restructured to single-panel design (transparent container, page background = unified gray panel, cards float on top); tab bar background matches page; removed edge-to-edge tab border-bottom; editor card border-radius fixed to 16px |
 | 2026-05-29 | v2.0 | Dark mode | Full dark mode via `@media (prefers-color-scheme: dark)` + `html.pf-v6-theme-dark`; all `--ct-color-*` tokens matched to PF6's own dark token chain (measured via Playwright against native Cockpit modules): bg-page `#151515`, bg-card `#292929`, text `#ffffff`, text-secondary `#c7c7c7`, primary `#b9dafc`, border-dark `#a3a3a3`, danger `#f0561d`, success `#87bb62`, warning `#ffcc17`, info `#b6a6e9` (purple); primary button flips to light bg + dark text per PF6 dark pattern; COPR chroot note: must specify `rhel-10-x86_64` not epel when enabling |
 | 2026-05-29 | v2.0 | UI polish | Results card footer: removed "Coming in a future release" label from Apply Remediation; moved text to `title` tooltip; New Scan button pushed to far right with `margin-left: auto` for visual separation |
+| 2026-05-29 | v2.1 | Release | Bumped version to v2.1; RPM built on rhel10cis; tested on rhel10test (remove old + COPR install); SELinux enforcing confirmed clean; COPR build 10525374 succeeded; GitHub release v2.1 + Gitea release v2.1 with RPM/SRPM assets; spec changelog author corrected (Patrick → Peter Buchan) |
 
 ---
 
@@ -142,21 +143,19 @@ Nothing blocking. Module is live on Fedora COPR.
 |---|---|
 | `CLAUDE.md` | ✅ Current |
 | `DESIGN.md` | ✅ Current |
-| `CLAUDE.md` | ✅ Current |
-| `DESIGN.md` | ✅ Current |
-| `HANDOFF.md` | ✅ This file — updated v2.0 |
-| `README.md` | ✅ Updated — v2.0, COPR install instructions |
+| `HANDOFF.md` | ✅ This file — updated v2.1 |
+| `README.md` | ✅ Updated — v2.1, dark mode feature listed |
 | `REQUIREMENTS.md` | ✅ Current |
 | `PROMPT_DASHBOARD.md` | ⚠️ Stale — written for v0.9, not critical |
 | `WORKBENCH_FEATURES.md` | ✅ Current |
 | `ECOSYSTEM.md` | ✅ Current |
 | `SCAP_TUI_DESIGN.md` | ✅ Current |
 | `manifest.json` | ✅ Complete |
-| `index.html` | ✅ v2.0 (code review hardened) |
-| `index.js` | ✅ v2.0 (code review hardened) |
-| `style.css` | ✅ v2.0 — dark mode, button polish |
-| `viewer.html` | ✅ Complete |
+| `index.html` | ✅ v2.1 |
+| `index.js` | ✅ v2.1 |
+| `style.css` | ✅ v2.1 — dark mode, button polish |
+| `viewer.html` | ✅ Complete — do not modify (CSP-sensitive) |
 | `selinux/cockpit-scap.fc` | ✅ Complete |
-| `Makefile` | ✅ Complete — uninstall gap fixed |
-| `cockpit-scap.spec` | ✅ Complete — built, tested, submitted to COPR |
+| `Makefile` | ✅ Complete |
+| `cockpit-scap.spec` | ✅ v2.1 — Peter Buchan in changelog |
 | `LICENSE` | ✅ GPL-2.0-or-later |
