@@ -425,7 +425,7 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 .catch(err => console.error('chmod failed:', err.message || err))
                 .then(() => manifest);
         })
-        .then(manifest => { pruneHistory(); csShowResults(manifest); })
+        .then(manifest => { pruneHistoryByType('container'); csShowResults(manifest); })
         .catch(err => csScanError('Failed to process results: ' + (err.message || String(err))));
 }
 
