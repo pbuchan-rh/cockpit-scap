@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        2.0
+Version:        2.1
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -80,7 +80,13 @@ fi
 %dir /var/lib/%{name}/content
 
 %changelog
-* Fri May 29 2026 Patrick Buchan <pjbuchan@gmail.com> - 2.0-1
+* Fri May 29 2026 Peter Buchan <pjbuchan@gmail.com> - 2.1-1
+- Dark mode: full prefers-color-scheme and Cockpit theme toggle support,
+  all colors matched to PatternFly 6 dark token chain
+- Results footer: cleaned up Apply Remediation stub, New Scan separated
+- UI polish: native Cockpit layout alignment, single-panel design
+
+* Fri May 29 2026 Peter Buchan <pjbuchan@gmail.com> - 2.0-1
 - Initial package release
 - v2.0: content tab, multi-version SDS support, CPE compatibility detection,
   satellite content staging, uploaded-content security warnings
