@@ -1036,7 +1036,6 @@ function onDeleteHistoryEntry(manifest) {
 function detectTailoringFiles() {
     tailoringFilesMap = {};
     const scanSelect = document.getElementById('ct-tailor-file-select');
-    const scanGroup  = document.getElementById('ct-tailor-file-group');
 
     cockpit.spawn(['ls', TAILORING_BASE], { err: 'message' })
         .then(output => {
@@ -1044,7 +1043,6 @@ function detectTailoringFiles() {
                 .filter(f => f && f.endsWith('.json'));
 
             if (files.length === 0) {
-                scanGroup.classList.add('hidden');
                 scanSelect.innerHTML = '';
                 appendOption(scanSelect, '', '(No tailoring — use full profile)');
                 renderTailoringList([]);
