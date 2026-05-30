@@ -28,7 +28,7 @@ compliance scanning without leaving their management console.
   expand/collapse; saves valid XCCDF tailoring XML; upload/download/edit/delete saved files
 - **Tailored scans** — select a saved tailoring file at scan time; remediation artifacts respect the tailoring
 - **Content tab** — manage user-staged SDS files with per-entry delete and SCP staging instructions
-- **Dark mode** — full support for `prefers-color-scheme: dark` and Cockpit's own dark theme toggle; all colors matched to PatternFly 6's dark token chain
+- **Container image scanning** *(v3)* — scan container images via `oscap-podman`; image enumeration from root Podman store; version mismatch detection; per-image scan history
 
 ## Requirements
 
@@ -136,8 +136,6 @@ No polkit action file, sudoers entry, or setuid binary is required.
 ## What this module does not do
 
 - Remote scanning via SSH (`oscap-ssh`) — explicitly out of scope
-- Container/image scanning (`oscap-podman`) — deferred to v3; requires Podman, image enumeration,
-  and OS detection from image metadata — enough new surface to warrant its own milestone
 - OVAL vulnerability scanning — not in scope
 - One-click in-place remediation apply — deferred; stub button present in the UI
 - Ansible remediation apply — deferred
@@ -145,7 +143,7 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 ## Development status
 
-**Current version:** v2.1
+**Current version:** v3.0
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
@@ -155,5 +153,5 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 | Version | Theme |
 |---|---|
 | **v1** | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
-| **v2** *(current)* | Multi-version SDS content management — stage and use RHEL 6–9 content from a RHEL 10 host, CPE-aware scan blocking, Content tab |
-| **v3** | Container image scanning — `oscap-podman` integration with correct cross-version content |
+| **v2** | Multi-version SDS content management — stage and use RHEL 6–9 content from a RHEL 10 host, CPE-aware scan blocking, Content tab |
+| **v3** *(current)* | Container image scanning — `oscap-podman` integration, root Podman store enumeration, version mismatch detection, per-image history |
