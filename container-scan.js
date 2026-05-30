@@ -126,6 +126,8 @@ function csCheckPrereqs() {
                 csShowPrereq('Podman not installed', [
                     'Install Podman to enable container scanning:',
                     { code: 'sudo dnf install podman' },
+                    'Then pull images into the system store:',
+                    { code: 'sudo podman pull <image>' },
                 ]);
             } else {
                 csShowPrereq('Failed to enumerate images', [
