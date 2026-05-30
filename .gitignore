@@ -7,6 +7,19 @@ content/
 # Session artifacts
 summary.txt
 
+# Internal planning and session docs — Gitea only, not for public GitHub
+HANDOFF.md
+CLAUDE.md
+PROMPT_DASHBOARD.md
+ECOSYSTEM.md
+SCAP_TUI_DESIGN.md
+WORKBENCH_FEATURES.md
+
+# Local tools and exported docs — not project source
+tools/
+pdf-export/
+*.pdf
+
 # Editor and OS files
 .vscode/
 .idea/
