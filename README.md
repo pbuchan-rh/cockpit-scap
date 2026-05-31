@@ -48,17 +48,17 @@ compliance scanning without leaving their management console.
 **Host Scan — configuration and history**
 ![Host Scan](docs/screenshots/host-scan.png)
 
-**Scan Results — compliance score, report and remediation downloads**
-![Scan Results](docs/screenshots/scan-results.png)
+**Selective Remediation Builder — cherry-pick failing rules before downloading scripts**
+![Selective Remediation](docs/screenshots/selective-remediation.png)
 
 **Container Scan — oscap-podman workflow with tailored profile**
 ![Container Scan](docs/screenshots/container-scan.png)
 
-**Tailoring Editor — rule tree with severity indicators and variable editor**
+**Policy Tailoring — rule tree with severity indicators and variable editor**
 ![Tailoring Editor](docs/screenshots/tailoring.png)
 
-**Content Tab — system and user-staged SDS files with validation**
-![Content](docs/screenshots/content.png)
+**Activity Log — real-time action log with semantic badge colors**
+![Activity Log](docs/screenshots/activity-log.png)
 
 ## Requirements
 
