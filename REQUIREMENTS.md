@@ -243,6 +243,27 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 ---
 
+## v3.4 UI Polish Requirements
+
+### Scan Results Card
+
+- **REQ-116:** ✅ The scan results card MUST display a failing rules summary below the pass/fail/score badges, grouped by severity (HIGH / MEDIUM / LOW) using collapsible `<details>/<summary>` elements; HIGH MUST be expanded by default; empty severity groups MUST be hidden
+- **REQ-117:** ✅ The failing rules summary MUST be loaded asynchronously after the results card renders — a spinner MUST display while loading and disappear when complete; failures MUST be silently suppressed (summary is informational)
+- **REQ-118:** ✅ The results card MUST display the scan timestamp as a secondary line below the profile title
+- **REQ-119:** ✅ The results card "New Scan" button MUST be replaced with "Run Again" — it MUST pre-fill the scan form with the current scan's content, profile, and tailoring file (same behaviour as history row "Run Again")
+
+### Scan History Actions
+
+- **REQ-120:** ✅ Host and container scan history rows MUST provide a "View Scan" action that loads the full results card for that historical scan — setting all scan state vars from the manifest and rendering the results card including the failing rules summary
+- **REQ-121:** ✅ "View Scan" and "Run Again" history actions MUST be visually disabled while a scan is in progress; the history table MUST be rebuilt when a scan starts so disabled state is reflected immediately
+- **REQ-122:** ✅ "View Scan" MUST guard against concurrent scan state corruption — if a scan is in progress the action MUST be a no-op regardless of button state
+
+### Scan Configuration Layout
+
+- **REQ-123:** ✅ Host Scan and Container Scan configuration MUST use a single unified card with an internal two-column grid — form fields on the left, profile description on the right separated by a vertical border; the previous two-card split layout is replaced
+
+---
+
 ## Out of Scope — v1
 
 The following are explicitly NOT requirements for v1. Do not implement without formal design discussion:

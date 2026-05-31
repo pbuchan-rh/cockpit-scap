@@ -24,8 +24,9 @@ let csTailoringMap = {};
 let csImageName      = null;
 let csImageId        = null;
 let csVersionBlocked = false;
-let csRemDir   = null;
-let csRemRules = [];
+let csRemDir       = null;
+let csRemRules     = [];
+let csCurrentManifest = null;
 
 function initContainerScan() {
     document.getElementById('cs-image-select')
@@ -78,7 +79,10 @@ function initContainerScan() {
             updateCsRemCount();
         });
     document.getElementById('cs-new-scan-btn')
-        .addEventListener('click', csShowSetup);
+        .addEventListener('click', () => {
+            if (csCurrentManifest) csRerunScan(csCurrentManifest);
+            else csShowSetup();
+        });
     document.getElementById('cs-scan-error-close')
         .addEventListener('click', csClearError);
 
@@ -480,11 +484,30 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
 
 /* ---- Results display -------------------------------------- */
 
+function csLoadScanFromHistory(manifest) {
+    if (csProc) return;
+    const dir = RESULTS_BASE + manifest.timestamp + '/';
+    csTimestamp   = manifest.timestamp;
+    csResultsDir  = dir;
+    csReportPath  = dir + 'report.html';
+    csBashPath    = dir + 'remediation.sh';
+    csAnsiblePath = dir + 'remediation.yml';
+    csImageName   = manifest.image_name || null;
+    csImageId     = manifest.image_id   || null;
+    document.getElementById('cs-scan-row').classList.add('hidden');
+    csShowResults(manifest);
+    document.getElementById('cs-results').scrollIntoView({ behavior: 'smooth' });
+}
+
 function csShowResults(manifest) {
-    const { counts, score, profile_title, image_name } = manifest;
+    csCurrentManifest = manifest;
+    const { counts, score, profile_title, image_name, timestamp } = manifest;
 
     document.getElementById('cs-results-profile-title').textContent =
         profile_title + ' — ' + (image_name || 'container');
+    document.getElementById('cs-results-timestamp').textContent = timestamp
+        ? timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2')
+        : '';
 
     const badges = document.getElementById('cs-result-badges');
     badges.innerHTML = '';
@@ -510,6 +533,8 @@ function csShowResults(manifest) {
 
     document.getElementById('cs-progress').classList.add('hidden');
     document.getElementById('cs-results').classList.remove('hidden');
+    renderFailingSummary(csResultsDir + 'results.xml',
+                         'cs-failing-summary-groups', 'cs-failing-summary-loading');
     csLoadHistory();
     dbInvalidate();
 }
@@ -615,14 +640,14 @@ function csBuildHistoryRow(manifest) {
     actionsTd.appendChild(rerunBtn);
 
     [
-        ['View Report',  () => viewReportFromPath(dir + 'report.html')],
-        ['Download XML', () => downloadArtifact(dir + 'results.xml', 'container-results-' + manifest.timestamp + '.xml', 'application/xml')],
-        ['Remediate',    () => openCsRemPanel(dir)],
-    ].forEach(([label, handler]) => {
+        ['View Scan',  () => csLoadScanFromHistory(manifest), !!csProc],
+        ['Remediate',  () => openCsRemPanel(dir),             false],
+    ].forEach(([label, handler, disabled]) => {
         const btn       = document.createElement('button');
         btn.className   = 'pf-v6-c-button pf-m-link';
         btn.type        = 'button';
         btn.textContent = label;
+        btn.disabled    = disabled;
         btn.addEventListener('click', handler);
         actionsTd.appendChild(btn);
     });
@@ -684,6 +709,7 @@ function onCsViewGuideClick() {
 
 function csRerunScan(manifest) {
     if (csProc) return;
+    csShowSetup();
     document.getElementById('tab-btn-container-scan').click();
 
     const imageSelect = document.getElementById('cs-image-select');
@@ -761,12 +787,15 @@ function csShowProgress() {
     document.getElementById('cs-scan-row').classList.add('hidden');
     document.getElementById('cs-progress').classList.remove('hidden');
     document.getElementById('cs-results').classList.add('hidden');
+    csLoadHistory();
 }
 
 function csShowSetup() {
     document.getElementById('cs-scan-row').classList.remove('hidden');
     document.getElementById('cs-progress').classList.add('hidden');
     document.getElementById('cs-results').classList.add('hidden');
+    document.getElementById('cs-failing-summary-groups').innerHTML = '';
+    document.getElementById('cs-failing-summary-loading').classList.add('hidden');
     csProc        = null;
     csBashPath    = null;
     csAnsiblePath = null;

@@ -1,6 +1,6 @@
 'use strict';
 
-const MODULE_VERSION = 'v3.2';
+const MODULE_VERSION = 'v3.4';
 const SSG_CONTENT_DIR = '/usr/share/xml/scap/ssg/content/';
 const RESULTS_BASE    = '/var/lib/cockpit-scap/results/';
 const TAILORING_BASE  = '/var/lib/cockpit-scap/tailoring/';
@@ -179,6 +179,7 @@ let currentResultsDir     = null;
 let currentReportPath     = null;
 let currentRemBashPath    = null;
 let currentRemAnsiblePath = null;
+let currentManifest       = null;
 let scanCancelledByUser   = false;
 
 /* Module state — selective remediation */
@@ -243,7 +244,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'application/xml'
         ));
     document.getElementById('ct-new-scan-btn')
-        .addEventListener('click', showScanSetup);
+        .addEventListener('click', () => {
+            if (currentManifest) rerunHostScan(currentManifest);
+            else showScanSetup();
+        });
     document.getElementById('ct-scan-error-close')
         .addEventListener('click', hideScanError);
     document.getElementById('ct-selective-rem-btn')
@@ -1091,10 +1095,68 @@ function parseResultsXml(content) {
 
 /* ---- Results display --------------------------------------- */
 
+function renderFailingSummary(resultsXmlPath, groupsId, loadingId) {
+    const groupsEl  = document.getElementById(groupsId);
+    const loadingEl = document.getElementById(loadingId);
+    groupsEl.innerHTML = '';
+    loadingEl.classList.remove('hidden');
+
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsXmlPath], { err: 'message' })
+        .then(output => {
+            loadingEl.classList.add('hidden');
+            const rules = JSON.parse(output);
+            const buckets = { high: [], medium: [], low: [] };
+            rules.forEach(r => {
+                const sev = r.severity.toLowerCase();
+                (buckets[sev] || buckets.low).push(r);
+            });
+            [['high', 'HIGH'], ['medium', 'MEDIUM'], ['low', 'LOW']].forEach(([sev, label], idx) => {
+                const list = buckets[sev];
+                if (!list.length) return;
+                const details = document.createElement('details');
+                details.className = 'ct-failing-group ct-failing-group-' + sev;
+                if (idx === 0) details.open = true;
+                const summary = document.createElement('summary');
+                summary.className = 'ct-failing-group-summary';
+                summary.textContent = label + ' — ' + list.length + ' failing';
+                details.appendChild(summary);
+                const ul = document.createElement('ul');
+                ul.className = 'ct-failing-rule-list';
+                list.forEach(r => {
+                    const li = document.createElement('li');
+                    li.className = 'ct-failing-rule-item';
+                    li.textContent = r.title;
+                    ul.appendChild(li);
+                });
+                details.appendChild(ul);
+                groupsEl.appendChild(details);
+            });
+        })
+        .catch(() => { loadingEl.classList.add('hidden'); });
+}
+
+function loadScanFromHistory(manifest) {
+    if (currentScanProc) return;
+    const dir = RESULTS_BASE + manifest.timestamp + '/';
+    currentTimestamp      = manifest.timestamp;
+    currentResultsDir     = dir;
+    currentReportPath     = dir + 'report.html';
+    currentRemBashPath    = dir + 'remediation.sh';
+    currentRemAnsiblePath = dir + 'remediation.yml';
+    currentSdsPath        = manifest.sds_file || null;
+    document.getElementById('ct-scan-row').classList.add('hidden');
+    showResults(manifest);
+    document.getElementById('ct-results').scrollIntoView({ behavior: 'smooth' });
+}
+
 function showResults(manifest) {
-    const { counts, score, profile_title } = manifest;
+    currentManifest = manifest;
+    const { counts, score, profile_title, timestamp } = manifest;
 
     document.getElementById('ct-results-profile-title').textContent = profile_title;
+    document.getElementById('ct-results-timestamp').textContent = timestamp
+        ? timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2')
+        : '';
 
     const badges = document.getElementById('ct-result-badges');
     badges.innerHTML = '';
@@ -1126,6 +1188,8 @@ function showResults(manifest) {
 
     document.getElementById('ct-scan-progress').classList.add('hidden');
     document.getElementById('ct-results').classList.remove('hidden');
+    renderFailingSummary(currentResultsDir + 'results.xml',
+                         'ct-failing-summary-groups', 'ct-failing-summary-loading');
     loadHistory();
     dbInvalidate();
 }
@@ -1188,12 +1252,15 @@ function showScanProgress() {
     document.getElementById('ct-scan-row').classList.add('hidden');
     document.getElementById('ct-scan-progress').classList.remove('hidden');
     document.getElementById('ct-results').classList.add('hidden');
+    loadHistory();
 }
 
 function showScanSetup() {
     document.getElementById('ct-scan-row').classList.remove('hidden');
     document.getElementById('ct-scan-progress').classList.add('hidden');
     document.getElementById('ct-results').classList.add('hidden');
+    document.getElementById('ct-failing-summary-groups').innerHTML = '';
+    document.getElementById('ct-failing-summary-loading').classList.add('hidden');
     currentScanProc       = null;
     currentRemBashPath    = null;
     currentRemAnsiblePath = null;
@@ -1373,6 +1440,37 @@ function renderHistory(manifests) {
     table.classList.remove('hidden');
 }
 
+function restoreLastResults() {
+    cockpit.spawn(['ls', RESULTS_BASE], { err: 'message' })
+        .then(output => {
+            const dirs = output.trim().split('\n')
+                .filter(d => /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/.test(d))
+                .sort().reverse();
+            if (!dirs.length) return;
+            return tryRestoreDir(dirs, 0);
+        })
+        .catch(() => {});
+
+    function tryRestoreDir(dirs, idx) {
+        if (idx >= dirs.length) return;
+        const dir = RESULTS_BASE + dirs[idx] + '/';
+        return cockpit.file(dir + 'manifest.json').read()
+            .then(content => {
+                const m = JSON.parse(content);
+                if (!m || m.scan_type === 'container') return tryRestoreDir(dirs, idx + 1);
+                currentTimestamp      = m.timestamp;
+                currentResultsDir     = dir;
+                currentReportPath     = dir + 'report.html';
+                currentRemBashPath    = dir + 'remediation.sh';
+                currentRemAnsiblePath = dir + 'remediation.yml';
+                currentSdsPath        = m.sds_file || null;
+                document.getElementById('ct-scan-row').classList.add('hidden');
+                showResults(m);
+            })
+            .catch(() => tryRestoreDir(dirs, idx + 1));
+    }
+}
+
 function buildHistoryRow(manifest) {
     const dir = RESULTS_BASE + manifest.timestamp + '/';
     const tr  = document.createElement('tr');
@@ -1413,14 +1511,14 @@ function buildHistoryRow(manifest) {
     actionsTd.appendChild(rerunBtn);
 
     [
-        ['View Report',       () => viewReportFromPath(dir + 'report.html')],
-        ['Download XML',      () => downloadArtifact(dir + 'results.xml', 'scap-results-' + manifest.timestamp + '.xml', 'application/xml')],
-        ['Remediate',         () => openRemediationPanel(dir)],
-    ].forEach(([label, handler]) => {
+        ['View Scan',  () => loadScanFromHistory(manifest), !!currentScanProc],
+        ['Remediate',  () => openRemediationPanel(dir),     false],
+    ].forEach(([label, handler, disabled]) => {
         const btn = document.createElement('button');
         btn.className   = 'pf-v6-c-button pf-m-link';
         btn.type        = 'button';
         btn.textContent = label;
+        btn.disabled    = disabled;
         btn.addEventListener('click', handler);
         actionsTd.appendChild(btn);
     });
@@ -1456,6 +1554,7 @@ function onDeleteHistoryEntry(manifest) {
 
 function rerunHostScan(manifest) {
     if (currentScanProc) return;
+    showScanSetup();
     document.getElementById('tab-btn-scan').click();
 
     const contentSelect = document.getElementById('ct-content-select');

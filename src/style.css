@@ -586,24 +586,29 @@ code {
 /* ---- ct- module-specific styles ---------------------------- */
 
 /* Side-by-side scan row */
-.ct-scan-row {
-  display: flex;
-  gap: var(--ct-space-md);
+.ct-scan-body-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ct-space-lg);
 }
 
-.ct-scan-setup-card {
-  flex: 1 1 0;
-}
-
-.ct-profile-desc-card {
-  flex: 1 1 0;
+.ct-scan-form-col {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
 }
 
-.ct-profile-desc-card .pf-v6-c-card__body {
-  flex: 1 1 auto;
+.ct-profile-desc-col {
+  min-width: 0;
+  padding-left: var(--ct-space-lg);
+  border-left: 1px solid var(--ct-color-border);
+}
+
+.ct-profile-desc-heading {
+  font-weight: 600;
+  font-size: var(--ct-font-size-sm);
+  color: var(--ct-color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 var(--ct-space-sm);
 }
 
 .ct-profile-desc-placeholder {
@@ -618,6 +623,12 @@ code {
   font-size: var(--ct-font-size-sm);
   color: var(--ct-color-text-secondary);
   margin: var(--ct-space-xs) 0 0;
+}
+
+.ct-results-timestamp {
+  font-size: var(--ct-font-size-sm);
+  color: var(--ct-color-text-secondary);
+  margin: 2px 0 0;
 }
 
 .ct-result-summary-row {
@@ -653,6 +664,63 @@ code {
   font-size: var(--ct-font-size-xl);
   font-weight: 700;
   color: var(--ct-color-text);
+}
+
+/* ---- Failing rules summary ---------------------------------- */
+
+.ct-failing-summary {
+  margin-top: var(--ct-space-md);
+}
+
+.ct-failing-summary-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--ct-space-sm);
+  font-size: var(--ct-font-size-sm);
+  color: var(--ct-color-text-secondary);
+  padding: var(--ct-space-sm) 0;
+}
+
+.ct-failing-group {
+  border-top: 1px solid var(--ct-color-border);
+  padding: var(--ct-space-sm) 0;
+}
+
+.ct-failing-group-summary {
+  cursor: pointer;
+  font-size: var(--ct-font-size-sm);
+  font-weight: 600;
+  padding: var(--ct-space-xs) 0;
+  user-select: none;
+  list-style: none;
+}
+
+.ct-failing-group-summary::marker,
+.ct-failing-group-summary::-webkit-details-marker { display: none; }
+
+.ct-failing-group-summary::before {
+  content: '▶ ';
+  font-size: 0.7em;
+  vertical-align: middle;
+}
+
+details[open] .ct-failing-group-summary::before { content: '▼ '; }
+
+.ct-failing-group-high   .ct-failing-group-summary { color: var(--ct-color-danger); }
+.ct-failing-group-medium .ct-failing-group-summary { color: var(--ct-color-warning); }
+.ct-failing-group-low    .ct-failing-group-summary { color: var(--ct-color-text-secondary); }
+
+.ct-failing-rule-list {
+  margin: var(--ct-space-xs) 0 0 0;
+  padding-left: var(--ct-space-lg);
+  list-style: disc;
+}
+
+.ct-failing-rule-item {
+  font-size: var(--ct-font-size-sm);
+  color: var(--ct-color-text);
+  padding: 2px 0;
+  line-height: 1.4;
 }
 
 /* ---- Full-screen report overlay ----------------------------- */

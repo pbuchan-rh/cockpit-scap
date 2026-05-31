@@ -96,76 +96,88 @@
       </div>
 
       <!-- Scan configuration row: config card + description card side by side -->
-      <div class="ct-scan-row" id="ct-scan-row">
-
-        <!-- Left: Scan configuration -->
-        <div class="pf-v6-c-card ct-scan-setup-card" id="ct-scan-setup">
+      <div id="ct-scan-row">
+        <div class="pf-v6-c-card">
           <div class="pf-v6-c-card__title">
             <h2 class="pf-v6-c-card__title-text">Host Scan Configuration</h2>
           </div>
-          <div class="pf-v6-c-card__body">
-            <div class="pf-v6-c-form ct-scan-form">
+          <div class="pf-v6-c-card__body ct-scan-body-grid">
 
-              <!-- Content (SDS file) selection -->
-              <div class="pf-v6-c-form__group">
-                <div class="pf-v6-c-form__group-label">
-                  <label class="pf-v6-c-form__label" for="ct-content-select">
-                    <span class="pf-v6-c-form__label-text">Content</span>
-                  </label>
+            <!-- Left: form fields -->
+            <div class="ct-scan-form-col">
+              <div class="pf-v6-c-form ct-scan-form">
+
+                <!-- Content (SDS file) selection -->
+                <div class="pf-v6-c-form__group">
+                  <div class="pf-v6-c-form__group-label">
+                    <label class="pf-v6-c-form__label" for="ct-content-select">
+                      <span class="pf-v6-c-form__label-text">Content</span>
+                    </label>
+                  </div>
+                  <div class="pf-v6-c-form__group-control">
+                    <span class="pf-v6-c-form-control">
+                      <select id="ct-content-select">
+                        <option value="">Detecting content&hellip;</option>
+                      </select>
+                    </span>
+                  </div>
                 </div>
-                <div class="pf-v6-c-form__group-control">
-                  <span class="pf-v6-c-form-control">
-                    <select id="ct-content-select">
-                      <option value="">Detecting content&hellip;</option>
-                    </select>
-                  </span>
+
+                <!-- Cross-version content alert (hidden unless CPE mismatch) -->
+                <div class="pf-v6-c-alert pf-m-warning ct-cpe-alert hidden"
+                     id="ct-cpe-alert" aria-label="Cross-version content">
+                  <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+                  <div>
+                    <h4 class="pf-v6-c-alert__title">Cross-version content</h4>
+                    <div class="pf-v6-c-alert__description" id="ct-cpe-alert-text"></div>
+                  </div>
                 </div>
+
+                <!-- Profile selection -->
+                <div class="pf-v6-c-form__group">
+                  <div class="pf-v6-c-form__group-label">
+                    <label class="pf-v6-c-form__label" for="ct-profile-select">
+                      <span class="pf-v6-c-form__label-text">Profile</span>
+                    </label>
+                  </div>
+                  <div class="pf-v6-c-form__group-control">
+                    <span class="pf-v6-c-form-control">
+                      <select id="ct-profile-select" disabled>
+                        <option value="">Select content first</option>
+                      </select>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Tailoring file -->
+                <div class="pf-v6-c-form__group" id="ct-tailor-file-group">
+                  <div class="pf-v6-c-form__group-label">
+                    <label class="pf-v6-c-form__label" for="ct-tailor-file-select">
+                      <span class="pf-v6-c-form__label-text">Tailoring File</span>
+                    </label>
+                  </div>
+                  <div class="pf-v6-c-form__group-control">
+                    <span class="pf-v6-c-form-control">
+                      <select id="ct-tailor-file-select">
+                        <option value="">(No tailoring — use full profile)</option>
+                      </select>
+                    </span>
+                    <p class="pf-v6-c-form__helper-text">Apply a saved tailoring file to customize the selected profile.</p>
+                  </div>
+                </div>
+
               </div>
-
-              <!-- Cross-version content alert (hidden unless CPE mismatch) -->
-              <div class="pf-v6-c-alert pf-m-warning ct-cpe-alert hidden"
-                   id="ct-cpe-alert" aria-label="Cross-version content">
-                <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
-                <div>
-                  <h4 class="pf-v6-c-alert__title">Cross-version content</h4>
-                  <div class="pf-v6-c-alert__description" id="ct-cpe-alert-text"></div>
-                </div>
-              </div>
-
-              <!-- Profile selection -->
-              <div class="pf-v6-c-form__group">
-                <div class="pf-v6-c-form__group-label">
-                  <label class="pf-v6-c-form__label" for="ct-profile-select">
-                    <span class="pf-v6-c-form__label-text">Profile</span>
-                  </label>
-                </div>
-                <div class="pf-v6-c-form__group-control">
-                  <span class="pf-v6-c-form-control">
-                    <select id="ct-profile-select" disabled>
-                      <option value="">Select content first</option>
-                    </select>
-                  </span>
-                </div>
-              </div>
-
-              <!-- Tailoring file -->
-              <div class="pf-v6-c-form__group" id="ct-tailor-file-group">
-                <div class="pf-v6-c-form__group-label">
-                  <label class="pf-v6-c-form__label" for="ct-tailor-file-select">
-                    <span class="pf-v6-c-form__label-text">Tailoring File</span>
-                  </label>
-                </div>
-                <div class="pf-v6-c-form__group-control">
-                  <span class="pf-v6-c-form-control">
-                    <select id="ct-tailor-file-select">
-                      <option value="">(No tailoring — use full profile)</option>
-                    </select>
-                  </span>
-                  <p class="pf-v6-c-form__helper-text">Apply a saved tailoring file to customize the selected profile.</p>
-                </div>
-              </div>
-
             </div>
+
+            <!-- Right: profile description -->
+            <div class="ct-profile-desc-col" id="ct-profile-desc-card">
+              <p class="ct-profile-desc-heading" id="ct-profile-desc-title">Profile</p>
+              <p class="ct-profile-desc-placeholder" id="ct-profile-desc-placeholder">
+                Select a profile to see its description.
+              </p>
+              <p class="hidden" id="ct-profile-description"></p>
+            </div>
+
           </div>
           <div class="pf-v6-c-card__footer ct-scan-actions">
             <button class="pf-v6-c-button pf-m-primary" type="button"
@@ -178,20 +190,6 @@
             </button>
           </div>
         </div>
-
-        <!-- Right: Profile description -->
-        <div class="pf-v6-c-card ct-profile-desc-card" id="ct-profile-desc-card">
-          <div class="pf-v6-c-card__title">
-            <h2 class="pf-v6-c-card__title-text" id="ct-profile-desc-title">Profile</h2>
-          </div>
-          <div class="pf-v6-c-card__body">
-            <p class="ct-profile-desc-placeholder" id="ct-profile-desc-placeholder">
-              Select a profile to see its description.
-            </p>
-            <p class="hidden" id="ct-profile-description"></p>
-          </div>
-        </div>
-
       </div>
 
       <!-- Scan in progress (hidden until scan starts) -->
@@ -215,6 +213,7 @@
           <div class="pf-v6-c-card__title">
             <h2 class="pf-v6-c-card__title-text">Scan Results</h2>
             <p class="ct-results-profile" id="ct-results-profile-title"></p>
+            <p class="ct-results-timestamp" id="ct-results-timestamp"></p>
           </div>
           <div class="pf-v6-c-card__body">
             <div class="ct-result-summary-row">
@@ -234,6 +233,18 @@
                 </div>
               </div>
             </div>
+            <!-- Failing rules summary — populated async after scan -->
+            <div class="ct-failing-summary" id="ct-failing-summary">
+              <div class="ct-failing-summary-loading hidden" id="ct-failing-summary-loading">
+                <span class="pf-v6-c-spinner pf-m-sm" aria-label="Loading failing rules">
+                  <span class="pf-v6-c-spinner__clipper"></span>
+                  <span class="pf-v6-c-spinner__lead-ball"></span>
+                  <span class="pf-v6-c-spinner__tail-ball"></span>
+                </span>
+                <span>Analyzing failing rules…</span>
+              </div>
+              <div id="ct-failing-summary-groups"></div>
+            </div>
           </div>
           <div class="pf-v6-c-card__footer">
             <div class="ct-result-actions">
@@ -246,7 +257,7 @@
               <button class="pf-v6-c-button pf-m-secondary" type="button"
                       id="ct-selective-rem-btn">Remediate</button>
               <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn" type="button"
-                      id="ct-new-scan-btn">New Scan</button>
+                      id="ct-new-scan-btn">Run Again</button>
             </div>
           </div>
         </div>
@@ -390,95 +401,107 @@
       <div class="hidden" id="cs-scan-section">
 
         <!-- Scan configuration row -->
-        <div class="ct-scan-row" id="cs-scan-row">
-
-          <!-- Left: configuration card -->
-          <div class="pf-v6-c-card ct-scan-setup-card">
+        <div id="cs-scan-row">
+          <div class="pf-v6-c-card">
             <div class="pf-v6-c-card__title">
               <h2 class="pf-v6-c-card__title-text">Container Scan Configuration</h2>
             </div>
-            <div class="pf-v6-c-card__body">
-              <div class="pf-v6-c-form ct-scan-form">
+            <div class="pf-v6-c-card__body ct-scan-body-grid">
 
-                <!-- Image selection -->
-                <div class="pf-v6-c-form__group">
-                  <div class="pf-v6-c-form__group-label">
-                    <label class="pf-v6-c-form__label" for="cs-image-select">
-                      <span class="pf-v6-c-form__label-text">Container Image</span>
-                    </label>
+              <!-- Left: form fields -->
+              <div class="ct-scan-form-col">
+                <div class="pf-v6-c-form ct-scan-form">
+
+                  <!-- Image selection -->
+                  <div class="pf-v6-c-form__group">
+                    <div class="pf-v6-c-form__group-label">
+                      <label class="pf-v6-c-form__label" for="cs-image-select">
+                        <span class="pf-v6-c-form__label-text">Container Image</span>
+                      </label>
+                    </div>
+                    <div class="pf-v6-c-form__group-control">
+                      <span class="pf-v6-c-form-control">
+                        <select id="cs-image-select">
+                          <option value="">Loading images&hellip;</option>
+                        </select>
+                      </span>
+                      <p class="pf-v6-c-form__helper-text">
+                        Only images in the system (root) store are listed.
+                        Pull with <code>sudo podman pull &lt;image&gt;</code>.
+                      </p>
+                    </div>
                   </div>
-                  <div class="pf-v6-c-form__group-control">
-                    <span class="pf-v6-c-form-control">
-                      <select id="cs-image-select">
-                        <option value="">Loading images&hellip;</option>
-                      </select>
-                    </span>
-                    <p class="pf-v6-c-form__helper-text">
-                      Only images in the system (root) store are listed.
-                      Pull with <code>sudo podman pull &lt;image&gt;</code>.
-                    </p>
+
+                  <!-- Version mismatch warning (hidden unless image/SDS mismatch detected) -->
+                  <div class="pf-v6-c-alert pf-m-warning ct-cpe-alert hidden"
+                       id="cs-version-warn" aria-label="Version mismatch">
+                    <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+                    <div>
+                      <h4 class="pf-v6-c-alert__title">Content version mismatch</h4>
+                      <div class="pf-v6-c-alert__description" id="cs-version-warn-text"></div>
+                    </div>
                   </div>
+
+                  <!-- Content (SDS) selection -->
+                  <div class="pf-v6-c-form__group">
+                    <div class="pf-v6-c-form__group-label">
+                      <label class="pf-v6-c-form__label" for="cs-content-select">
+                        <span class="pf-v6-c-form__label-text">Content</span>
+                      </label>
+                    </div>
+                    <div class="pf-v6-c-form__group-control">
+                      <span class="pf-v6-c-form-control">
+                        <select id="cs-content-select">
+                          <option value="">Detecting content&hellip;</option>
+                        </select>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Profile selection -->
+                  <div class="pf-v6-c-form__group">
+                    <div class="pf-v6-c-form__group-label">
+                      <label class="pf-v6-c-form__label" for="cs-profile-select">
+                        <span class="pf-v6-c-form__label-text">Profile</span>
+                      </label>
+                    </div>
+                    <div class="pf-v6-c-form__group-control">
+                      <span class="pf-v6-c-form-control">
+                        <select id="cs-profile-select" disabled>
+                          <option value="">Select content first</option>
+                        </select>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Tailoring file -->
+                  <div class="pf-v6-c-form__group" id="cs-tailor-file-group">
+                    <div class="pf-v6-c-form__group-label">
+                      <label class="pf-v6-c-form__label" for="cs-tailor-file-select">
+                        <span class="pf-v6-c-form__label-text">Tailoring File</span>
+                      </label>
+                    </div>
+                    <div class="pf-v6-c-form__group-control">
+                      <span class="pf-v6-c-form-control">
+                        <select id="cs-tailor-file-select">
+                          <option value="">(No tailoring &mdash; use full profile)</option>
+                        </select>
+                      </span>
+                    </div>
+                  </div>
+
                 </div>
-
-                <!-- Version mismatch warning (hidden unless image/SDS mismatch detected) -->
-                <div class="pf-v6-c-alert pf-m-warning ct-cpe-alert hidden"
-                     id="cs-version-warn" aria-label="Version mismatch">
-                  <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
-                  <div>
-                    <h4 class="pf-v6-c-alert__title">Content version mismatch</h4>
-                    <div class="pf-v6-c-alert__description" id="cs-version-warn-text"></div>
-                  </div>
-                </div>
-
-                <!-- Content (SDS) selection -->
-                <div class="pf-v6-c-form__group">
-                  <div class="pf-v6-c-form__group-label">
-                    <label class="pf-v6-c-form__label" for="cs-content-select">
-                      <span class="pf-v6-c-form__label-text">Content</span>
-                    </label>
-                  </div>
-                  <div class="pf-v6-c-form__group-control">
-                    <span class="pf-v6-c-form-control">
-                      <select id="cs-content-select">
-                        <option value="">Detecting content&hellip;</option>
-                      </select>
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Profile selection -->
-                <div class="pf-v6-c-form__group">
-                  <div class="pf-v6-c-form__group-label">
-                    <label class="pf-v6-c-form__label" for="cs-profile-select">
-                      <span class="pf-v6-c-form__label-text">Profile</span>
-                    </label>
-                  </div>
-                  <div class="pf-v6-c-form__group-control">
-                    <span class="pf-v6-c-form-control">
-                      <select id="cs-profile-select" disabled>
-                        <option value="">Select content first</option>
-                      </select>
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Tailoring file -->
-                <div class="pf-v6-c-form__group" id="cs-tailor-file-group">
-                  <div class="pf-v6-c-form__group-label">
-                    <label class="pf-v6-c-form__label" for="cs-tailor-file-select">
-                      <span class="pf-v6-c-form__label-text">Tailoring File</span>
-                    </label>
-                  </div>
-                  <div class="pf-v6-c-form__group-control">
-                    <span class="pf-v6-c-form-control">
-                      <select id="cs-tailor-file-select">
-                        <option value="">(No tailoring &mdash; use full profile)</option>
-                      </select>
-                    </span>
-                  </div>
-                </div>
-
               </div>
+
+              <!-- Right: profile description -->
+              <div class="ct-profile-desc-col" id="cs-profile-desc-card">
+                <p class="ct-profile-desc-heading" id="cs-profile-desc-title">Profile</p>
+                <p class="ct-profile-desc-placeholder" id="cs-profile-desc-placeholder">
+                  Select a profile to see its description.
+                </p>
+                <p class="hidden" id="cs-profile-description"></p>
+              </div>
+
             </div>
             <div class="pf-v6-c-card__footer ct-scan-actions">
               <button class="pf-v6-c-button pf-m-primary" type="button"
@@ -487,22 +510,7 @@
                       id="cs-guide-btn" disabled>View Guide</button>
             </div>
           </div>
-
-          <!-- Right: profile description -->
-          <div class="pf-v6-c-card ct-profile-desc-card" id="cs-profile-desc-card">
-            <div class="pf-v6-c-card__title">
-              <h2 class="pf-v6-c-card__title-text" id="cs-profile-desc-title">Profile</h2>
-            </div>
-            <div class="pf-v6-c-card__body">
-              <p class="ct-profile-desc-placeholder" id="cs-profile-desc-placeholder">
-                Select a profile to see its description.
-              </p>
-              <p class="hidden" id="cs-profile-description"></p>
-            </div>
-          </div>
-
         </div>
-        <!-- end cs-scan-row -->
 
         <!-- Scan in progress -->
         <div class="pf-v6-c-card ct-scan-progress hidden" id="cs-progress">
@@ -525,6 +533,7 @@
             <div class="pf-v6-c-card__title">
               <h2 class="pf-v6-c-card__title-text">Container Scan Results</h2>
               <p class="ct-results-profile" id="cs-results-profile-title"></p>
+              <p class="ct-results-timestamp" id="cs-results-timestamp"></p>
             </div>
             <div class="pf-v6-c-card__body">
               <div class="ct-result-summary-row">
@@ -545,6 +554,18 @@
                 </div>
               </div>
             </div>
+            <!-- Failing rules summary — populated async after scan -->
+            <div class="ct-failing-summary" id="cs-failing-summary">
+              <div class="ct-failing-summary-loading hidden" id="cs-failing-summary-loading">
+                <span class="pf-v6-c-spinner pf-m-sm" aria-label="Loading failing rules">
+                  <span class="pf-v6-c-spinner__clipper"></span>
+                  <span class="pf-v6-c-spinner__lead-ball"></span>
+                  <span class="pf-v6-c-spinner__tail-ball"></span>
+                </span>
+                <span>Analyzing failing rules…</span>
+              </div>
+              <div id="cs-failing-summary-groups"></div>
+            </div>
             <div class="pf-v6-c-card__footer">
               <div class="ct-result-actions">
                 <button class="pf-v6-c-button pf-m-primary" type="button"
@@ -556,7 +577,7 @@
                 <button class="pf-v6-c-button pf-m-secondary" type="button"
                         id="cs-selective-rem-btn">Remediate</button>
                 <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn" type="button"
-                        id="cs-new-scan-btn">New Scan</button>
+                        id="cs-new-scan-btn">Run Again</button>
               </div>
             </div>
           </div>

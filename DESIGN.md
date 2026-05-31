@@ -292,7 +292,7 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 | **v2** ✅ | Multi-version SDS content | RHEL 6–9 SDS staging, CPE OS detection, content management UI |
 | **v3** ✅ | Container image scanning | `oscap-podman` integration, root Podman store, version mismatch detection, per-image history |
 | **v3.3** ✅ | Selective remediation + observability | Selective Remediation Builder (host + container), Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
-| **v3.4** 🔲 | Scheduled scanning | Polkit rule, headless scan script, systemd timer units, schedule UI with cron input, failure banners |
+| **v3.4** 🔲 | Scheduled scanning + UI polish | Polkit rule, headless scan script, systemd timer units, schedule UI with cron input, failure banners; failing rules summary, View Scan, single config card |
 
 **Explicitly out of scope (any version):**
 - Remote SSH scanning — different tool, different trust model
@@ -300,6 +300,30 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 - Red Hat Satellite / Insights replacement — wrong audience, wrong scale
 
 ---
+
+---
+
+## Scan Results Card — v3.4 Design
+
+### Failing Rules Summary
+
+Displayed below the pass/fail/score badges, loaded asynchronously after the results card renders. Uses `PY_EXTRACT_FAILING_RULES` (already used by the Selective Remediation panel) — no new Python. Groups failing rules into HIGH / MEDIUM / LOW collapsible `<details>/<summary>` blocks; HIGH expanded by default, empty groups hidden. A spinner shows while loading; failures are silently suppressed since the summary is informational.
+
+**Why async:** `PY_EXTRACT_FAILING_RULES` spawns a Python subprocess against `results.xml`. On slower machines this is noticeable. Showing the score and badges immediately, then populating the rule groups when ready, gives a better perceived-performance experience.
+
+### View Scan / Results Persistence
+
+History rows now show "View Scan" instead of separate "View Report" + "Download XML" actions. Clicking "View Scan" calls `loadScanFromHistory(manifest)` which sets all `current*` module vars from the manifest and calls `showResults()` — identical state to a live scan completing. View Report and Download XML are available on the results card itself.
+
+This solves the "no way back" problem: the results card survives navigation and can be re-entered for any historical scan at any time.
+
+**Race condition guard:** `loadScanFromHistory` bails immediately if `currentScanProc` is set. Additionally, `loadHistory()` is called in `showScanProgress()` so the history table rebuilds with View Scan and Run Again buttons visually disabled the moment a scan starts.
+
+### Single Scan Configuration Card
+
+The previous two-card split (form card left + profile description card right) is replaced by a single `pf-v6-c-card` with an internal CSS grid (`ct-scan-body-grid: 1fr 1fr`). Form fields on the left, profile description on the right behind a border divider.
+
+**Why:** The two-card layout caused a jarring layout shift — idle state showed two cards at half-width, but scan progress and results were full-width. A single card eliminates the shift and reads as one coherent form. Profile description still has its own visual column without being a separate card.
 
 ---
 
