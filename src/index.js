@@ -1932,6 +1932,7 @@ function renderTailoringList(sidecars) {
         dlBtn.addEventListener('click', () => {
             const fname = sc.path.split('/').pop();
             downloadArtifact(sc.path, fname, 'application/xml');
+            appendActivityLog({ type: 'tailor_download', tab: 'tailoring', file: fname, profile: sc.name });
         });
 
         const delBtn       = document.createElement('button');
@@ -2304,26 +2305,44 @@ function appendActivityLog(entry) {
 let activityPollInterval = null;
 
 const ACTIVITY_TYPE_LABELS = {
-    scan_start:     'Scan Started',
-    scan_complete:  'Scan Completed',
-    scan_cancel:    'Scan Cancelled',
-    scan_error:     'Scan Failed',
-    scan_delete:        'Scan Deleted',
-    remediate_download: 'Remediation Downloaded',
-    guide:          'Guide Generated',
-    validate:       'Content Validated',
-    content_delete: 'Content Deleted',
-    tailor_upload:  'Tailoring Uploaded',
-    tailor_load:    'Tailoring Loaded',
-    tailor_save:    'Tailoring Saved',
-    tailor_delete:  'Tailoring Deleted',
+    scan_start:          'Scan Started',
+    scan_complete:       'Scan Completed',
+    scan_cancel:         'Scan Cancelled',
+    scan_error:          'Scan Failed',
+    scan_delete:         'Scan Deleted',
+    guide:               'Guide Generated',
+    validate:            'Content Validated',
+    content_delete:      'Content Deleted',
+    tailor_upload:       'Tailoring Uploaded',
+    tailor_load:         'Tailoring Loaded',
+    tailor_save:         'Tailoring Saved',
+    tailor_delete:       'Tailoring Deleted',
+    tailor_download:     'Tailoring Downloaded',
+    remediate_download:  'Remediation Downloaded',
+};
+
+const ACTIVITY_BADGE_CLASS = {
+    scan_start:          'ct-activity-scan',
+    scan_complete:       'ct-activity-scan',
+    scan_cancel:         'ct-activity-scan',
+    scan_error:          'ct-activity-danger',
+    scan_delete:         'ct-activity-danger',
+    guide:               'ct-activity-guide',
+    validate:            'ct-activity-validate',
+    content_delete:      'ct-activity-danger',
+    tailor_upload:       'ct-activity-tailor',
+    tailor_load:         'ct-activity-tailor',
+    tailor_save:         'ct-activity-tailor',
+    tailor_delete:       'ct-activity-danger',
+    tailor_download:     'ct-activity-tailor',
+    remediate_download:  'ct-activity-remediate',
 };
 
 const ACTIVITY_FILTER_MAP = {
     scan:      ['scan_start', 'scan_complete', 'scan_cancel', 'scan_error', 'scan_delete', 'remediate_download'],
     guide:     ['guide'],
     validate:  ['validate', 'content_delete'],
-    tailoring: ['tailor_upload', 'tailor_load', 'tailor_save', 'tailor_delete'],
+    tailoring: ['tailor_upload', 'tailor_load', 'tailor_save', 'tailor_delete', 'tailor_download'],
 };
 
 function startActivityPoll() {
@@ -2388,7 +2407,7 @@ function renderActivityTable(entries) {
         tr.innerHTML = `
             <td>${formatActivityTime(e.ts)}</td>
             <td>${activityTabLabel(e.tab)}</td>
-            <td><span class="ct-activity-badge ct-activity-${e.type.split('_')[0]}">${ACTIVITY_TYPE_LABELS[e.type] || e.type}</span></td>
+            <td><span class="ct-activity-badge ${ACTIVITY_BADGE_CLASS[e.type] || 'ct-activity-scan'}">${ACTIVITY_TYPE_LABELS[e.type] || e.type}</span></td>
             <td class="ct-activity-details">${activityDetails(e)}</td>
             <td>${activityResult(e)}</td>
         `;
