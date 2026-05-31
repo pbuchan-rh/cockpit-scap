@@ -1,6 +1,6 @@
 # cockpit-scap — Design Document
 
-**Status:** v3.3 current  
+**Status:** v3.4-dev current  
 **Last updated:** 2026-05-31
 
 ---
@@ -45,91 +45,80 @@ scoped to scan execution only.
 
 ### Navigation Architecture
 
-**Decision:** Two top-level tabs with a guided workflow model.
-
+**Current tab bar (v3.4):**
 ```
-[ Scan ]  [ Tailoring ]
+[ Host Scan ]  [ Container Scan ]  [ Policy Tailoring ]  [ Content Library ]  [ Dashboard ]        Activity →
 ```
 
-**Tab 1 — Scan:**
-Content/profile selection, optional tailoring file upload, scan execution, results view, scan history
+Each tab is an independent workflow with shared infrastructure (content detection, tailoring files, history):
 
-**Tab 2 — Tailoring:**
-v1: visible but clearly stubbed as "coming in a future release" — honest placeholder, not hidden
-v2: rule tree editor, enable/disable rules, adjust variable values, save/download tailoring file
+- **Host Scan** — SDS + profile selection, scan execution, results card (donut, failing rules summary), scan history
+- **Container Scan** — `oscap-podman` workflow, root Podman image store, identical results/history to host scan
+- **Policy Tailoring** — full rule tree editor, variable editor, save/edit/update/delete tailoring files
+- **Content Library** — manage user-staged SDS files (stage via SCP), validate, delete
+- **Dashboard** — latest scan per host + container image, compliance score, delta vs previous *(preview)*
+- **Activity** — real-time action log, filter by type, export CSV, clear
 
-**Rationale:**
-Reflects the actual admin mental model:
-1. Understand first (scan and report)
-2. Customize carefully (tailoring)
-3. Remediate last and deliberately
-
-The two-tab model communicates this workflow philosophy implicitly. An admin may spend an entire
-session in Tailoring building a policy artifact without ever scanning. Or scan repeatedly without
-touching Tailoring. These are independent workflows with a shared foundation.
+**Original rationale (still holds):**
+Reflects the actual admin mental model — scan first, tailor carefully, remediate deliberately. Tabs are independent workflows; an admin can spend an entire session in Tailoring without ever scanning.
 
 ---
 
-### UI Flow — Scan Tab
+### UI Flow — Host Scan Tab (v3.4)
 
 ```
-┌─────────────────────────────────────────┐
-│  Content (SDS file selector)            │
-│  Profile (dropdown + description block) │
-│  Tailoring file (upload, optional)      │
-│  [ Run Scan ]                           │
-├─────────────────────────────────────────┤
-│  SCAN RUNNING STATE                     │
-│  Progress / status indicator            │
-│  [ Cancel Scan ]                        │
-├─────────────────────────────────────────┤
-│  RESULTS STATE (replaces running state) │
-│  Result banner (pass/fail/error counts) │
-│  Severity breakdown badges              │
-│  Rule results table (expandable rows)   │
-│  [ View Full Report ] (new window)      │
-│  [ Download Report ]                    │
-│  [ Download Bash Remediation ]          │
-│  [ Download Ansible Remediation ]       │
-│  [ Apply Remediation ] (stubbed, v2)    │
-│  [ New Scan ]                           │
-├─────────────────────────────────────────┤
-│  SCAN HISTORY                           │
-│  Table: date | profile | pass/fail |    │
-│  links to report + remediation          │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  SCAN CONFIGURATION (single unified card, two columns)  │
+│  Left: Content selector, Profile selector,              │
+│        Tailoring file selector                          │
+│  Right: Profile description (updates on selection)      │
+│  Footer: [ Run Scan ]  View Guide                       │
+├─────────────────────────────────────────────────────────┤
+│  SCAN RUNNING STATE                                     │
+│  Spinner + progress indicator                           │
+│  [ Cancel Scan ]                                        │
+├─────────────────────────────────────────────────────────┤
+│  RESULTS CARD (View Scan from history or post-scan)     │
+│  Profile title + scan timestamp                         │
+│  Pass/Fail/Error/Not-checked badges + score donut       │
+│  Failing rules summary (HIGH/MEDIUM/LOW collapsible,    │
+│    rule title + CCE identifier per rule)                │
+│  [ View Full Report ] [ Download Report ]               │
+│  [ Download Results XML ] [ Remediate ] [ Run Again ]   │
+│                                          [ Close ]      │
+├─────────────────────────────────────────────────────────┤
+│  SCAN HISTORY                                           │
+│  Date | Profile | Pass | Fail | Score | Actions        │
+│  Actions: Run Again  View Scan  Remediate  Delete       │
+│  Export CSV →                                           │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ### Content Loading
 
-**v1:** Auto-detect SSG content from `/usr/share/xml/scap/ssg/content/`
-- List all `*-ds.xml` files
-- Display human-readable names (parse from `oscap info` output, not raw filenames)
-- On RHEL 10 this will typically be `ssg-rhel10-ds.xml`
+**System content** — auto-detected from `/usr/share/xml/scap/ssg/content/`. Human-readable names via a static map covering all standard SSG filenames (RHEL 6–10, Firefox, etc.).
 
-**v2 (deferred):** Allow arbitrary SDS/XCCDF file upload by the user
+**User content** — admin stages files via SCP to `/var/lib/cockpit-scap/content/`. The SDS selector shows both sources in grouped `<optgroup>` ("System Content" / "Uploaded Content"). Content Library tab lists uploaded files with per-entry delete and `oscap ds sds-validate` validation.
+
+**In-browser upload via UI:** Deferred (REQ-53). SCP-first approach is sufficient; Cockpit file size limits make browser upload unreliable for large SDS files. Content Library tab shows staging instructions.
 
 ---
 
 ### Results Display
 
-**HTML Report:** Opens in a new browser window/tab  
-**Rationale:** `oscap` generates a beautifully formatted self-contained HTML report. Opening in a
-new window costs near-zero implementation effort, avoids CSP iframe complexity, and doesn't try
-to reinvent what `oscap` already does well. Download offered alongside.
+**HTML Report:** Opens via IndexedDB bridge → viewer.html (CSP-compliant). `oscap` generates a rich self-contained HTML report; opening it avoids duplicating what oscap already does well. Download offered alongside.
 
-**Rule results table:** PatternFly compound-expandable table  
-- Collapsed: rule title, severity badge, result status
-- Expanded: full rule description, fix text
-- Filterable by result (pass/fail/error/notchecked) and severity
+**Results XML download:** Raw `results.xml` downloadable for auditor archives — available on results card and each history row.
 
-**Result status color mapping:**
-- Pass → PatternFly success green (`--pf-global--success-color--100`)
-- Fail → PatternFly danger red (`--pf-global--danger-color--100`)
-- Error → PatternFly warning orange (`--pf-global--warning-color--100`)
-- Not checked / Not applicable → neutral gray
+**Score donut:** Plain SVG arc. Arc length = compliance %. Color based on failure count: 0=green, 1–10=yellow, 11+=red. Score percentage in center. No library. See Score Donut design note above.
+
+**Failing rules summary:** Async-loaded below badges. Collapsible `<details>/<summary>` groups for HIGH/MEDIUM/LOW (HIGH expanded by default). Each rule shows title + CCE identifier as secondary text. Powered by `PY_EXTRACT_FAILING_RULES` (shared with Selective Remediation panel).
+
+**Rule results table (full expandable):** Still deferred. The oscap HTML report provides a rich, filterable rule-by-rule view that would be expensive to duplicate at equivalent quality. The failing rules summary fills the quick-reference need without duplicating the report.
+
+**Result status colors:** PF6 CSS custom properties — `--ct-color-success`, `--ct-color-danger`, `--ct-color-warning`, `--ct-color-border` (neutral).
 
 ---
 
@@ -148,14 +137,17 @@ remediation.sh    # bash remediation script
 remediation.yml   # ansible remediation playbook
 ```
 
-**manifest.json schema:**
+**manifest.json schema (v3.4):**
 ```json
 {
-  "timestamp": "2026-05-28T14:32:00Z",
+  "timestamp": "2026-05-28T14-32-00",
   "sds_file": "/usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml",
   "profile_id": "xccdf_org.ssgproject.content_profile_cis",
   "profile_title": "CIS Red Hat Enterprise Linux 10 Benchmark for Level 2 - Server",
+  "tailoring_file": "/var/lib/cockpit-scap/tailoring/my-tailoring.xml",
   "result_id": "xccdf_org.open-scap_testresult_...",
+  "scan_type": "host",
+  "scheduled": false,
   "counts": {
     "pass": 142,
     "fail": 38,
@@ -167,42 +159,44 @@ remediation.yml   # ansible remediation playbook
 }
 ```
 
+Container scans additionally include `"scan_type": "container"`, `"image_name"`, and `"image_id"`. Host scans without `scan_type` are treated as `"host"` for backwards compatibility.
+
 ---
 
 ### Remediation
 
-**v1 — Generate and download only:**
+**Full remediation artifacts** — generated post-scan for every scan:
 - Bash script: `oscap xccdf generate fix --fix-type bash`
 - Ansible playbook: `oscap xccdf generate fix --fix-type ansible`
-- Both generated post-scan from `results.xml` + `result-id`
-- Both offered as downloads from results view and history
+- Both respect `--tailoring-file` when a tailoring file was used
 
-**v2 (deferred) — Apply in place:**
-- "Apply Remediation" button present in v1 UI but clearly disabled/stubbed
-- Requires design discussion before implementation (sudoers, risk acknowledgment flow)
+**Selective Remediation Builder (v3.3)** — after any scan (current or history), the Remediate button opens a panel showing all failing rules from `results.xml`, grouped HIGH/MEDIUM/LOW. Admin selects rules, downloads a filtered bash or Ansible artifact. Python block parsing (`PY_FILTER_FIX`) filters the already-generated scripts. Available for both host and container scans. Container panel includes a warning that scripts apply to image builds, not live containers.
 
-**fapolicyd advisory:**
-- Originally planned as an inline alert at all remediation download surfaces
-- **Struck from requirements (REQ-23)** — target audience (security admins) knows their stack
+**Apply in place:** Disabled/stubbed. Requires design discussion — risk acknowledgment flow, fapolicyd interaction. `oscap-podman` explicitly rejects `--remediate` for container scans; container remediation is permanently stubbed.
+
+**fapolicyd advisory:** Originally planned as an inline alert. **Struck (REQ-23)** — security admins know their stack; advisory would require equivalent warnings for SELinux, auditd, etc.
 
 ---
 
-### Tailoring (Delivered in v0.8)
+### Tailoring
 
-**Actual implementation:** No `autotailor` dependency. Implemented entirely in-browser:
+**No `autotailor` dependency.** Implemented entirely in-browser:
 - Python3 `iterparse` extracts rule tree + variable values from the SDS file with an early break on the `Benchmark` element — avoids parsing the 35MB OVAL section
 - Rule tree rendered as native `<details>/<summary>` elements with checkbox delta tracking
 - Variable editor uses select dropdowns for enumerated values, text inputs otherwise
 - XCCDF tailoring XML generated as a string in JavaScript from the delta state — no external tool required
 - JSON sidecar written alongside each `.xml` for fast metadata access without re-parsing XML
 
-**Tailoring file workflow (as delivered):**
-1. User selects content + base profile, names the tailored profile
-2. Python3 script runs via `cockpit.spawn` and returns rule tree + variables as JSON
-3. User toggles rules, adjusts variables — only deltas from the base profile are tracked
+**Tailoring file workflow:**
+1. Select content + base profile, name the tailored profile, click Load Profile
+2. Python3 script returns rule tree + variables as JSON via `cockpit.spawn`
+3. Toggle rules, adjust variables — only deltas from the base profile are tracked
 4. Save writes `.xml` + `.json` sidecar to `/var/lib/cockpit-scap/tailoring/`
-5. Saved files can be edited, downloaded, uploaded (external files), or deleted
-6. Scan tab shows tailoring files filtered by the current SDS; selected tailoring file is passed to `oscap xccdf eval --tailoring-file` and `oscap xccdf generate fix --tailoring-file`
+5. Saved files can be edited (Update in place or Save as New), downloaded, uploaded (external XCCDF), or deleted
+6. **Update-in-place (v3.3):** editing an existing file shows "Update" + "Save as New" buttons; Update overwrites original XML + JSON sidecar. `tailorEditingSidecar` module var tracks which file is being edited.
+7. **Inline name field:** editor header shows editable profile name; both Update and Save as New read from it
+8. Scan tabs show tailoring files in a selector; selected file passed to `oscap xccdf eval --tailoring-file` and `oscap xccdf generate fix --tailoring-file`
+9. **Run Again with tailoring:** uses `base_profile_id` from the JSON sidecar (not the tailoring profile ID) to correctly restore the base profile selector
 
 ---
 
@@ -227,9 +221,9 @@ remediation.yml   # ansible remediation playbook
 
 ### fapolicyd
 
-- `oscap`, `autotailor` are RPM-installed — in trust database by default
+- `oscap` is RPM-installed — in trust database by default
 - Generated remediation scripts are new files — not in trust database
-- UI advisory callout handles this at the point of download
+- UI advisory for this was struck (REQ-23) — security admins know their stack
 - No module-level workaround needed
 
 ---
@@ -242,11 +236,13 @@ remediation.yml   # ansible remediation playbook
 | Profile list | `oscap info <sds-file>` |
 | Profile detail | `oscap info --profile <id> <sds-file>` |
 | Run scan | `oscap xccdf eval --profile <id> --report <html> --results <xml> <sds-file>` |
+| Scan with tailoring | `oscap xccdf eval --tailoring-file <xml> --profile <id> --report <html> --results <xml> <sds-file>` |
 | Get result-id | `oscap info <results.xml>` |
 | Generate bash fix | `oscap xccdf generate fix --fix-type bash --result-id <id> --output <sh> <results.xml>` |
 | Generate ansible fix | `oscap xccdf generate fix --fix-type ansible --result-id <id> --output <yml> <results.xml>` |
-| Tailoring (v2) | `autotailor --json-tailoring <json> --output <tailoring.xml> <sds-file> <profile-id>` |
-| Scan with tailoring | `oscap xccdf eval --tailoring-file <xml> --profile <id> --report <html> --results <xml> <sds-file>` |
+| Generate guide | `oscap xccdf generate guide --profile <id> <sds-file>` (stdout, no file write) |
+| Validate SDS | `oscap ds sds-validate <sds-file>` |
+| Container scan | `oscap-podman <image-id> xccdf eval --profile <id> --report <html> --results <xml> <sds-file>` |
 
 **Critical note:** Always pass both `--report` and `--results` to every scan. The `results.xml` file
 is required for remediation generation and must be preserved in the scan history directory.
@@ -292,7 +288,7 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 | **v2** ✅ | Multi-version SDS content | RHEL 6–9 SDS staging, CPE OS detection, content management UI |
 | **v3** ✅ | Container image scanning | `oscap-podman` integration, root Podman store, version mismatch detection, per-image history |
 | **v3.3** ✅ | Selective remediation + observability | Selective Remediation Builder (host + container), Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
-| **v3.4** 🔲 | Scheduled scanning + UI polish | Polkit rule, headless scan script, systemd timer units, schedule UI with cron input, failure banners; failing rules summary, View Scan, single config card |
+| **v3.4** 🔲 | UI polish release | Failing rules summary with CCE identifiers, score donut, View Scan from history, results card persistence, unified scan config card, close button; scheduled scanning deliberately deferred (see design note) |
 
 **Explicitly out of scope (any version):**
 - Remote SSH scanning — different tool, different trust model
@@ -333,17 +329,35 @@ The previous two-card split (form card left + profile description card right) is
 
 ---
 
-## Scheduled Scanning — v3.4 Design
+## Scheduled Scanning — Deliberately Deferred
 
-### Privilege Model
+### Why Not v3.4
 
-**Decision:** Ship a polkit rule authorizing `/usr/libexec/cockpit-scap-scan` for admin users. Do not modify sudoers.
+Scheduled scanning was originally scoped for v3.4 but was deliberately deferred after design review. The decision is recorded here because it is non-obvious and worth preserving.
 
-**Rationale:**
-- Polkit is the correct RHEL mechanism — consistent with how Cockpit handles privilege throughout
-- Scoping the rule to a specific script (not bare `oscap`) limits the attack surface
-- Ships and removes cleanly with the RPM — same pattern as the SELinux file context in `%post`/`%postun`
-- No `NOPASSWD` sudoers entry, no polkit action file requiring D-Bus — a `.rules` file is sufficient
+**The core issue: operating model.**
+
+cockpit-scap is a pure Cockpit module. Its entire footprint is:
+- Module files in `/usr/share/cockpit/cockpit-scap/`
+- Runtime data in `/var/lib/cockpit-scap/`
+- All execution within the Cockpit browser session via `cockpit.spawn()` and `cockpit.file()`
+
+Scheduled scanning requires background execution — scans that run without a browser session, triggered by systemd timers. This necessitates:
+- A helper script in `/usr/libexec/cockpit-scap-scan`
+- Parameterized systemd units in `/usr/lib/systemd/system/`
+- A polkit rule (or equivalent privilege mechanism)
+
+That is a fundamentally different kind of software. Once you ship systemd units and background scripts, cockpit-scap is no longer a Cockpit module — it is a system service that happens to have a Cockpit UI. Background processes persist and execute outside the browser session, survive module uninstall unless explicitly cleaned up, and create ongoing system-level maintenance obligations.
+
+**Why this matters beyond cleanliness:**
+- EPEL package reviewers have a clear, well-understood category for pure Cockpit modules. Adding system services complicates the review and maintenance story.
+- Official Cockpit modules (cockpit-storage, cockpit-machines, cockpit-networkmanager) do not ship their own polkit rules or helper scripts — they delegate to D-Bus services that already exist. We would be doing something those modules do not.
+- The module is already well beyond SCAP Workbench feature parity without scheduled scanning. The value/complexity tradeoff does not justify crossing this line in v3.4.
+
+**Future path:**
+Scheduled scanning is not ruled out permanently — it is deferred until there is a clear design that respects the operating model boundary. Possibilities include: a companion sub-package (`cockpit-scap-scheduler`) that ships the system-level components separately, or waiting until the Cockpit project itself provides a sanctioned mechanism for scheduled background operations.
+
+Until then, administrators who need scheduled scanning can use cron or systemd timers calling `oscap` directly, dropping results into `/var/lib/cockpit-scap/results/` in the expected manifest format. This is documentable as a power-user recipe without shipping system infrastructure in the package.
 
 ### Architecture
 
