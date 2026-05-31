@@ -110,7 +110,11 @@ const PY_EXTRACT_FAILING_RULES = [
     '    t = rule.find("{%s}title" % NS)',
     '    ci = next((i for i in rule.findall("{%s}ident" % NS) if "cce" in (i.get("system","")).lower()), None)',
     '    cce = ci.text.strip() if ci is not None else ""',
-    '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity", "unknown"), cce)',
+    '    d_el = rule.find("{%s}description" % NS)',
+    '    desc = " ".join("".join(d_el.itertext()).split()) if d_el is not None else ""',
+    '    r_el = rule.find("{%s}rationale" % NS)',
+    '    rat  = " ".join("".join(r_el.itertext()).split()) if r_el is not None else ""',
+    '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity", "unknown"), cce, desc, rat)',
     'has_rem = False; auto_rules = set()',
     'if len(sys.argv) > 2:',
     '    try:',
@@ -124,8 +128,8 @@ const PY_EXTRACT_FAILING_RULES = [
     '        rid = rr.get("idref", "")',
     '        if rid in seen: continue',
     '        seen.add(rid)',
-    '        t, s, cce = rinfo.get(rid, (rid, rr.get("severity", "unknown"), ""))',
-    '        rule = {"id": rid, "title": t, "severity": s, "cce": cce}',
+    '        t, s, cce, desc, rat = rinfo.get(rid, (rid, rr.get("severity", "unknown"), "", "", ""))',
+    '        rule = {"id": rid, "title": t, "severity": s, "cce": cce, "desc": desc, "rat": rat}',
     '        if has_rem: rule["automated"] = rid in auto_rules',
     '        fails.append(rule)',
     'order = {"high":0,"medium":1,"low":2}',
@@ -1191,8 +1195,17 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath) {
                 const ruleList = document.createElement('div');
                 ruleList.className = 'ct-failing-rule-list';
                 list.forEach(r => {
-                    const row = document.createElement('div');
-                    row.className = 'ct-failing-rule-row';
+                    const hasExpand = !!r.desc;
+                    const wrapper = hasExpand
+                        ? document.createElement('details')
+                        : document.createElement('div');
+                    wrapper.className = 'ct-rule-item';
+
+                    const row = hasExpand
+                        ? document.createElement('summary')
+                        : document.createElement('div');
+                    row.className = 'ct-failing-rule-row' + (hasExpand ? ' ct-rule-row-expandable' : '');
+
                     const textCol = document.createElement('div');
                     textCol.className = 'ct-rule-text-col';
                     const title = document.createElement('span');
@@ -1214,7 +1227,28 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath) {
                         tag.textContent = r.automated ? 'Automated' : 'Manual';
                         row.appendChild(tag);
                     }
-                    ruleList.appendChild(row);
+                    wrapper.appendChild(row);
+
+                    if (hasExpand) {
+                        const body = document.createElement('div');
+                        body.className = 'ct-rule-expand';
+                        const desc = document.createElement('p');
+                        desc.className = 'ct-rule-expand-desc';
+                        desc.textContent = r.desc;
+                        body.appendChild(desc);
+                        if (r.rat && r.rat !== r.desc) {
+                            const ratLabel = document.createElement('p');
+                            ratLabel.className = 'ct-rule-expand-label';
+                            ratLabel.textContent = 'Rationale';
+                            const rat = document.createElement('p');
+                            rat.className = 'ct-rule-expand-rat';
+                            rat.textContent = r.rat;
+                            body.appendChild(ratLabel);
+                            body.appendChild(rat);
+                        }
+                        wrapper.appendChild(body);
+                    }
+                    ruleList.appendChild(wrapper);
                 });
                 details.appendChild(ruleList);
                 groupsEl.appendChild(details);
