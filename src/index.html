@@ -219,6 +219,7 @@
             <div class="ct-result-summary-row">
               <div class="ct-result-badges" id="ct-result-badges"></div>
               <div class="ct-result-score" id="ct-result-score"></div>
+              <span class="ct-result-status" id="ct-result-status"></span>
             </div>
             <!-- Shown only when scan used uploaded (not system-package) content -->
             <div class="pf-v6-c-alert pf-m-warning ct-uploaded-warn hidden"
@@ -539,6 +540,7 @@
               <div class="ct-result-summary-row">
                 <div class="ct-result-badges" id="cs-result-badges"></div>
                 <div class="ct-result-score" id="cs-result-score"></div>
+                <span class="ct-result-status" id="cs-result-status"></span>
               </div>
               <!-- notapplicable context note — always shown for container scans -->
               <div class="pf-v6-c-alert pf-m-info cs-notapplicable-note"
@@ -553,7 +555,6 @@
                   </div>
                 </div>
               </div>
-            </div>
             <!-- Failing rules summary — populated async after scan -->
             <div class="ct-failing-summary" id="cs-failing-summary">
               <div class="ct-failing-summary-loading hidden" id="cs-failing-summary-loading">
@@ -566,7 +567,8 @@
               </div>
               <div id="cs-failing-summary-groups"></div>
             </div>
-            <div class="pf-v6-c-card__footer">
+          </div>
+          <div class="pf-v6-c-card__footer">
               <div class="ct-result-actions">
                 <button class="pf-v6-c-button pf-m-primary" type="button"
                         id="cs-view-report-btn">View Full Report</button>

@@ -108,7 +108,9 @@ const PY_EXTRACT_FAILING_RULES = [
     'for rule in root.iter("{%s}Rule" % NS):',
     '    rid = rule.get("id", "")',
     '    t = rule.find("{%s}title" % NS)',
-    '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity", "unknown"))',
+    '    ci = next((i for i in rule.findall("{%s}ident" % NS) if "cce" in (i.get("system","")).lower()), None)',
+    '    cce = ci.text.strip() if ci is not None else ""',
+    '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity", "unknown"), cce)',
     'fails = []; seen = set()',
     'for rr in root.iter("{%s}rule-result" % NS):',
     '    r = rr.find("{%s}result" % NS)',
@@ -116,8 +118,8 @@ const PY_EXTRACT_FAILING_RULES = [
     '        rid = rr.get("idref", "")',
     '        if rid in seen: continue',
     '        seen.add(rid)',
-    '        t, s = rinfo.get(rid, (rid, rr.get("severity", "unknown")))',
-    '        fails.append({"id": rid, "title": t, "severity": s})',
+    '        t, s, cce = rinfo.get(rid, (rid, rr.get("severity", "unknown"), ""))',
+    '        fails.append({"id": rid, "title": t, "severity": s, "cce": cce})',
     'order = {"high":0,"medium":1,"low":2}',
     'fails.sort(key=lambda x: (order.get(x["severity"], 3), x["title"].lower()))',
     'print(json.dumps(fails))',
@@ -1120,15 +1122,27 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId) {
                 summary.className = 'ct-failing-group-summary';
                 summary.textContent = label + ' — ' + list.length + ' failing';
                 details.appendChild(summary);
-                const ul = document.createElement('ul');
-                ul.className = 'ct-failing-rule-list';
+                const ruleList = document.createElement('div');
+                ruleList.className = 'ct-failing-rule-list';
                 list.forEach(r => {
-                    const li = document.createElement('li');
-                    li.className = 'ct-failing-rule-item';
-                    li.textContent = r.title;
-                    ul.appendChild(li);
+                    const row = document.createElement('div');
+                    row.className = 'ct-failing-rule-row';
+                    const textCol = document.createElement('div');
+                    textCol.className = 'ct-rule-text-col';
+                    const title = document.createElement('span');
+                    title.className = 'ct-rule-title';
+                    title.textContent = r.title;
+                    textCol.appendChild(title);
+                    if (r.cce) {
+                        const cce = document.createElement('span');
+                        cce.className = 'ct-rule-cce';
+                        cce.textContent = r.cce;
+                        textCol.appendChild(cce);
+                    }
+                    row.appendChild(textCol);
+                    ruleList.appendChild(row);
                 });
-                details.appendChild(ul);
+                details.appendChild(ruleList);
                 groupsEl.appendChild(details);
             });
         })
@@ -1173,6 +1187,10 @@ function showResults(manifest) {
     });
 
     document.getElementById('ct-result-score').textContent = score.toFixed(1) + '%';
+
+    const statusBadge = document.getElementById('ct-result-status');
+    statusBadge.textContent = counts.fail === 0 ? 'Compliant' : 'Non-Compliant';
+    statusBadge.className   = counts.fail === 0 ? 'ct-result-status ct-result-status-pass' : 'ct-result-status ct-result-status-fail';
 
     const uploadedWarn = document.getElementById('ct-uploaded-content-warning');
     if (currentSdsPath && currentSdsPath.startsWith(CONTENT_BASE)) {

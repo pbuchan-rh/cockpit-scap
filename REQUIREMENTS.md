@@ -251,6 +251,8 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 - **REQ-117:** ✅ The failing rules summary MUST be loaded asynchronously after the results card renders — a spinner MUST display while loading and disappear when complete; failures MUST be silently suppressed (summary is informational)
 - **REQ-118:** ✅ The results card MUST display the scan timestamp as a secondary line below the profile title
 - **REQ-119:** ✅ The results card "New Scan" button MUST be replaced with "Run Again" — it MUST pre-fill the scan form with the current scan's content, profile, and tailoring file (same behaviour as history row "Run Again")
+- **REQ-124:** ✅ The results card MUST display a Compliant (green) or Non-Compliant (red) pill badge next to the score — Compliant when fail count is 0, Non-Compliant otherwise; applies to both host and container scan results
+- **REQ-125:** ✅ Each failing rule in the summary MUST display its CCE identifier (e.g. CCE-80537-8) as secondary gray text below the rule title when available; rules without a CCE identifier show title only; no bullet points
 
 ### Scan History Actions
 

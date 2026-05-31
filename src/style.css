@@ -666,6 +666,18 @@ code {
   color: var(--ct-color-text);
 }
 
+.ct-result-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2em 0.9em;
+  border-radius: var(--ct-border-radius-pill);
+  font-size: var(--ct-font-size-sm);
+  font-weight: 600;
+}
+
+.ct-result-status-pass { background-color: var(--ct-color-success); color: var(--ct-color-bg-card); }
+.ct-result-status-fail { background-color: var(--ct-color-danger);  color: var(--ct-color-bg-card); }
+
 /* ---- Failing rules summary ---------------------------------- */
 
 .ct-failing-summary {
@@ -711,16 +723,31 @@ details[open] .ct-failing-group-summary::before { content: '▼ '; }
 .ct-failing-group-low    .ct-failing-group-summary { color: var(--ct-color-text-secondary); }
 
 .ct-failing-rule-list {
-  margin: var(--ct-space-xs) 0 0 0;
-  padding-left: var(--ct-space-lg);
-  list-style: disc;
+  margin: var(--ct-space-xs) 0 0;
 }
 
-.ct-failing-rule-item {
+.ct-failing-rule-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ct-space-sm);
+  padding: 3px 0;
+}
+
+.ct-rule-text-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.ct-rule-title {
   font-size: var(--ct-font-size-sm);
   color: var(--ct-color-text);
-  padding: 2px 0;
   line-height: 1.4;
+}
+
+.ct-rule-cce {
+  font-size: 0.75rem;
+  color: var(--ct-color-text-secondary);
+  line-height: 1.3;
 }
 
 /* ---- Full-screen report overlay ----------------------------- */
