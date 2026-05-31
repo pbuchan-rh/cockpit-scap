@@ -76,34 +76,40 @@ function initContainerScan() {
     document.getElementById('cs-scan-error-close')
         .addEventListener('click', csClearError);
 
-    /* Check prereqs lazily — only on first tab visit to avoid
-     * triggering the superuser prompt before the user navigates here. */
+    /* Run the two non-superuser checks eagerly on init in parallel.
+     * The superuser podman images check is deferred until first tab click
+     * to avoid a privilege prompt before the user navigates here. */
+    const csPrereqEager = Promise.all([
+        cockpit.spawn(['which', 'oscap-podman'], { err: 'message' })
+            .then(() => null)
+            .catch(() => ({ step: 'oscap-podman' })),
+        cockpit.spawn(['podman', '--version'], { err: 'message' })
+            .then(() => null)
+            .catch(() => ({ step: 'podman' })),
+    ]);
+
     let prereqChecked = false;
     document.getElementById('tab-btn-container-scan')
         .addEventListener('click', () => {
             if (prereqChecked) return;
             prereqChecked = true;
-            csCheckPrereqs();
+            csPrereqEager.then(([oscapErr, podmanErr]) => {
+                if (oscapErr) { csCheckPrereqFail(oscapErr.step); return; }
+                if (podmanErr) { csCheckPrereqFail(podmanErr.step); return; }
+                csCheckImages();
+            });
         });
 }
 
 /* ---- Prereq check ----------------------------------------- */
 
-function csCheckPrereqs() {
+function csCheckImages() {
     csShowPrereq('Checking prerequisites…', []);
 
-    /* Three-step sequential check. Each step rejects with a tagged reason
-     * so the catch block can show the right message. */
-    cockpit.spawn(['which', 'oscap-podman'], { err: 'message' })
-        .catch(() => Promise.reject({ step: 'oscap-podman' }))
-
-        .then(() => cockpit.spawn(['podman', '--version'], { err: 'message' })
-            .catch(() => Promise.reject({ step: 'podman' })))
-
-        .then(() => cockpit.spawn(
+    cockpit.spawn(
             ['podman', 'images', '--format', 'json'],
             { superuser: 'require', err: 'message' })
-            .catch(err => Promise.reject({ step: 'images', err })))
+        .catch(err => Promise.reject({ step: 'images', err }))
 
         .then(output => {
             let images = [];
@@ -134,24 +140,28 @@ function csCheckPrereqs() {
                 ]);
                 return;
             }
-            if (reason.step === 'oscap-podman') {
-                csShowPrereq('oscap-podman not found', [
-                    'Install openscap-utils to enable container scanning:',
-                    { code: 'sudo dnf install openscap-utils' },
-                ]);
-            } else if (reason.step === 'podman') {
-                csShowPrereq('Podman not installed', [
-                    'Install Podman to enable container scanning:',
-                    { code: 'sudo dnf install podman' },
-                    'Then pull images into the system store:',
-                    { code: 'sudo podman pull <image>' },
-                ]);
-            } else {
-                csShowPrereq('Failed to enumerate images', [
-                    (reason.err && reason.err.message) || 'Unknown error',
-                ]);
-            }
+            csCheckPrereqFail(reason.step, reason.err);
         });
+}
+
+function csCheckPrereqFail(step, err) {
+    if (step === 'oscap-podman') {
+        csShowPrereq('oscap-podman not found', [
+            'Install openscap-utils to enable container scanning:',
+            { code: 'sudo dnf install openscap-utils' },
+        ]);
+    } else if (step === 'podman') {
+        csShowPrereq('Podman not installed', [
+            'Install Podman to enable container scanning:',
+            { code: 'sudo dnf install podman' },
+            'Then pull images into the system store:',
+            { code: 'sudo podman pull <image>' },
+        ]);
+    } else {
+        csShowPrereq('Failed to enumerate images', [
+            (err && err.message) || 'Unknown error',
+        ]);
+    }
 }
 
 /* ---- Image enumeration ------------------------------------ */
