@@ -23,13 +23,15 @@ in Cockpit.
   an inline explanation; tailoring remains available for cross-version profile work
 - **Profile selection** with full profile description display
 - **Scan execution** via `oscap xccdf eval` with cancel support
-- **Results summary** — pass, fail, error, and not-checked counts with compliance score
+- **Results card** — compliance score donut (arc length = score %, color = failure count: 0=green, 1–10=yellow, 11+=red); pass/fail/error counts; scan timestamp
+- **Failing rules summary** — collapsible HIGH/MEDIUM/LOW groups; each rule shows title, CCE identifier, Automated/Manual remediation annotation, and expandable description and rationale inline
+- **Regression and improvement detection** — banner fires automatically when failure count changes vs the previous scan of the same profile; "See what changed" diffs the two scans showing exactly which rules were Fixed, Regressed, or are New failures
 - **Full HTML report** viewer (opens in new tab)
 - **Results XML download** — download the raw XCCDF results.xml from any scan for auditor archives
 - **Selective Remediation Builder** — after any scan, choose individual failing rules before
   downloading bash or Ansible remediation scripts; rules grouped HIGH/MEDIUM/LOW with per-group
   and global select/deselect; available for both host and container scans
-- **Scan history** — last 10 scans retained with per-entry report, XML, and remediation access, with delete
+- **Scan history** — last 10 scans retained; **View Scan** loads any historical scan into the full results card; Run Again pre-fills the scan form from any history entry; Export CSV
 - **Profile tailoring** — rule tree editor with enable/disable, variable value adjustment, search,
   expand/collapse; saves valid XCCDF tailoring XML; upload/download/edit/delete saved files
 - **Tailoring Update-in-place** — edit an existing tailoring file and overwrite it directly, or save
@@ -177,7 +179,7 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 ## Development status
 
-**Current version:** v3.3
+**Current version:** v3.4-dev
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
@@ -189,4 +191,5 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 | **v1** | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
 | **v2** | Multi-version SDS content management — RHEL 6–9 SDS staging, CPE OS detection, Content tab |
 | **v3** | Container image scanning — `oscap-podman`, root Podman store, version mismatch detection, per-image history |
-| **v3.3** *(current)* | Selective Remediation Builder, Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
+| **v3.3** | Selective Remediation Builder, Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
+| **v3.4** *(current dev)* | Score donut, failing rules summary with CCE + Automated/Manual + inline description, regression/improvement detection, scan diff, View Scan from history, unified scan config card |

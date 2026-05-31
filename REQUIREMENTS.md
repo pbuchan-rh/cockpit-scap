@@ -265,6 +265,17 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 - **REQ-123:** ✅ Host Scan and Container Scan configuration MUST use a single unified card with an internal two-column grid — form fields on the left, profile description on the right separated by a vertical border; the previous two-card split layout is replaced
 
+### Failing Rules — Inline Detail
+
+- **REQ-127:** ✅ Each failing rule in the summary MUST be expandable via `<details>/<summary>` to reveal the rule description and rationale extracted from results.xml; rules without description data MUST render as plain non-expandable rows
+- **REQ-128:** ✅ Each failing rule MUST display a right-aligned remediation type annotation — "Automated" (green) when the rule ID appears in the generated bash remediation script, "Manual" (gray) otherwise; annotation MUST be omitted if no remediation script was generated
+
+### Regression and Improvement Detection
+
+- **REQ-129:** ✅ After any scan (current or historical), if the failure count is higher than the most recent previous scan of the same profile and content, a persistent warning banner MUST appear showing the exact delta and previous scan timestamp (e.g. "7 more failing rules than your previous scan on [date] (213 → 220)")
+- **REQ-130:** ✅ If the failure count is lower than the most recent previous scan of the same profile and content, a green improvement banner MUST appear with the same format; regression and improvement banners are mutually exclusive
+- **REQ-131:** ✅ Both regression and improvement banners MUST include a "See what changed" button that diffs the two results.xml files and displays Fixed / Regressed / New failures as collapsible groups inline; Fixed and Regressed MUST be expanded by default
+
 ---
 
 ## Out of Scope — v1
