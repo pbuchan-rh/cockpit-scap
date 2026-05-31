@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.2
+Version:        3.3
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -25,8 +25,12 @@ Features:
   - Multi-version content: system and user-staged SDS files with optgroup selector
   - Cross-version OS compatibility detection with inline warning
   - Full XCCDF tailoring editor: rule tree, variables, saved profiles, upload/download
-  - Scan history with CSP-compliant HTML report viewer and remediation downloads
-  - Generates bash and Ansible remediation scripts from scan results
+  - Container image scanning via oscap-podman with per-image scan history
+  - Selective Remediation Builder: cherry-pick failing rules before downloading
+    bash or Ansible remediation scripts (host and container)
+  - Scan history with CSP-compliant HTML report viewer and results XML download
+  - Activity log: real-time log of all actions with semantic badge colors
+  - Compliance Dashboard (preview): latest scan status per host and container image
   - Operates correctly with SELinux in enforcing mode
 
 %prep
@@ -80,6 +84,23 @@ fi
 %dir /var/lib/%{name}/content
 
 %changelog
+* Sun May 31 2026 Peter Buchan <pbuchan@redhat.com> - 3.3-1
+- Selective Remediation Builder: after any scan, choose individual failing
+  rules before downloading bash or Ansible remediation scripts; rules grouped
+  HIGH/MEDIUM/LOW with per-group and global select/deselect; available for
+  both host scans and container image scans
+- Results XML download: "Download Results XML" button on scan results and
+  history rows for both host and container scans
+- Compliance Dashboard (preview): hostname, score delta vs previous scan,
+  cached load with manual Refresh button, per-image container cards
+- Activity log: semantic badge colors (red=delete/error, orange=remediation,
+  blue=scan, teal=tailoring, yellow=validate); tailor download logging
+- Tailoring Update-in-place: "Update" overwrites existing file;
+  "Save as New" creates timestamped copy
+- Tailoring inline name field: pencil icon and editable name in editor header
+- Container scan: eager parallel prereq checks at module init for instant tab
+- Host scan history table: full-width layout fix
+
 * Sat May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.2-1
 - Activity tab: real-time log of all oscap actions (scans, guide generation,
   content validation, tailoring operations); auto-refresh every 3 seconds;
