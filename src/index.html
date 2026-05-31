@@ -44,6 +44,12 @@
               <span class="pf-v6-c-tabs__item-text">Content</span>
             </button>
           </li>
+          <li class="pf-v6-c-tabs__item" role="presentation">
+            <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                    aria-selected="false" data-panel="panel-dashboard" id="tab-btn-dashboard">
+              <span class="pf-v6-c-tabs__item-text">Dashboard</span>
+            </button>
+          </li>
           <li class="pf-v6-c-tabs__item ct-tab-activity" role="presentation">
             <button class="pf-v6-c-tabs__link" type="button" role="tab"
                     aria-selected="false" data-panel="panel-activity" id="tab-btn-activity">
@@ -830,6 +836,33 @@
 
     </section>
     <!-- END CONTENT TAB PANEL -->
+
+    <!-- ================================================== -->
+    <!-- DASHBOARD TAB PANEL                                -->
+    <!-- ================================================== -->
+    <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-dashboard"
+             role="tabpanel" aria-labelledby="tab-btn-dashboard">
+
+      <div class="pf-v6-c-card">
+        <div class="pf-v6-c-card__body">
+          <div class="pf-v6-c-empty-state">
+            <div class="pf-v6-c-empty-state__content">
+              <h2 class="pf-v6-c-title pf-m-lg">Compliance Dashboard</h2>
+              <div class="pf-v6-c-empty-state__body">
+                <p>Track your compliance posture over time — score trends, pass/fail breakdown,
+                   and a scan comparison table across profiles.</p>
+                <p>Coming in v3.3.
+                   <a href="https://github.com/pbuchan-rh/cockpit-scap/issues" target="_blank"
+                      rel="noopener">Follow progress on GitHub.</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+    <!-- END DASHBOARD TAB PANEL -->
 
     <!-- Activity panel -->
     <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-activity"

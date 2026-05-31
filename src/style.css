@@ -1210,6 +1210,20 @@ html.pf-v6-theme-dark .ct-badge-error {
 }
 /* ---- End Container Scan ----------------------------------- */
 
+/* ---- Dashboard stub --------------------------------------- */
+
+#panel-dashboard .pf-v6-c-card__body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+#panel-dashboard .pf-v6-c-empty-state {
+  text-align: center;
+  max-width: 480px;
+}
+
 /* ---- Activity tab ----------------------------------------- */
 
 /* Push Activity tab to the far right of the tab bar */
