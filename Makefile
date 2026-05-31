@@ -12,7 +12,7 @@ SELINUX_CTX   = cockpit_var_lib_t
 SELINUX_PATH  = /var/lib/cockpit-scap(/.*)?
 
 SRC_DIR       = src
-MODULE_FILES  = index.html index.js container-scan.js style.css manifest.json viewer.html
+MODULE_FILES  = index.html index.js container-scan.js dashboard.js style.css manifest.json viewer.html
 
 .PHONY: help install uninstall
 

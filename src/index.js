@@ -135,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     detectTailoringFiles();
     renderContentTab();
     initContainerScan();
+    initDashboard();
 
     /* Scan tab */
     document.getElementById('ct-content-select')

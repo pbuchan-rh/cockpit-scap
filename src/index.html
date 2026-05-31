@@ -4,11 +4,12 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=36">
+    <link rel="stylesheet" href="style.css?v=41">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=36" defer></script>
-    <script src="container-scan.js?v=36" defer></script>
+    <script src="index.js?v=41" defer></script>
+    <script src="container-scan.js?v=41" defer></script>
+    <script src="dashboard.js?v=41" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -843,23 +844,7 @@
     <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-dashboard"
              role="tabpanel" aria-labelledby="tab-btn-dashboard">
 
-      <div class="pf-v6-c-card">
-        <div class="pf-v6-c-card__body">
-          <div class="pf-v6-c-empty-state">
-            <div class="pf-v6-c-empty-state__content">
-              <h2 class="pf-v6-c-title pf-m-lg">Compliance Dashboard</h2>
-              <div class="pf-v6-c-empty-state__body">
-                <p>Track your compliance posture over time — score trends, pass/fail breakdown,
-                   and a scan comparison table across profiles.</p>
-                <p>Coming in v3.3.
-                   <a href="https://github.com/pbuchan-rh/cockpit-scap/issues" target="_blank"
-                      rel="noopener">Follow progress on GitHub.</a>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div id="db-content"></div>
 
     </section>
     <!-- END DASHBOARD TAB PANEL -->

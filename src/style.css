@@ -1315,3 +1315,132 @@ html.pf-v6-theme-dark .ct-badge-error {
 
 /* ---- End Activity tab ------------------------------------- */
 
+/* ---- Dashboard tab ---------------------------------------- */
+
+#db-content {
+    padding: 0;
+}
+
+.db-loading {
+    padding: 24px;
+    color: var(--ct-color-text-secondary);
+}
+
+.db-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    text-align: center;
+    padding: 40px;
+}
+
+.db-empty-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 0 8px;
+}
+
+.db-empty-body {
+    color: var(--ct-color-text-secondary);
+    margin: 0 0 24px;
+}
+
+.db-section {
+    margin-bottom: 32px;
+}
+
+.db-section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 12px;
+    color: var(--ct-color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.db-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.db-status-card {
+    min-width: 260px;
+    max-width: 340px;
+    flex: 1 1 260px;
+}
+
+.db-card-title {
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+}
+
+.db-card-body {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.db-score-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+    padding: 12px 8px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.db-score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.db-score-label {
+    font-size: 0.7rem;
+    margin-top: 4px;
+    text-align: center;
+    opacity: 0.85;
+}
+
+.db-score-green  { background: #1e4620; color: #6eba72; }
+.db-score-yellow { background: #3d2c00; color: #f0ab00; }
+.db-score-red    { background: #460000; color: #f56c6c; }
+.db-score-grey   { background: #3c3c3c; color: #aaa; }
+
+.db-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.db-meta-row {
+    display: flex;
+    flex-direction: column;
+}
+
+.db-meta-label {
+    font-size: 0.72rem;
+    color: var(--ct-color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.db-meta-value {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+/* ---- End Dashboard tab ------------------------------------ */
+
