@@ -292,11 +292,79 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 | **v2** ✅ | Multi-version SDS content | RHEL 6–9 SDS staging, CPE OS detection, content management UI |
 | **v3** ✅ | Container image scanning | `oscap-podman` integration, root Podman store, version mismatch detection, per-image history |
 | **v3.3** ✅ | Selective remediation + observability | Selective Remediation Builder (host + container), Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
+| **v3.4** 🔲 | Scheduled scanning | Polkit rule, headless scan script, systemd timer units, schedule UI with cron input, failure banners |
 
 **Explicitly out of scope (any version):**
 - Remote SSH scanning — different tool, different trust model
 - OVAL vulnerability scanning — not the Workbench gap; Insights and `dnf updateinfo` already serve this
 - Red Hat Satellite / Insights replacement — wrong audience, wrong scale
+
+---
+
+---
+
+## Scheduled Scanning — v3.4 Design
+
+### Privilege Model
+
+**Decision:** Ship a polkit rule authorizing `/usr/libexec/cockpit-scap-scan` for admin users. Do not modify sudoers.
+
+**Rationale:**
+- Polkit is the correct RHEL mechanism — consistent with how Cockpit handles privilege throughout
+- Scoping the rule to a specific script (not bare `oscap`) limits the attack surface
+- Ships and removes cleanly with the RPM — same pattern as the SELinux file context in `%post`/`%postun`
+- No `NOPASSWD` sudoers entry, no polkit action file requiring D-Bus — a `.rules` file is sufficient
+
+### Architecture
+
+```
+/usr/libexec/cockpit-scap-scan          # headless scan script (shell or Python)
+/usr/share/polkit-1/rules.d/            # polkit rule authorizing the script
+/usr/lib/systemd/system/cockpit-scap-scan@.service   # parameterized by schedule name
+/usr/lib/systemd/system/cockpit-scap-scan@.timer
+/var/lib/cockpit-scap/schedules/        # one JSON file per named schedule
+```
+
+### Schedule Config Schema
+
+```json
+{
+  "name": "daily-cis",
+  "sds": "/usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml",
+  "profile": "xccdf_org.ssgproject.content_profile_cis",
+  "tailoring": "/var/lib/cockpit-scap/tailoring/my-tailoring.xml",
+  "cron": "0 2 * * 0",
+  "enabled": true,
+  "last_run": "2026-06-01T02-00-00",
+  "last_status": "success",
+  "last_error": null,
+  "failure_dismissed": false
+}
+```
+
+### Headless Script Responsibilities
+
+The script must replicate the full JS scan completion path:
+1. Run `oscap xccdf eval` with `--report`, `--results`, `--tailoring-file` (if set)
+2. Parse results.xml for counts and score (Python)
+3. Write `manifest.json` with `scan_type: "host"`, `scheduled: true`
+4. Run `oscap xccdf generate fix` for bash and ansible artifacts
+5. Prune host history to 10 entries
+6. Append `scan_scheduled_complete` or `scan_scheduled_error` to `activity.log`
+7. Write `last_run`, `last_status`, `last_error` back to the schedule JSON
+
+### UI
+
+Schedules section lives below Scan History on the Host Scan tab. List view shows name, profile, cron, last run, last status, enable toggle. Create/edit form exposes: content selector, profile selector, optional tailoring selector, cron expression input with inline example. Delete with confirmation modal.
+
+Failure banner: persistent, dismissable, shown when `last_status === 'error'` and `failure_dismissed === false`. Dismissal writes `failure_dismissed: true` to schedule JSON via `cockpit.file(...).replace(...)` with `{ superuser: 'require' }`.
+
+### What Does NOT Ship in v3.4
+
+- Container scan scheduling (architecture must not preclude it — use same script with `oscap-podman` args)
+- Email/webhook/push notifications
+- Scan-on-boot or event-driven triggers
+- Multiple concurrent running scans
 
 ---
 

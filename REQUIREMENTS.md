@@ -225,6 +225,24 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 ---
 
+## v3.4 Requirements (Planned)
+
+### Scheduled Scanning
+
+- **REQ-105:** The module MUST ship a polkit rule (`/usr/share/polkit-1/rules.d/10-cockpit-scap.rules`) that authorizes admin users to run `/usr/libexec/cockpit-scap-scan` as root — no sudoers modification required
+- **REQ-106:** A headless scan script (`/usr/libexec/cockpit-scap-scan`) MUST produce output identical to a live scan: `results.xml`, `report.html`, `remediation.sh`, `remediation.yml`, `manifest.json` written to `/var/lib/cockpit-scap/results/TIMESTAMP/`
+- **REQ-107:** The headless scan script MUST prune host scan history to 10 entries and append to `activity.log` on completion
+- **REQ-108:** Scheduled scans MUST be defined as named schedules stored in `/var/lib/cockpit-scap/schedules/<name>.json` with fields: `sds`, `profile`, `tailoring` (optional), `cron`, `enabled`, `last_run`, `last_status`, `last_error`
+- **REQ-109:** The module MUST ship parameterized systemd units `cockpit-scap-scan@.service` and `cockpit-scap-scan@.timer` — one instance per named schedule; no units are enabled automatically at install time
+- **REQ-110:** The Host Scan tab MUST include a Schedules section listing all configured schedules with name, profile, cron expression, last run time, last status, and an enable/disable toggle
+- **REQ-111:** The schedule create/edit form MUST accept a raw cron expression with an inline example (`0 2 * * 0` = every Sunday at 2am); no dropdown abstraction
+- **REQ-112:** Scheduled scan results MUST appear in the normal scan history table with a "Scheduled" badge distinguishing them from manual scans
+- **REQ-113:** When a scheduled scan's `last_status` is `error`, a persistent dismissable banner MUST appear on the Host Scan tab; dismissal MUST be written to the schedule JSON so the banner does not reappear for that failure
+- **REQ-114:** Activity log MUST record `scan_scheduled_complete` and `scan_scheduled_error` event types
+- **REQ-115:** Container scan scheduling is explicitly out of scope for v3.4; the architecture MUST NOT preclude adding it in a future version
+
+---
+
 ## Out of Scope — v1
 
 The following are explicitly NOT requirements for v1. Do not implement without formal design discussion:
