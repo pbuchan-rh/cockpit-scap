@@ -615,7 +615,10 @@ function csBuildHistoryRow(manifest) {
             'Delete Container Scan',
             'Delete the scan from ' + date + '? All artifacts will be permanently removed.',
             () => cockpit.spawn(['rm', '-rf', RESULTS_BASE + manifest.timestamp], { superuser: 'require' })
-                .then(() => csLoadHistory())
+                .then(() => {
+                    appendActivityLog({ type: 'scan_delete', tab: 'container', content: manifest.content_file, profile: manifest.profile_id, image: manifest.image_name });
+                    csLoadHistory();
+                })
                 .catch(err => console.error('Failed to delete scan:', err.message || err))
         );
     });

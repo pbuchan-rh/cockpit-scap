@@ -1176,7 +1176,10 @@ function onDeleteHistoryEntry(manifest) {
         'Delete the scan from ' + date + '? The report, results, and remediation files will be permanently removed.',
         () => {
             cockpit.spawn(['rm', '-rf', RESULTS_BASE + manifest.timestamp], { superuser: 'require' })
-                .then(() => loadHistory())
+                .then(() => {
+                    appendActivityLog({ type: 'scan_delete', tab: 'host', content: manifest.content_file, profile: manifest.profile_id });
+                    loadHistory();
+                })
                 .catch(err => console.error('Failed to delete scan:', err.message || err));
         }
     );
@@ -1903,7 +1906,10 @@ function handleTailoringUpload(file) {
                 cockpit.file(jsonPath, { superuser: 'require' }).replace(JSON.stringify(sidecar, null, 2)),
             ]))
             .then(() => cockpit.spawn(['chmod', '644', xmlPath, jsonPath], { superuser: 'require' }))
-            .then(() => detectTailoringFiles())
+            .then(() => {
+                appendActivityLog({ type: 'tailor_upload', tab: 'tailoring', file: filename + '.xml', profile: name });
+                detectTailoringFiles();
+            })
             .catch(err => console.error('Upload failed:', err.message || err));
     };
     reader.readAsText(file);
@@ -2019,8 +2025,10 @@ function renderUserContentList() {
 }
 
 function deleteUserContent(xmlPath, jsonPath) {
+    const fileName = xmlPath.split('/').pop();
     cockpit.spawn(['rm', '-f', xmlPath, jsonPath], { superuser: 'require', err: 'message' })
         .then(() => {
+            appendActivityLog({ type: 'content_delete', tab: 'content', file: fileName });
             renderUserContentList();
             detectContent();
         })
@@ -2050,22 +2058,25 @@ function appendActivityLog(entry) {
 let activityPollInterval = null;
 
 const ACTIVITY_TYPE_LABELS = {
-    scan_start:    'Scan Started',
-    scan_complete: 'Scan Completed',
-    scan_cancel:   'Scan Cancelled',
-    scan_error:    'Scan Failed',
-    guide:         'Guide Generated',
-    validate:      'Content Validated',
-    tailor_load:   'Tailoring Loaded',
-    tailor_save:   'Tailoring Saved',
-    tailor_delete: 'Tailoring Deleted',
+    scan_start:     'Scan Started',
+    scan_complete:  'Scan Completed',
+    scan_cancel:    'Scan Cancelled',
+    scan_error:     'Scan Failed',
+    scan_delete:    'Scan Deleted',
+    guide:          'Guide Generated',
+    validate:       'Content Validated',
+    content_delete: 'Content Deleted',
+    tailor_upload:  'Tailoring Uploaded',
+    tailor_load:    'Tailoring Loaded',
+    tailor_save:    'Tailoring Saved',
+    tailor_delete:  'Tailoring Deleted',
 };
 
 const ACTIVITY_FILTER_MAP = {
-    scan:      ['scan_start', 'scan_complete', 'scan_cancel', 'scan_error'],
+    scan:      ['scan_start', 'scan_complete', 'scan_cancel', 'scan_error', 'scan_delete'],
     guide:     ['guide'],
-    validate:  ['validate'],
-    tailoring: ['tailor_load', 'tailor_save', 'tailor_delete'],
+    validate:  ['validate', 'content_delete'],
+    tailoring: ['tailor_upload', 'tailor_load', 'tailor_save', 'tailor_delete'],
 };
 
 function startActivityPoll() {
