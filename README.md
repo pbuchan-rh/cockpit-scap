@@ -1,15 +1,18 @@
 # cockpit-scap
 
-A native [Cockpit](https://cockpit-project.org/) module for RHEL 10 that provides SCAP compliance
-scanning, results reporting, remediation download, scan history, and full profile tailoring — all
-from the browser UI that RHEL administrators already use.
+A native [Cockpit](https://cockpit-project.org/) module for RHEL 10 that brings OpenSCAP compliance
+scanning, container image scanning, profile tailoring, and selective remediation directly into the
+browser console that RHEL administrators already use — no separate tools, no desktop application,
+no context switching.
 
 ## Why this exists
 
-SCAP Workbench was archived in September 2024 and is absent from RHEL 10 documentation entirely.
-No replacement exists in the Cockpit ecosystem. cockpit-scap fills that gap with a tool built to
-Cockpit's own UI and security standards, targeting security-focused RHEL administrators who need
-compliance scanning without leaving their management console.
+Cockpit is the centralized web-based administration console for RHEL — the single interface where
+administrators manage storage, networking, containers, services, and more without leaving their
+browser. cockpit-scap extends that model to compliance. OpenSCAP and the SCAP Security Guide are
+powerful, well-supported tools that ship with RHEL — cockpit-scap gives them a native home in the
+console administrators already use, with the same look, feel, and security model as everything else
+in Cockpit.
 
 ## Features
 
