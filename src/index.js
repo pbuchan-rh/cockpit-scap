@@ -137,6 +137,43 @@ const PY_EXTRACT_FAILING_RULES = [
     'print(json.dumps(fails))',
 ].join('\n');
 
+/* Python script: diff two results.xml files.
+ * Args: sys.argv[1]=newer results.xml  sys.argv[2]=older results.xml
+ * Output: JSON {fixed:[...], regressed:[...], new_failures:[...]} */
+const PY_SCAN_DIFF = [
+    'import sys, json, xml.etree.ElementTree as ET',
+    'NS = "http://checklists.nist.gov/xccdf/1.2"',
+    'def parse(path):',
+    '    root = ET.parse(path).getroot()',
+    '    ri = {}',
+    '    for rule in root.iter("{%s}Rule" % NS):',
+    '        rid = rule.get("id","")',
+    '        t = rule.find("{%s}title" % NS)',
+    '        ci = next((i for i in rule.findall("{%s}ident" % NS) if "cce" in (i.get("system","")).lower()), None)',
+    '        ri[rid] = (t.text.strip() if t is not None else rid, rule.get("severity","unknown"), ci.text.strip() if ci is not None else "")',
+    '    res = {}; seen = set()',
+    '    for rr in root.iter("{%s}rule-result" % NS):',
+    '        rid = rr.get("idref","");',
+    '        if rid in seen: continue',
+    '        seen.add(rid)',
+    '        r = rr.find("{%s}result" % NS)',
+    '        res[rid] = r.text if r is not None else "unknown"',
+    '    return ri, res',
+    'new_info, new_res = parse(sys.argv[1])',
+    '_, old_res = parse(sys.argv[2])',
+    'fixed=[]; regressed=[]; new_fail=[]',
+    'order={"high":0,"medium":1,"low":2}',
+    'for rid in set(new_res)|set(old_res):',
+    '    o=old_res.get(rid); n=new_res.get(rid)',
+    '    t,s,cce=new_info.get(rid,(rid,"unknown",""))',
+    '    item={"id":rid,"title":t,"severity":s,"cce":cce}',
+    '    if o=="fail" and n=="pass": fixed.append(item)',
+    '    elif o=="pass" and n=="fail": regressed.append(item)',
+    '    elif o is None and n=="fail": new_fail.append(item)',
+    'srt=lambda x:(order.get(x["severity"],3),x["title"].lower())',
+    'print(json.dumps({"fixed":sorted(fixed,key=srt),"regressed":sorted(regressed,key=srt),"new_failures":sorted(new_fail,key=srt)}))',
+].join('\n');
+
 /* Python script: filter an existing remediation file to selected rule IDs.
  * Args: sys.argv[1]=remFilePath  sys.argv[2]=fixType('bash'|'ansible')
  *       sys.argv[3]=JSON array of selected full rule IDs
@@ -1119,6 +1156,61 @@ function findPreviousScan(manifest, history) {
     ) || null;
 }
 
+function loadScanDiff(newXml, oldXml, containerId) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '<p class="ct-diff-loading">Comparing scans…</p>';
+    container.classList.remove('hidden');
+
+    cockpit.spawn(['python3', '-c', PY_SCAN_DIFF, newXml, oldXml], { err: 'message' })
+        .then(output => {
+            const { fixed, regressed, new_failures } = JSON.parse(output);
+            if (!fixed.length && !regressed.length && !new_failures.length) {
+                container.innerHTML = '<p class="ct-diff-empty">No rule state changes between these scans.</p>';
+                return;
+            }
+            container.innerHTML = '';
+            [
+                { label: 'Fixed',        cls: 'ct-diff-fixed',     list: fixed,        open: true  },
+                { label: 'Regressed',    cls: 'ct-diff-regressed',  list: regressed,    open: true  },
+                { label: 'New failures', cls: 'ct-diff-new',        list: new_failures, open: false },
+            ].forEach(({ label, cls, list, open }) => {
+                if (!list.length) return;
+                const details = document.createElement('details');
+                details.className = 'ct-diff-group ' + cls;
+                details.open = open;
+                const summary = document.createElement('summary');
+                summary.className = 'ct-diff-group-summary';
+                summary.textContent = label + ' — ' + list.length + ' rule' + (list.length === 1 ? '' : 's');
+                details.appendChild(summary);
+                const ruleList = document.createElement('div');
+                ruleList.className = 'ct-failing-rule-list';
+                list.forEach(r => {
+                    const row = document.createElement('div');
+                    row.className = 'ct-failing-rule-row';
+                    const textCol = document.createElement('div');
+                    textCol.className = 'ct-rule-text-col';
+                    const title = document.createElement('span');
+                    title.className = 'ct-rule-title';
+                    title.textContent = r.title;
+                    textCol.appendChild(title);
+                    if (r.cce) {
+                        const cce = document.createElement('span');
+                        cce.className = 'ct-rule-cce';
+                        cce.textContent = r.cce;
+                        textCol.appendChild(cce);
+                    }
+                    row.appendChild(textCol);
+                    ruleList.appendChild(row);
+                });
+                details.appendChild(ruleList);
+                container.appendChild(details);
+            });
+        })
+        .catch(() => {
+            container.innerHTML = '<p class="ct-diff-empty">Could not compare scans.</p>';
+        });
+}
+
 function buildScoreDonut(score, failCount) {
     const r     = 28;
     const circ  = 2 * Math.PI * r;
@@ -1308,6 +1400,10 @@ function showResults(manifest) {
     const prev = findPreviousScan(manifest, currentHostHistory);
     const improvementAlert = document.getElementById('ct-improvement-alert');
     const regressionAlert  = document.getElementById('ct-regression-alert');
+    const diffContainer    = document.getElementById('ct-scan-diff');
+    diffContainer.innerHTML = '';
+    diffContainer.classList.add('hidden');
+
     if (prev && counts.fail < prev.counts.fail) {
         const delta    = prev.counts.fail - counts.fail;
         const prevDate = prev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
@@ -1317,6 +1413,9 @@ function showResults(manifest) {
             ' (' + prev.counts.fail + ' → ' + counts.fail + ')';
         improvementAlert.classList.remove('hidden');
         regressionAlert.classList.add('hidden');
+        const prevXml = RESULTS_BASE + prev.timestamp + '/results.xml';
+        document.getElementById('ct-diff-btn').onclick =
+            () => loadScanDiff(currentResultsDir + 'results.xml', prevXml, 'ct-scan-diff');
     } else if (prev && counts.fail > prev.counts.fail) {
         const delta    = counts.fail - prev.counts.fail;
         const prevDate = prev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
@@ -1326,6 +1425,9 @@ function showResults(manifest) {
             ' (' + prev.counts.fail + ' → ' + counts.fail + ')';
         regressionAlert.classList.remove('hidden');
         improvementAlert.classList.add('hidden');
+        const prevXml = RESULTS_BASE + prev.timestamp + '/results.xml';
+        document.getElementById('ct-diff-btn-reg').onclick =
+            () => loadScanDiff(currentResultsDir + 'results.xml', prevXml, 'ct-scan-diff');
     } else {
         improvementAlert.classList.add('hidden');
         regressionAlert.classList.add('hidden');
@@ -1414,6 +1516,8 @@ function showScanSetup() {
     document.getElementById('ct-failing-summary-loading').classList.add('hidden');
     document.getElementById('ct-improvement-alert').classList.add('hidden');
     document.getElementById('ct-regression-alert').classList.add('hidden');
+    const d = document.getElementById('ct-scan-diff');
+    d.innerHTML = ''; d.classList.add('hidden');
     currentScanProc       = null;
     currentRemBashPath    = null;
     currentRemAnsiblePath = null;

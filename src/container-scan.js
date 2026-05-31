@@ -538,6 +538,10 @@ function csShowResults(manifest) {
     ) || null;
     const csImprovementAlert = document.getElementById('cs-improvement-alert');
     const csRegressionAlert  = document.getElementById('cs-regression-alert');
+    const csDiffContainer    = document.getElementById('cs-scan-diff');
+    csDiffContainer.innerHTML = '';
+    csDiffContainer.classList.add('hidden');
+
     if (csPrev && counts.fail < csPrev.counts.fail) {
         const delta    = csPrev.counts.fail - counts.fail;
         const prevDate = csPrev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
@@ -547,6 +551,9 @@ function csShowResults(manifest) {
             ' (' + csPrev.counts.fail + ' → ' + counts.fail + ')';
         csImprovementAlert.classList.remove('hidden');
         csRegressionAlert.classList.add('hidden');
+        const prevXml = RESULTS_BASE + csPrev.timestamp + '/results.xml';
+        document.getElementById('cs-diff-btn').onclick =
+            () => loadScanDiff(csResultsDir + 'results.xml', prevXml, 'cs-scan-diff');
     } else if (csPrev && counts.fail > csPrev.counts.fail) {
         const delta    = counts.fail - csPrev.counts.fail;
         const prevDate = csPrev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
@@ -556,6 +563,9 @@ function csShowResults(manifest) {
             ' (' + csPrev.counts.fail + ' → ' + counts.fail + ')';
         csRegressionAlert.classList.remove('hidden');
         csImprovementAlert.classList.add('hidden');
+        const prevXml = RESULTS_BASE + csPrev.timestamp + '/results.xml';
+        document.getElementById('cs-diff-btn-reg').onclick =
+            () => loadScanDiff(csResultsDir + 'results.xml', prevXml, 'cs-scan-diff');
     } else {
         csImprovementAlert.classList.add('hidden');
         csRegressionAlert.classList.add('hidden');
@@ -834,6 +844,8 @@ function csShowSetup() {
     document.getElementById('cs-failing-summary-loading').classList.add('hidden');
     document.getElementById('cs-improvement-alert').classList.add('hidden');
     document.getElementById('cs-regression-alert').classList.add('hidden');
+    const csd = document.getElementById('cs-scan-diff');
+    csd.innerHTML = ''; csd.classList.add('hidden');
     csProc        = null;
     csBashPath    = null;
     csAnsiblePath = null;

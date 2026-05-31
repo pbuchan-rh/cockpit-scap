@@ -240,6 +240,8 @@
               <div>
                 <h4 class="pf-v6-c-alert__title">Improvement</h4>
                 <div class="pf-v6-c-alert__description" id="ct-improvement-msg"></div>
+                <button class="pf-v6-c-button pf-m-link ct-diff-trigger" type="button"
+                        id="ct-diff-btn">See what changed</button>
               </div>
             </div>
             <!-- Regression warning — shown when fail count increased vs previous scan -->
@@ -249,8 +251,12 @@
               <div>
                 <h4 class="pf-v6-c-alert__title">Regression detected</h4>
                 <div class="pf-v6-c-alert__description" id="ct-regression-msg"></div>
+                <button class="pf-v6-c-button pf-m-link ct-diff-trigger" type="button"
+                        id="ct-diff-btn-reg">See what changed</button>
               </div>
             </div>
+            <!-- Scan diff — loaded on demand from See what changed -->
+            <div class="hidden" id="ct-scan-diff"></div>
             <!-- Failing rules summary — populated async after scan -->
             <div class="ct-failing-summary" id="ct-failing-summary">
               <div class="ct-failing-summary-loading hidden" id="ct-failing-summary-loading">
@@ -580,6 +586,8 @@
               <div>
                 <h4 class="pf-v6-c-alert__title">Improvement</h4>
                 <div class="pf-v6-c-alert__description" id="cs-improvement-msg"></div>
+                <button class="pf-v6-c-button pf-m-link ct-diff-trigger" type="button"
+                        id="cs-diff-btn">See what changed</button>
               </div>
             </div>
             <!-- Regression warning — shown when fail count increased vs previous scan -->
@@ -589,8 +597,12 @@
               <div>
                 <h4 class="pf-v6-c-alert__title">Regression detected</h4>
                 <div class="pf-v6-c-alert__description" id="cs-regression-msg"></div>
+                <button class="pf-v6-c-button pf-m-link ct-diff-trigger" type="button"
+                        id="cs-diff-btn-reg">See what changed</button>
               </div>
             </div>
+            <!-- Scan diff — loaded on demand -->
+            <div class="hidden" id="cs-scan-diff"></div>
             <!-- Failing rules summary — populated async after scan -->
             <div class="ct-failing-summary" id="cs-failing-summary">
               <div class="ct-failing-summary-loading hidden" id="cs-failing-summary-loading">
