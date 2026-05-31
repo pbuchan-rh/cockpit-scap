@@ -339,6 +339,9 @@ function onCsScanClick() {
 
     csClearError();
     csShowProgress();
+    appendActivityLog({ type: 'scan_start', tab: 'container',
+        content: csSdsPath.split('/').pop(), profile: profileTitle, image: csImageName,
+        tailoring: tailoringPath ? tailoringPath.split('/').pop() : null });
 
     cockpit.spawn(['mkdir', '-p', csResultsDir], { superuser: 'require' })
         .then(() => {
@@ -361,6 +364,7 @@ function onCsScanClick() {
                     } else if (csCancelled || err.problem === 'cancelled') {
                         csCancelled = false;
                         csProc = null;
+                        appendActivityLog({ type: 'scan_cancel', tab: 'container' });
                         csShowSetup();
                     } else {
                         csScanError(err.message || String(err));
@@ -435,7 +439,14 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 .catch(err => console.error('chmod failed:', err.message || err))
                 .then(() => manifest);
         })
-        .then(manifest => { pruneHistoryByType('container'); csShowResults(manifest); })
+        .then(manifest => {
+            appendActivityLog({ type: 'scan_complete', tab: 'container',
+                content: manifest.sds_file.split('/').pop(), profile: manifest.profile_title,
+                image: manifest.image_name, score: manifest.score.toFixed(1),
+                pass: manifest.counts.pass, fail: manifest.counts.fail });
+            pruneHistoryByType('container');
+            csShowResults(manifest);
+        })
         .catch(err => csScanError('Failed to process results: ' + (err.message || String(err))));
 }
 
@@ -633,7 +644,10 @@ function onCsViewGuideClick() {
     const win = window.open('about:blank', '_blank');
     cockpit.spawn(args, { err: 'message' })
         .then(html => storeReportInDB(html))
-        .then(() => { win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html'; })
+        .then(() => {
+            appendActivityLog({ type: 'guide', tab: 'container', profile: profileId });
+            win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html';
+        })
         .catch(err => {
             win.close();
             console.error('Guide generation failed:', err.message || err);
@@ -736,6 +750,7 @@ function csShowSetup() {
 
 function csScanError(msg) {
     csProc = null;
+    appendActivityLog({ type: 'scan_error', tab: 'container', message: msg });
     csShowSetup();
     document.getElementById('cs-scan-error-message').textContent = msg;
     document.getElementById('cs-scan-error-alert').classList.remove('hidden');

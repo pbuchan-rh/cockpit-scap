@@ -1,6 +1,6 @@
 'use strict';
 
-const MODULE_VERSION = 'v3.0';
+const MODULE_VERSION = 'v3.2';
 const SSG_CONTENT_DIR = '/usr/share/xml/scap/ssg/content/';
 const RESULTS_BASE    = '/var/lib/cockpit-scap/results/';
 const TAILORING_BASE  = '/var/lib/cockpit-scap/tailoring/';
@@ -19,7 +19,10 @@ const SDS_DISPLAY_NAMES = {
     'ssg-ubuntu2404-ds.xml': 'Ubuntu 24.04',
 };
 
-const HISTORY_MAX = 10;
+const HISTORY_MAX    = 10;
+const ACTIVITY_LOG   = '/var/lib/cockpit-scap/activity.log';
+const ACTIVITY_MAX   = 1000;
+const ACTIVITY_TRIM  = 500;
 
 /* Python script: parse results.xml server-side — avoids sending the
  * full file (15–18 MB) over WebSocket which exceeds Cockpit's limit. */
@@ -241,6 +244,27 @@ document.addEventListener('DOMContentLoaded', () => {
     /* CSV export */
     document.getElementById('ct-export-csv-btn')
         .addEventListener('click', exportHostHistoryCSV);
+
+    /* Activity tab */
+    document.getElementById('ct-activity-export-btn')
+        .addEventListener('click', exportActivityCSV);
+    document.getElementById('ct-activity-limit')
+        .addEventListener('change', loadActivityLog);
+    document.getElementById('ct-activity-clear-btn')
+        .addEventListener('click', () => {
+            document.getElementById('ct-activity-confirm').classList.remove('hidden');
+        });
+    document.getElementById('ct-activity-confirm-yes')
+        .addEventListener('click', clearActivityLog);
+    document.getElementById('ct-activity-confirm-no')
+        .addEventListener('click', () => document.getElementById('ct-activity-confirm').classList.add('hidden'));
+    document.querySelectorAll('.ct-activity-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.ct-activity-chip').forEach(c => c.classList.remove('pf-m-active'));
+            chip.classList.add('pf-m-active');
+            loadActivityLog();
+        });
+    });
 });
 
 /* ---- Tab wiring -------------------------------------------- */
@@ -264,6 +288,12 @@ function initTabs() {
             btn.closest('.pf-v6-c-tabs__item').classList.add('pf-m-current');
             btn.setAttribute('aria-selected', 'true');
             document.getElementById(targetId).classList.remove('hidden');
+
+            if (targetId === 'panel-activity') {
+                startActivityPoll();
+            } else {
+                stopActivityPoll();
+            }
         });
     });
 }
@@ -582,6 +612,9 @@ function onScanClick() {
 
     hideScanError();
     showScanProgress();
+    appendActivityLog({ type: 'scan_start', tab: 'host',
+        content: currentSdsPath.split('/').pop(), profile: profileTitle,
+        tailoring: tailoringPath ? tailoringPath.split('/').pop() : null });
 
     cockpit.spawn(['mkdir', '-p', currentResultsDir], { superuser: 'require' })
         .then(() => runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath))
@@ -626,6 +659,7 @@ function onCancelClick() {
 
 function onScanCancelled() {
     currentScanProc = null;
+    appendActivityLog({ type: 'scan_cancel', tab: 'host' });
     showScanSetup();
 }
 
@@ -659,6 +693,12 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
             .then(() => manifest))
         .then(manifest => pruneHistoryByType('host').then(() => manifest))
         .then(manifest => relaxResultsPerms().then(() => manifest))
+        .then(manifest => {
+            appendActivityLog({ type: 'scan_complete', tab: 'host',
+                content: manifest.sds_file.split('/').pop(), profile: manifest.profile_title,
+                score: manifest.score.toFixed(1), pass: manifest.counts.pass, fail: manifest.counts.fail });
+            return manifest;
+        })
         .then(manifest => showResults(manifest))
         .catch(err => onScanError('Failed to process results: ' + (err.message || String(err))));
 }
@@ -725,6 +765,7 @@ function relaxResultsPerms() {
 }
 
 function onScanError(message) {
+    appendActivityLog({ type: 'scan_error', tab: 'host', message });
     currentScanProc = null;
     showScanSetup();
     document.getElementById('ct-scan-error-message').textContent = message;
@@ -944,7 +985,10 @@ function onViewGuideClick() {
     const win = window.open('about:blank', '_blank');
     cockpit.spawn(args, { err: 'message' })
         .then(html => storeReportInDB(html))
-        .then(() => { win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html'; })
+        .then(() => {
+            appendActivityLog({ type: 'guide', tab: 'host', profile: profileId });
+            win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html';
+        })
         .catch(err => {
             win.close();
             console.error('Guide generation failed:', err.message || err);
@@ -966,7 +1010,10 @@ function onTailorViewGuideClick() {
     cockpit.spawn(['oscap', 'xccdf', 'generate', 'guide', '--profile', profileId, tailorSdsPath],
                   { err: 'message' })
         .then(html => storeReportInDB(html))
-        .then(() => { win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html'; })
+        .then(() => {
+            appendActivityLog({ type: 'guide', tab: 'tailoring', profile: profileId });
+            win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html';
+        })
         .catch(err => {
             win.close();
             console.error('Guide generation failed:', err.message || err);
@@ -1551,6 +1598,7 @@ function onTailorSaveClick() {
         ]))
         .then(() => cockpit.spawn(['chmod', '644', xmlPath, jsonPath], { superuser: 'require' }))
         .then(() => {
+            appendActivityLog({ type: 'tailor_save', tab: 'tailoring', file: filename + '.xml', profile: newProfileTitle });
             saveBtn.disabled = false;
             detectTailoringFiles();
             resetTailorForm();
@@ -1668,6 +1716,7 @@ function onEditTailoringFile(sidecar) {
 }
 
 function doEditTailoringFile(sidecar) {
+    appendActivityLog({ type: 'tailor_load', tab: 'tailoring', file: sidecar.path.split('/').pop(), profile: sidecar.name });
     tailorSdsPath      = sidecar.sds_path;
     tailorRuleChanges  = {};
     tailorValueChanges = {};
@@ -1751,7 +1800,10 @@ function onDeleteTailoringFile(sidecar) {
                 cockpit.spawn(['rm', '-f', sidecar.path], { superuser: 'require' }),
                 cockpit.spawn(['rm', '-f', jsonPath],     { superuser: 'require' }),
             ])
-            .then(() => detectTailoringFiles())
+            .then(() => {
+                appendActivityLog({ type: 'tailor_delete', tab: 'tailoring', file: sidecar.path.split('/').pop(), profile: sidecar.name });
+                detectTailoringFiles();
+            })
             .catch(err => console.error('Failed to delete tailoring file:', err.message || err));
         }
     );
@@ -1977,6 +2029,188 @@ function deleteUserContent(xmlPath, jsonPath) {
 
 /* ---- CSV export -------------------------------------------- */
 
+/* ---- Activity log ------------------------------------------ */
+
+function appendActivityLog(entry) {
+    const line = JSON.stringify({ ts: new Date().toISOString(), ...entry });
+    const f    = cockpit.file(ACTIVITY_LOG, { superuser: 'require' });
+    f.read()
+        .then(content => {
+            const lines   = (content || '').split('\n').filter(l => l.trim());
+            lines.push(line);
+            const trimmed = lines.length > ACTIVITY_MAX ? lines.slice(-ACTIVITY_TRIM) : lines;
+            return f.replace(trimmed.join('\n') + '\n');
+        })
+        .catch(() => { /* fire-and-forget — never surface log errors to user */ })
+        .finally(() => f.close());
+}
+
+/* ---- Activity tab ------------------------------------------ */
+
+let activityPollInterval = null;
+
+const ACTIVITY_TYPE_LABELS = {
+    scan_start:    'Scan Started',
+    scan_complete: 'Scan Completed',
+    scan_cancel:   'Scan Cancelled',
+    scan_error:    'Scan Failed',
+    guide:         'Guide Generated',
+    validate:      'Content Validated',
+    tailor_load:   'Tailoring Loaded',
+    tailor_save:   'Tailoring Saved',
+    tailor_delete: 'Tailoring Deleted',
+};
+
+const ACTIVITY_FILTER_MAP = {
+    scan:      ['scan_start', 'scan_complete', 'scan_cancel', 'scan_error'],
+    guide:     ['guide'],
+    validate:  ['validate'],
+    tailoring: ['tailor_load', 'tailor_save', 'tailor_delete'],
+};
+
+function startActivityPoll() {
+    loadActivityLog();
+    if (!activityPollInterval) {
+        activityPollInterval = setInterval(loadActivityLog, 3000);
+    }
+}
+
+function stopActivityPoll() {
+    if (activityPollInterval) {
+        clearInterval(activityPollInterval);
+        activityPollInterval = null;
+    }
+}
+
+function loadActivityLog() {
+    const limit      = parseInt(document.getElementById('ct-activity-limit').value, 10) || 100;
+    const activeChip = document.querySelector('.ct-activity-chip.pf-m-active');
+    const filter     = activeChip ? activeChip.dataset.filter : 'all';
+
+    cockpit.file(ACTIVITY_LOG, { superuser: 'require' }).read()
+        .then(content => {
+            let entries = (content || '').split('\n')
+                .filter(l => l.trim())
+                .map(l => { try { return JSON.parse(l); } catch { return null; } })
+                .filter(Boolean)
+                .reverse(); // newest first
+
+            if (filter !== 'all' && ACTIVITY_FILTER_MAP[filter]) {
+                entries = entries.filter(e => ACTIVITY_FILTER_MAP[filter].includes(e.type));
+            }
+
+            renderActivityTable(entries.slice(0, limit));
+        })
+        .catch(() => renderActivityTable([]));
+}
+
+function renderActivityTable(entries) {
+    const table     = document.getElementById('ct-activity-table');
+    const empty     = document.getElementById('ct-activity-empty');
+    const tbody     = document.getElementById('ct-activity-tbody');
+    const exportBtn = document.getElementById('ct-activity-export-btn');
+    const clearBtn  = document.getElementById('ct-activity-clear-btn');
+
+    const hasEntries = entries.length > 0;
+    exportBtn.disabled = !hasEntries;
+    clearBtn.disabled  = !hasEntries;
+
+    if (!hasEntries) {
+        table.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+    }
+
+    empty.classList.add('hidden');
+    table.classList.remove('hidden');
+
+    tbody.innerHTML = '';
+    entries.forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${formatActivityTime(e.ts)}</td>
+            <td>${activityTabLabel(e.tab)}</td>
+            <td><span class="ct-activity-badge ct-activity-${e.type.split('_')[0]}">${ACTIVITY_TYPE_LABELS[e.type] || e.type}</span></td>
+            <td class="ct-activity-details">${activityDetails(e)}</td>
+            <td>${activityResult(e)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function formatActivityTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function activityTabLabel(tab) {
+    const labels = { host: 'Host', container: 'Container', tailoring: 'Tailoring', content: 'Content' };
+    return labels[tab] || (tab || '—');
+}
+
+function activityDetails(e) {
+    const esc = s => String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (e.type === 'scan_start' || e.type === 'scan_complete') {
+        const parts = [esc(e.content), esc(e.profile)];
+        if (e.image) parts.unshift(esc(e.image));
+        if (e.tailoring) parts.push('tailoring: ' + esc(e.tailoring));
+        return parts.filter(Boolean).join(' · ');
+    }
+    if (e.type === 'guide')         return esc(e.profile);
+    if (e.type === 'validate')      return esc(e.file);
+    if (e.type === 'tailor_save' || e.type === 'tailor_load' || e.type === 'tailor_delete')
+        return esc(e.profile || e.file);
+    if (e.type === 'scan_error')    return esc(e.message);
+    return '';
+}
+
+function activityResult(e) {
+    if (e.type === 'scan_complete') return `${e.score}% &nbsp;<span class="ct-pass-count">${e.pass} pass</span> <span class="ct-fail-count">${e.fail} fail</span>`;
+    if (e.type === 'validate')      return e.result === 'pass' ? '<span class="ct-validate-ok">✓ Valid</span>' : '<span class="ct-validate-fail">✗ Invalid</span>';
+    if (e.type === 'scan_error')    return '<span class="ct-validate-fail">Error</span>';
+    if (e.type === 'scan_cancel')   return '<span style="color: var(--pf-v6-global--warning-color--100)">Cancelled</span>';
+    return '—';
+}
+
+function clearActivityLog() {
+    document.getElementById('ct-activity-confirm').classList.add('hidden');
+    cockpit.file(ACTIVITY_LOG, { superuser: 'require' }).replace('')
+        .then(() => loadActivityLog())
+        .catch(err => console.error('Failed to clear activity log:', err.message || err));
+}
+
+function exportActivityCSV() {
+    cockpit.file(ACTIVITY_LOG, { superuser: 'require' }).read()
+        .then(content => {
+            const entries = (content || '').split('\n')
+                .filter(l => l.trim())
+                .map(l => { try { return JSON.parse(l); } catch { return null; } })
+                .filter(Boolean)
+                .reverse();
+
+            const headers = [
+                'Timestamp', 'Tab', 'Action', 'Content', 'Profile',
+                'Tailoring File', 'Image', 'Score %', 'Pass', 'Fail', 'Detail',
+            ];
+            const rows = entries.map(e => [
+                e.ts || '',
+                activityTabLabel(e.tab),
+                ACTIVITY_TYPE_LABELS[e.type] || e.type,
+                e.content  || '',
+                e.profile  || '',
+                e.tailoring || '',
+                e.image    || '',
+                e.score    || '',
+                e.pass     != null ? e.pass : '',
+                e.fail     != null ? e.fail : '',
+                e.message  || e.file || e.result || '',
+            ]);
+            downloadCSV('cockpit-scap-activity.csv', [headers, ...rows]);
+        })
+        .catch(err => console.error('Failed to export activity log:', err.message || err));
+}
+
 function csvEscape(val) {
     if (val === null || val === undefined) return '';
     const s = String(val);
@@ -2027,11 +2261,13 @@ function validateContent(entry, btn) {
             btn.disabled    = false;
             btn.textContent = '✓ Valid';
             btn.className   = 'pf-v6-c-button pf-m-link ct-validate-ok';
+            appendActivityLog({ type: 'validate', tab: 'content', file: entry.name, result: 'pass' });
         })
         .catch(err => {
             btn.disabled    = false;
             btn.textContent = '✗ Invalid';
             btn.className   = 'pf-v6-c-button pf-m-link ct-validate-fail';
+            appendActivityLog({ type: 'validate', tab: 'content', file: entry.name, result: 'fail' });
             const detail = (err.message || String(err)).trim() || 'Validation failed with no output.';
             btn.addEventListener('click', () => showInfoModal('Validation Error: ' + entry.name, detail), { once: true });
         });

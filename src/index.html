@@ -4,11 +4,11 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=33">
+    <link rel="stylesheet" href="style.css?v=34">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=33" defer></script>
-    <script src="container-scan.js?v=33" defer></script>
+    <script src="index.js?v=34" defer></script>
+    <script src="container-scan.js?v=34" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -42,6 +42,12 @@
             <button class="pf-v6-c-tabs__link" type="button" role="tab"
                     aria-selected="false" data-panel="panel-content" id="tab-btn-content">
               <span class="pf-v6-c-tabs__item-text">Content</span>
+            </button>
+          </li>
+          <li class="pf-v6-c-tabs__item ct-tab-activity" role="presentation">
+            <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                    aria-selected="false" data-panel="panel-activity" id="tab-btn-activity">
+              <span class="pf-v6-c-tabs__item-text">Activity</span>
             </button>
           </li>
         </ul>
@@ -159,7 +165,7 @@
                     id="ct-scan-btn" disabled>
               Run Scan
             </button>
-            <button class="pf-v6-c-button pf-m-secondary" type="button"
+            <button class="pf-v6-c-button pf-m-link" type="button"
                     id="ct-guide-btn" disabled>
               View Guide
             </button>
@@ -435,7 +441,7 @@
             <div class="pf-v6-c-card__footer ct-scan-actions">
               <button class="pf-v6-c-button pf-m-primary" type="button"
                       id="cs-scan-btn" disabled>Run Scan</button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
+              <button class="pf-v6-c-button pf-m-link" type="button"
                       id="cs-guide-btn" disabled>View Guide</button>
             </div>
           </div>
@@ -643,7 +649,7 @@
           <div class="pf-v6-c-card__footer ct-scan-actions">
             <button class="pf-v6-c-button pf-m-primary" type="button"
                     id="ct-tailor-load-btn" disabled>Load Profile</button>
-            <button class="pf-v6-c-button pf-m-secondary" type="button"
+            <button class="pf-v6-c-button pf-m-link" type="button"
                     id="ct-tailor-guide-btn" disabled>View Guide</button>
           </div>
         </div>
@@ -758,7 +764,7 @@
             <h2 class="pf-v6-c-card__title-text">Saved Tailoring Files</h2>
             <div class="ct-tailor-tree-controls">
               <input type="file" id="ct-tailor-upload-input" accept=".xml" class="hidden">
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
+              <button class="pf-v6-c-button pf-m-link" type="button"
                       id="ct-tailor-upload-btn">Upload</button>
             </div>
           </div>
@@ -807,7 +813,7 @@
         <div class="pf-v6-c-card__title">
           <div class="ct-tailor-rules-header">
             <h2 class="pf-v6-c-card__title-text">Uploaded Content</h2>
-            <button class="pf-v6-c-button pf-m-secondary" type="button"
+            <button class="pf-v6-c-button pf-m-link" type="button"
                     id="ct-content-refresh-btn">Refresh</button>
           </div>
         </div>
@@ -824,6 +830,69 @@
 
     </section>
     <!-- END CONTENT TAB PANEL -->
+
+    <!-- Activity panel -->
+    <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-activity"
+             role="tabpanel" aria-labelledby="tab-btn-activity">
+
+      <div class="pf-v6-c-card">
+        <div class="pf-v6-c-card__title ct-history-title-row">
+          <h2 class="pf-v6-c-card__title-text">Activity Log</h2>
+          <div class="ct-activity-title-actions">
+            <button class="pf-v6-c-button pf-m-link" type="button" id="ct-activity-export-btn" disabled>Export CSV</button>
+            <button class="pf-v6-c-button pf-m-link" type="button" id="ct-activity-clear-btn" disabled>Clear Log</button>
+          </div>
+        </div>
+        <div class="pf-v6-c-card__body">
+
+          <!-- Toolbar: limit + filter chips -->
+          <div class="ct-activity-toolbar">
+            <select class="pf-v6-c-form-control ct-activity-limit" id="ct-activity-limit">
+              <option value="50">Last 50</option>
+              <option value="100" selected>Last 100</option>
+              <option value="250">Last 250</option>
+            </select>
+            <div class="ct-activity-filter-group" role="group" aria-label="Filter by type" id="ct-activity-filters">
+              <button class="ct-activity-chip pf-m-active" data-filter="all" type="button">All</button>
+              <button class="ct-activity-chip" data-filter="scan" type="button">Scans</button>
+              <button class="ct-activity-chip" data-filter="guide" type="button">Guide</button>
+              <button class="ct-activity-chip" data-filter="validate" type="button">Content</button>
+              <button class="ct-activity-chip" data-filter="tailoring" type="button">Tailoring</button>
+            </div>
+          </div>
+
+          <!-- Confirm clear inline -->
+          <div class="ct-activity-confirm hidden" id="ct-activity-confirm">
+            <span>Clear all activity log entries?</span>
+            <button class="pf-v6-c-button pf-m-danger pf-m-small" type="button" id="ct-activity-confirm-yes">Clear</button>
+            <button class="pf-v6-c-button pf-m-link pf-m-small" type="button" id="ct-activity-confirm-no">Cancel</button>
+          </div>
+
+          <!-- Empty state -->
+          <div class="pf-v6-c-empty-state hidden" id="ct-activity-empty">
+            <div class="pf-v6-c-empty-state__content">
+              <p class="pf-v6-c-empty-state__body">No activity recorded yet. Run a scan to see entries here.</p>
+            </div>
+          </div>
+
+          <!-- Activity table -->
+          <table class="pf-v6-c-table pf-m-compact hidden" id="ct-activity-table"
+                 role="grid" aria-label="Activity log">
+            <thead>
+              <tr role="row">
+                <th role="columnheader" scope="col">Time</th>
+                <th role="columnheader" scope="col">Tab</th>
+                <th role="columnheader" scope="col">Action</th>
+                <th role="columnheader" scope="col">Details</th>
+                <th role="columnheader" scope="col">Result</th>
+              </tr>
+            </thead>
+            <tbody id="ct-activity-tbody"></tbody>
+          </table>
+
+        </div>
+      </div>
+    </section>
 
     </div><!-- end pf-v6-c-page__main-container -->
   </main>

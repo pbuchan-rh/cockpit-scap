@@ -45,14 +45,19 @@ Cockpit serves files from `~/.local/share/cockpit/` with higher priority than th
 
 **Testing on a remote host:**
 
-If your development machine is different from your test host, use rsync and restart the Cockpit bridge after each deploy:
+If your development machine is different from your test host, use rsync to deploy and then refresh the browser:
 
 ```bash
 rsync -av src/ user@testhost:~/.local/share/cockpit/cockpit-scap/
+```
+
+A browser refresh is usually sufficient to pick up the new files. If you see stale behavior after refreshing, restarting the Cockpit bridge will clear it:
+
+```bash
 ssh user@testhost "sudo systemctl restart cockpit"
 ```
 
-The bridge restart is required — Cockpit caches the running session and will not pick up updated files without it.
+Note that a bridge restart drops your Cockpit session and requires re-authentication — treat it as a cache-busting last resort rather than a step to run on every deploy.
 
 ## Code conventions
 

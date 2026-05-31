@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.1
+Version:        3.2
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -80,6 +80,12 @@ fi
 %dir /var/lib/%{name}/content
 
 %changelog
+* Fri May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.2-1
+- Activity tab: real-time log of all oscap actions (scans, guide generation,
+  content validation, tailoring operations); auto-refresh every 3 seconds;
+  filter by action type; clear log; log capped at 1000 entries
+- src/ restructure: module source files moved to src/ subdirectory
+
 * Fri May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.1-1
 - Run Again action on host and container scan history rows; pre-fills
   content, profile, and tailoring file from scan manifest
