@@ -100,7 +100,7 @@ const PY_EXTRACT_PROFILE = [
  * Args: sys.argv[1]=resultsXmlPath
  * Output: JSON [{id, title, severity}] sorted high→medium→low */
 const PY_EXTRACT_FAILING_RULES = [
-    'import sys, json, xml.etree.ElementTree as ET',
+    'import sys, json, re, xml.etree.ElementTree as ET',
     'NS = "http://checklists.nist.gov/xccdf/1.2"',
     'tree = ET.parse(sys.argv[1])',
     'root = tree.getroot()',
@@ -111,6 +111,12 @@ const PY_EXTRACT_FAILING_RULES = [
     '    ci = next((i for i in rule.findall("{%s}ident" % NS) if "cce" in (i.get("system","")).lower()), None)',
     '    cce = ci.text.strip() if ci is not None else ""',
     '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity", "unknown"), cce)',
+    'has_rem = False; auto_rules = set()',
+    'if len(sys.argv) > 2:',
+    '    try:',
+    '        auto_rules = set(re.findall(r"# BEGIN fix \\([^)]+\\) for \'([^\']+)\'", open(sys.argv[2]).read()))',
+    '        has_rem = True',
+    '    except: pass',
     'fails = []; seen = set()',
     'for rr in root.iter("{%s}rule-result" % NS):',
     '    r = rr.find("{%s}result" % NS)',
@@ -119,7 +125,9 @@ const PY_EXTRACT_FAILING_RULES = [
     '        if rid in seen: continue',
     '        seen.add(rid)',
     '        t, s, cce = rinfo.get(rid, (rid, rr.get("severity", "unknown"), ""))',
-    '        fails.append({"id": rid, "title": t, "severity": s, "cce": cce})',
+    '        rule = {"id": rid, "title": t, "severity": s, "cce": cce}',
+    '        if has_rem: rule["automated"] = rid in auto_rules',
+    '        fails.append(rule)',
     'order = {"high":0,"medium":1,"low":2}',
     'fails.sort(key=lambda x: (order.get(x["severity"], 3), x["title"].lower()))',
     'print(json.dumps(fails))',
@@ -1152,13 +1160,16 @@ function buildScoreDonut(score, failCount) {
     return svg;
 }
 
-function renderFailingSummary(resultsXmlPath, groupsId, loadingId) {
+function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath) {
     const groupsEl  = document.getElementById(groupsId);
     const loadingEl = document.getElementById(loadingId);
     groupsEl.innerHTML = '';
     loadingEl.classList.remove('hidden');
 
-    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsXmlPath], { err: 'message' })
+    const spawnArgs = remPath
+        ? ['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsXmlPath, remPath]
+        : ['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsXmlPath];
+    cockpit.spawn(spawnArgs, { err: 'message' })
         .then(output => {
             loadingEl.classList.add('hidden');
             const rules = JSON.parse(output);
@@ -1195,6 +1206,14 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId) {
                         textCol.appendChild(cce);
                     }
                     row.appendChild(textCol);
+                    if (r.automated !== undefined) {
+                        const tag = document.createElement('span');
+                        tag.className = r.automated
+                            ? 'ct-rule-tag ct-rule-tag-auto'
+                            : 'ct-rule-tag ct-rule-tag-manual';
+                        tag.textContent = r.automated ? 'Automated' : 'Manual';
+                        row.appendChild(tag);
+                    }
                     ruleList.appendChild(row);
                 });
                 details.appendChild(ruleList);
@@ -1274,7 +1293,8 @@ function showResults(manifest) {
     document.getElementById('ct-scan-progress').classList.add('hidden');
     document.getElementById('ct-results').classList.remove('hidden');
     renderFailingSummary(currentResultsDir + 'results.xml',
-                         'ct-failing-summary-groups', 'ct-failing-summary-loading');
+                         'ct-failing-summary-groups', 'ct-failing-summary-loading',
+                         currentRemBashPath || null);
     loadHistory();
     dbInvalidate();
 }

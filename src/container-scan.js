@@ -557,7 +557,8 @@ function csShowResults(manifest) {
     document.getElementById('cs-progress').classList.add('hidden');
     document.getElementById('cs-results').classList.remove('hidden');
     renderFailingSummary(csResultsDir + 'results.xml',
-                         'cs-failing-summary-groups', 'cs-failing-summary-loading');
+                         'cs-failing-summary-groups', 'cs-failing-summary-loading',
+                         csBashPath || null);
     csLoadHistory();
     dbInvalidate();
 }
