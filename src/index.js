@@ -1099,6 +1099,51 @@ function parseResultsXml(content) {
 
 /* ---- Results display --------------------------------------- */
 
+function buildScoreDonut(score, failCount) {
+    const r     = 28;
+    const circ  = 2 * Math.PI * r;
+    const offset = circ * (1 - score / 100);
+    const color  = failCount === 0  ? 'var(--ct-color-success)'
+                 : failCount <= 10  ? 'var(--ct-color-warning)'
+                 : 'var(--ct-color-danger)';
+    const NS = 'http://www.w3.org/2000/svg';
+
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', '72');
+    svg.setAttribute('height', '72');
+    svg.setAttribute('viewBox', '0 0 72 72');
+    svg.classList.add('ct-score-donut');
+
+    const track = document.createElementNS(NS, 'circle');
+    track.setAttribute('cx', '36'); track.setAttribute('cy', '36');
+    track.setAttribute('r', String(r)); track.setAttribute('fill', 'none');
+    track.setAttribute('stroke-width', '7');
+    track.style.stroke = 'var(--ct-color-border)';
+    svg.appendChild(track);
+
+    const arc = document.createElementNS(NS, 'circle');
+    arc.setAttribute('cx', '36'); arc.setAttribute('cy', '36');
+    arc.setAttribute('r', String(r)); arc.setAttribute('fill', 'none');
+    arc.setAttribute('stroke-width', '7');
+    arc.setAttribute('stroke-linecap', 'round');
+    arc.setAttribute('stroke-dasharray', String(circ));
+    arc.setAttribute('stroke-dashoffset', String(offset));
+    arc.setAttribute('transform', 'rotate(-90 36 36)');
+    arc.style.stroke = color;
+    svg.appendChild(arc);
+
+    const text = document.createElementNS(NS, 'text');
+    text.setAttribute('x', '36'); text.setAttribute('y', '41');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-size', '13');
+    text.setAttribute('font-weight', '700');
+    text.setAttribute('fill', 'currentColor');
+    text.textContent = score.toFixed(1) + '%';
+    svg.appendChild(text);
+
+    return svg;
+}
+
 function renderFailingSummary(resultsXmlPath, groupsId, loadingId) {
     const groupsEl  = document.getElementById(groupsId);
     const loadingEl = document.getElementById(loadingId);
@@ -1188,11 +1233,9 @@ function showResults(manifest) {
         badges.appendChild(span);
     });
 
-    document.getElementById('ct-result-score').textContent = score.toFixed(1) + '%';
-
-    const statusBadge = document.getElementById('ct-result-status');
-    statusBadge.textContent = counts.fail === 0 ? 'Compliant' : 'Non-Compliant';
-    statusBadge.className   = counts.fail === 0 ? 'ct-result-status ct-result-status-pass' : 'ct-result-status ct-result-status-fail';
+    const scoreEl = document.getElementById('ct-result-score');
+    scoreEl.innerHTML = '';
+    scoreEl.appendChild(buildScoreDonut(score, counts.fail));
 
     const uploadedWarn = document.getElementById('ct-uploaded-content-warning');
     if (currentSdsPath && currentSdsPath.startsWith(CONTENT_BASE)) {

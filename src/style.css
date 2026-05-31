@@ -661,26 +661,17 @@ code {
 .ct-badge-neutral { background-color: var(--ct-color-border);  color: var(--ct-color-text); }
 
 .ct-result-score {
-  font-size: var(--ct-font-size-xl);
-  font-weight: 700;
-  color: var(--ct-color-text);
+  display: flex;
+  align-items: center;
+}
+
+.ct-score-donut {
+  flex-shrink: 0;
 }
 
 .ct-results-close {
   margin-left: auto;
 }
-
-.ct-result-status {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2em 0.9em;
-  border-radius: var(--ct-border-radius-pill);
-  font-size: var(--ct-font-size-sm);
-  font-weight: 600;
-}
-
-.ct-result-status-pass { background-color: var(--ct-color-success); color: var(--ct-color-bg-card); }
-.ct-result-status-fail { background-color: var(--ct-color-danger);  color: var(--ct-color-bg-card); }
 
 /* ---- Failing rules summary ---------------------------------- */
 

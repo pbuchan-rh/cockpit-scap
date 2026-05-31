@@ -526,11 +526,9 @@ function csShowResults(manifest) {
         badges.appendChild(span);
     });
 
-    document.getElementById('cs-result-score').textContent = score.toFixed(1) + '%';
-
-    const statusBadge = document.getElementById('cs-result-status');
-    statusBadge.textContent = counts.fail === 0 ? 'Compliant' : 'Non-Compliant';
-    statusBadge.className   = counts.fail === 0 ? 'ct-result-status ct-result-status-pass' : 'ct-result-status ct-result-status-fail';
+    const scoreEl = document.getElementById('cs-result-score');
+    scoreEl.innerHTML = '';
+    scoreEl.appendChild(buildScoreDonut(score, counts.fail));
 
     const remFailed = !csBashPath;
     const remBtn = document.getElementById('cs-selective-rem-btn');
