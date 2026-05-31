@@ -24,6 +24,8 @@ let csTailoringMap = {};
 let csImageName      = null;
 let csImageId        = null;
 let csVersionBlocked = false;
+let csRemDir   = null;
+let csRemRules = [];
 
 function initContainerScan() {
     document.getElementById('cs-image-select')
@@ -49,16 +51,26 @@ function initContainerScan() {
             csReportPath,
             'container-report-' + csTimestamp + '.html',
             'text/html'));
-    document.getElementById('cs-download-bash-btn')
-        .addEventListener('click', () => downloadArtifact(
-            csBashPath,
-            'container-remediation-' + csTimestamp + '.sh',
-            'text/x-shellscript'));
-    document.getElementById('cs-download-ansible-btn')
-        .addEventListener('click', () => downloadArtifact(
-            csAnsiblePath,
-            'container-remediation-' + csTimestamp + '.yml',
-            'text/yaml'));
+    document.getElementById('cs-selective-rem-btn')
+        .addEventListener('click', () => openCsRemPanel(csResultsDir));
+    document.getElementById('cs-rem-close-btn')
+        .addEventListener('click', () => {
+            document.getElementById('cs-remediation-panel').classList.add('hidden');
+        });
+    document.getElementById('cs-rem-bash-btn')
+        .addEventListener('click', () => generateCsSelectiveFix('bash'));
+    document.getElementById('cs-rem-ansible-btn')
+        .addEventListener('click', () => generateCsSelectiveFix('ansible'));
+    document.getElementById('cs-rem-select-all-btn')
+        .addEventListener('click', () => {
+            document.querySelectorAll('#cs-remediation-rules .ct-rem-checkbox').forEach(c => { c.checked = true; });
+            updateCsRemCount();
+        });
+    document.getElementById('cs-rem-deselect-all-btn')
+        .addEventListener('click', () => {
+            document.querySelectorAll('#cs-remediation-rules .ct-rem-checkbox').forEach(c => { c.checked = false; });
+            updateCsRemCount();
+        });
     document.getElementById('cs-new-scan-btn')
         .addEventListener('click', csShowSetup);
     document.getElementById('cs-scan-error-close')
@@ -476,10 +488,9 @@ function csShowResults(manifest) {
     document.getElementById('cs-result-score').textContent = score.toFixed(1) + '%';
 
     const remFailed = !csBashPath;
-    document.getElementById('cs-download-bash-btn').disabled    = remFailed;
-    document.getElementById('cs-download-ansible-btn').disabled = remFailed;
-    document.getElementById('cs-download-bash-btn').title    = remFailed ? 'Remediation generation failed' : '';
-    document.getElementById('cs-download-ansible-btn').title = remFailed ? 'Remediation generation failed' : '';
+    const remBtn = document.getElementById('cs-selective-rem-btn');
+    remBtn.disabled = remFailed;
+    remBtn.title    = remFailed ? 'Remediation generation failed' : '';
 
     document.getElementById('cs-progress').classList.add('hidden');
     document.getElementById('cs-results').classList.remove('hidden');
@@ -589,14 +600,7 @@ function csBuildHistoryRow(manifest) {
 
     [
         ['View Report', () => viewReportFromPath(dir + 'report.html')],
-        ['Bash',        () => downloadArtifact(
-            dir + 'remediation.sh',
-            'container-remediation-' + manifest.timestamp + '.sh',
-            'text/x-shellscript')],
-        ['Ansible',     () => downloadArtifact(
-            dir + 'remediation.yml',
-            'container-remediation-' + manifest.timestamp + '.yml',
-            'text/yaml')],
+        ['Remediate',   () => openCsRemPanel(dir)],
     ].forEach(([label, handler]) => {
         const btn       = document.createElement('button');
         btn.className   = 'pf-v6-c-button pf-m-link';
@@ -801,5 +805,162 @@ function exportCsHistoryCSV() {
         (m.score || 0).toFixed(1),
     ]);
     downloadCSV('container-scan-history.csv', [headers, ...rows]);
+}
+
+/* ---- Selective Remediation -------------------------------- */
+
+function openCsRemPanel(resultsDir) {
+    csRemDir   = resultsDir;
+    csRemRules = [];
+
+    const panel = document.getElementById('cs-remediation-panel');
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    document.getElementById('cs-remediation-loading').classList.remove('hidden');
+    document.getElementById('cs-remediation-content').classList.add('hidden');
+    document.getElementById('cs-remediation-error').classList.add('hidden');
+    document.getElementById('cs-rem-context').classList.add('hidden');
+
+    cockpit.file(resultsDir + 'manifest.json').read()
+        .then(content => {
+            const m = JSON.parse(content);
+            const ts      = (m.timestamp || '').replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
+            const profile = m.profile_title || m.profile_id || '—';
+            const sds     = m.sds_file ? m.sds_file.split('/').pop() : '—';
+            const score   = m.score != null ? parseFloat(m.score).toFixed(1) + '%' : '—';
+            const fail    = m.counts && m.counts.fail != null ? m.counts.fail : '—';
+            const image   = m.image_name ? m.image_name.split('/').pop() : '—';
+            const ctx = document.getElementById('cs-rem-context');
+            ctx.innerHTML =
+                '<span class="ct-rem-ctx-item"><strong>Image:</strong> ' + escHtmlRem(image) + '</span>' +
+                '<span class="ct-rem-ctx-item"><strong>Profile:</strong> ' + escHtmlRem(profile) + '</span>' +
+                '<span class="ct-rem-ctx-item"><strong>Score:</strong> ' + escHtmlRem(score) + '</span>' +
+                '<span class="ct-rem-ctx-item"><strong>Failing:</strong> ' + escHtmlRem(String(fail)) + '</span>' +
+                '<span class="ct-rem-ctx-item"><strong>Content:</strong> ' + escHtmlRem(sds) + '</span>' +
+                '<span class="ct-rem-ctx-item"><strong>Scanned:</strong> ' + escHtmlRem(ts) + '</span>';
+            ctx.classList.remove('hidden');
+        })
+        .catch(() => {});
+
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsDir + 'results.xml'],
+                  { err: 'message' })
+        .then(output => {
+            csRemRules = JSON.parse(output);
+            document.getElementById('cs-remediation-loading').classList.add('hidden');
+            renderCsRemRules(csRemRules);
+            document.getElementById('cs-remediation-content').classList.remove('hidden');
+        })
+        .catch(err => {
+            document.getElementById('cs-remediation-loading').classList.add('hidden');
+            document.getElementById('cs-remediation-error-msg').textContent =
+                'Failed to load failing rules: ' + (err.message || String(err));
+            document.getElementById('cs-remediation-error').classList.remove('hidden');
+        });
+}
+
+function renderCsRemRules(rules) {
+    const groups = { high: [], medium: [], low: [], unknown: [] };
+    rules.forEach(r => (groups[r.severity] || groups.unknown).push(r));
+
+    const container = document.getElementById('cs-remediation-rules');
+    container.innerHTML = '';
+
+    const order = [['high','High','ct-sev-high'],['medium','Medium','ct-sev-medium'],['low','Low','ct-sev-low']];
+    order.forEach(([sev, label, cls]) => {
+        const list = groups[sev];
+        if (!list || !list.length) return;
+
+        const details = document.createElement('details');
+        details.open = (sev === 'high');
+        details.className = 'ct-rem-group';
+
+        const summary = document.createElement('summary');
+        summary.className = 'ct-rem-group-summary';
+        summary.innerHTML =
+            '<span class="ct-sev-badge ' + cls + '">' + label + '</span>' +
+            '<span class="ct-rem-group-count">' + list.length + ' rule' + (list.length !== 1 ? 's' : '') + '</span>' +
+            '<button class="pf-v6-c-button pf-m-link ct-rem-select-sev" type="button" data-sev="' + sev + '">Select all</button>';
+        details.appendChild(summary);
+
+        list.forEach(rule => {
+            const row = document.createElement('label');
+            row.className = 'ct-rem-rule-row';
+            row.innerHTML =
+                '<input type="checkbox" class="ct-rem-checkbox" data-id="' + escapeAttr(rule.id) + '" checked>' +
+                '<span class="ct-rem-rule-title">' + escHtmlRem(rule.title) + '</span>' +
+                '<span class="ct-rem-rule-id">' + escHtmlRem(rule.id.split('_rule_').pop()) + '</span>';
+            details.appendChild(row);
+        });
+        container.appendChild(details);
+    });
+
+    container.querySelectorAll('.ct-rem-select-sev').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            const group = btn.closest('details');
+            const groupChecks = group.querySelectorAll('.ct-rem-checkbox');
+            const allChecked = Array.from(groupChecks).every(c => c.checked);
+            groupChecks.forEach(c => { c.checked = !allChecked; });
+            updateCsRemCount();
+        });
+    });
+
+    container.addEventListener('change', updateCsRemCount);
+    updateCsRemCount();
+}
+
+function updateCsRemCount() {
+    const all     = document.querySelectorAll('#cs-remediation-rules .ct-rem-checkbox');
+    const checked = Array.from(all).filter(c => c.checked).length;
+    document.getElementById('cs-remediation-count').textContent =
+        checked + ' of ' + all.length + ' rules selected';
+    const disabled = checked === 0;
+    document.getElementById('cs-rem-bash-btn').disabled    = disabled;
+    document.getElementById('cs-rem-ansible-btn').disabled = disabled;
+
+    document.querySelectorAll('#cs-remediation-rules .ct-rem-group').forEach(group => {
+        const groupAll     = group.querySelectorAll('.ct-rem-checkbox');
+        const groupChecked = Array.from(groupAll).filter(c => c.checked).length;
+        const countEl      = group.querySelector('.ct-rem-group-count');
+        if (countEl) {
+            countEl.textContent = groupChecked + ' of ' + groupAll.length +
+                ' rule' + (groupAll.length !== 1 ? 's' : '') + ' selected';
+        }
+        const sevBtn = group.querySelector('.ct-rem-select-sev');
+        if (sevBtn) {
+            sevBtn.textContent = groupChecked === groupAll.length ? 'Deselect all' : 'Select all';
+        }
+    });
+}
+
+function generateCsSelectiveFix(fixType) {
+    const all = document.querySelectorAll('#cs-remediation-rules .ct-rem-checkbox');
+    const selected = Array.from(all).filter(c => c.checked).map(c => c.dataset.id);
+    if (!selected.length) return;
+
+    const remFile = csRemDir + (fixType === 'bash' ? 'remediation.sh' : 'remediation.yml');
+    const ext     = fixType === 'bash' ? '.sh' : '.yml';
+    const mime    = fixType === 'bash' ? 'text/x-shellscript' : 'text/yaml';
+    const ts      = csRemDir.replace(/\/$/, '').split('/').pop();
+    const fname   = 'container-selective-remediation-' + ts + ext;
+
+    cockpit.spawn(
+        ['python3', '-c', PY_FILTER_FIX, remFile, fixType, JSON.stringify(selected)],
+        { err: 'message' }
+    )
+    .then(output => {
+        const blob = new Blob([output], { type: mime });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = fname;
+        a.click();
+        URL.revokeObjectURL(url);
+        appendActivityLog({ type: 'remediate_download', tab: 'container',
+            fix_type: fixType, rules_selected: selected.length });
+    })
+    .catch(err => console.error('Container selective remediation failed:', err.message || err));
 }
 

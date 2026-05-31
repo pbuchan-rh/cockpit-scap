@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=49">
+    <link rel="stylesheet" href="style.css?v=50">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=49" defer></script>
-    <script src="container-scan.js?v=49" defer></script>
-    <script src="dashboard.js?v=49" defer></script>
+    <script src="index.js?v=50" defer></script>
+    <script src="container-scan.js?v=50" defer></script>
+    <script src="dashboard.js?v=50" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -550,14 +550,57 @@
                 <button class="pf-v6-c-button pf-m-secondary" type="button"
                         id="cs-download-report-btn">Download Report</button>
                 <button class="pf-v6-c-button pf-m-secondary" type="button"
-                        id="cs-download-bash-btn">Download Bash Remediation</button>
-                <button class="pf-v6-c-button pf-m-secondary" type="button"
-                        id="cs-download-ansible-btn">Download Ansible Remediation</button>
-                <button class="pf-v6-c-button pf-m-secondary" type="button"
-                        id="cs-apply-remediation-btn" disabled
-                        title="Not supported — oscap-podman does not support --remediate">Apply Remediation</button>
+                        id="cs-selective-rem-btn">Remediate</button>
                 <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn" type="button"
                         id="cs-new-scan-btn">New Scan</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Container selective remediation panel -->
+        <div class="hidden" id="cs-remediation-panel">
+          <div class="pf-v6-c-card">
+            <div class="pf-v6-c-card__title ct-history-title-row">
+              <h2 class="pf-v6-c-card__title-text">Selective Remediation</h2>
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="cs-rem-close-btn">Close</button>
+            </div>
+            <div class="pf-v6-c-alert pf-m-warning" aria-label="Container remediation note">
+              <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+              <div>
+                <h4 class="pf-v6-c-alert__title">Container remediation applies to image builds</h4>
+                <div class="pf-v6-c-alert__description">
+                  These scripts cannot be applied to a running container. Apply them to
+                  your Containerfile or Dockerfile, rebuild the image, and rescan to verify.
+                </div>
+              </div>
+            </div>
+            <div class="ct-rem-context hidden" id="cs-rem-context"></div>
+            <div class="pf-v6-c-card__body">
+              <div id="cs-remediation-loading">
+                <p class="ct-rem-loading">Extracting failing rules&#8230;</p>
+              </div>
+              <div class="pf-v6-c-alert pf-m-danger hidden" id="cs-remediation-error"
+                   aria-label="Remediation error">
+                <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+                <div><p id="cs-remediation-error-msg"></p></div>
+              </div>
+              <div class="hidden" id="cs-remediation-content">
+                <div class="ct-rem-toolbar">
+                  <span class="ct-rem-count" id="cs-remediation-count">0 rules selected</span>
+                  <button class="pf-v6-c-button pf-m-link" type="button"
+                          id="cs-rem-select-all-btn">Select All</button>
+                  <button class="pf-v6-c-button pf-m-link" type="button"
+                          id="cs-rem-deselect-all-btn">Deselect All</button>
+                </div>
+                <div id="cs-remediation-rules"></div>
+                <div class="ct-rem-actions">
+                  <button class="pf-v6-c-button pf-m-primary" type="button"
+                          id="cs-rem-bash-btn" disabled>Download Bash Script</button>
+                  <button class="pf-v6-c-button pf-m-secondary" type="button"
+                          id="cs-rem-ansible-btn" disabled>Download Ansible Playbook</button>
+                </div>
               </div>
             </div>
           </div>
