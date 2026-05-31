@@ -1306,16 +1306,28 @@ function showResults(manifest) {
     }
 
     const prev = findPreviousScan(manifest, currentHostHistory);
-    const regressionAlert = document.getElementById('ct-regression-alert');
-    if (prev && counts.fail > prev.counts.fail) {
-        const delta   = counts.fail - prev.counts.fail;
+    const improvementAlert = document.getElementById('ct-improvement-alert');
+    const regressionAlert  = document.getElementById('ct-regression-alert');
+    if (prev && counts.fail < prev.counts.fail) {
+        const delta    = prev.counts.fail - counts.fail;
+        const prevDate = prev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
+        document.getElementById('ct-improvement-msg').textContent =
+            delta + ' fewer failing rule' + (delta === 1 ? '' : 's') +
+            ' than your previous scan on ' + prevDate +
+            ' (' + prev.counts.fail + ' → ' + counts.fail + ')';
+        improvementAlert.classList.remove('hidden');
+        regressionAlert.classList.add('hidden');
+    } else if (prev && counts.fail > prev.counts.fail) {
+        const delta    = counts.fail - prev.counts.fail;
         const prevDate = prev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
         document.getElementById('ct-regression-msg').textContent =
             delta + ' more failing rule' + (delta === 1 ? '' : 's') +
             ' than your previous scan on ' + prevDate +
             ' (' + prev.counts.fail + ' → ' + counts.fail + ')';
         regressionAlert.classList.remove('hidden');
+        improvementAlert.classList.add('hidden');
     } else {
+        improvementAlert.classList.add('hidden');
         regressionAlert.classList.add('hidden');
     }
 
@@ -1400,6 +1412,7 @@ function showScanSetup() {
     document.getElementById('ct-results').classList.add('hidden');
     document.getElementById('ct-failing-summary-groups').innerHTML = '';
     document.getElementById('ct-failing-summary-loading').classList.add('hidden');
+    document.getElementById('ct-improvement-alert').classList.add('hidden');
     document.getElementById('ct-regression-alert').classList.add('hidden');
     currentScanProc       = null;
     currentRemBashPath    = null;

@@ -536,8 +536,18 @@ function csShowResults(manifest) {
         m.sds_file   === manifest.sds_file &&
         m.image_id   === manifest.image_id
     ) || null;
-    const csRegressionAlert = document.getElementById('cs-regression-alert');
-    if (csPrev && counts.fail > csPrev.counts.fail) {
+    const csImprovementAlert = document.getElementById('cs-improvement-alert');
+    const csRegressionAlert  = document.getElementById('cs-regression-alert');
+    if (csPrev && counts.fail < csPrev.counts.fail) {
+        const delta    = csPrev.counts.fail - counts.fail;
+        const prevDate = csPrev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
+        document.getElementById('cs-improvement-msg').textContent =
+            delta + ' fewer failing rule' + (delta === 1 ? '' : 's') +
+            ' than your previous scan on ' + prevDate +
+            ' (' + csPrev.counts.fail + ' → ' + counts.fail + ')';
+        csImprovementAlert.classList.remove('hidden');
+        csRegressionAlert.classList.add('hidden');
+    } else if (csPrev && counts.fail > csPrev.counts.fail) {
         const delta    = counts.fail - csPrev.counts.fail;
         const prevDate = csPrev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
         document.getElementById('cs-regression-msg').textContent =
@@ -545,7 +555,9 @@ function csShowResults(manifest) {
             ' than your previous scan on ' + prevDate +
             ' (' + csPrev.counts.fail + ' → ' + counts.fail + ')';
         csRegressionAlert.classList.remove('hidden');
+        csImprovementAlert.classList.add('hidden');
     } else {
+        csImprovementAlert.classList.add('hidden');
         csRegressionAlert.classList.add('hidden');
     }
 
@@ -820,6 +832,7 @@ function csShowSetup() {
     document.getElementById('cs-results').classList.add('hidden');
     document.getElementById('cs-failing-summary-groups').innerHTML = '';
     document.getElementById('cs-failing-summary-loading').classList.add('hidden');
+    document.getElementById('cs-improvement-alert').classList.add('hidden');
     document.getElementById('cs-regression-alert').classList.add('hidden');
     csProc        = null;
     csBashPath    = null;

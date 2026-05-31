@@ -233,6 +233,15 @@
                 </div>
               </div>
             </div>
+            <!-- Improvement — shown when fail count decreased vs previous scan -->
+            <div class="pf-v6-c-alert pf-m-success hidden"
+                 id="ct-improvement-alert" aria-label="Improvement detected">
+              <div class="pf-v6-c-alert__icon" aria-hidden="true">&#10003;</div>
+              <div>
+                <h4 class="pf-v6-c-alert__title">Improvement</h4>
+                <div class="pf-v6-c-alert__description" id="ct-improvement-msg"></div>
+              </div>
+            </div>
             <!-- Regression warning — shown when fail count increased vs previous scan -->
             <div class="pf-v6-c-alert pf-m-warning hidden"
                  id="ct-regression-alert" aria-label="Regression detected">
@@ -564,6 +573,15 @@
                   </div>
                 </div>
               </div>
+            <!-- Improvement — shown when fail count decreased vs previous scan -->
+            <div class="pf-v6-c-alert pf-m-success hidden"
+                 id="cs-improvement-alert" aria-label="Improvement detected">
+              <div class="pf-v6-c-alert__icon" aria-hidden="true">&#10003;</div>
+              <div>
+                <h4 class="pf-v6-c-alert__title">Improvement</h4>
+                <div class="pf-v6-c-alert__description" id="cs-improvement-msg"></div>
+              </div>
+            </div>
             <!-- Regression warning — shown when fail count increased vs previous scan -->
             <div class="pf-v6-c-alert pf-m-warning hidden"
                  id="cs-regression-alert" aria-label="Regression detected">
