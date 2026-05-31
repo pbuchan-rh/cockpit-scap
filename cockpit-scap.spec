@@ -80,13 +80,13 @@ fi
 %dir /var/lib/%{name}/content
 
 %changelog
-* Fri May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.2-1
+* Sat May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.2-1
 - Activity tab: real-time log of all oscap actions (scans, guide generation,
   content validation, tailoring operations); auto-refresh every 3 seconds;
   filter by action type; clear log; log capped at 1000 entries
 - src/ restructure: module source files moved to src/ subdirectory
 
-* Fri May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.1-1
+* Sat May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.1-1
 - Run Again action on host and container scan history rows; pre-fills
   content, profile, and tailoring file from scan manifest
 - View Guide button on Host Scan, Container Scan, and Tailoring tabs;
@@ -98,7 +98,7 @@ fi
 - Community files: CONTRIBUTING.md, CODE_OF_CONDUCT.md, issue templates
 - History rewrite: clean author identity throughout, private docs removed
 
-* Fri May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.0-1
+* Sat May 30 2026 Peter Buchan <pbuchan@redhat.com> - 3.0-1
 - Container image scanning via oscap-podman: image enumeration from root
   Podman store, version mismatch detection, per-image scan history
 - Per-type scan history pruning: host and container scans each retain
