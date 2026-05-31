@@ -233,6 +233,15 @@
                 </div>
               </div>
             </div>
+            <!-- Regression warning — shown when fail count increased vs previous scan -->
+            <div class="pf-v6-c-alert pf-m-warning hidden"
+                 id="ct-regression-alert" aria-label="Regression detected">
+              <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+              <div>
+                <h4 class="pf-v6-c-alert__title">Regression detected</h4>
+                <div class="pf-v6-c-alert__description" id="ct-regression-msg"></div>
+              </div>
+            </div>
             <!-- Failing rules summary — populated async after scan -->
             <div class="ct-failing-summary" id="ct-failing-summary">
               <div class="ct-failing-summary-loading hidden" id="ct-failing-summary-loading">
@@ -555,6 +564,15 @@
                   </div>
                 </div>
               </div>
+            <!-- Regression warning — shown when fail count increased vs previous scan -->
+            <div class="pf-v6-c-alert pf-m-warning hidden"
+                 id="cs-regression-alert" aria-label="Regression detected">
+              <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+              <div>
+                <h4 class="pf-v6-c-alert__title">Regression detected</h4>
+                <div class="pf-v6-c-alert__description" id="cs-regression-msg"></div>
+              </div>
+            </div>
             <!-- Failing rules summary — populated async after scan -->
             <div class="ct-failing-summary" id="cs-failing-summary">
               <div class="ct-failing-summary-loading hidden" id="cs-failing-summary-loading">

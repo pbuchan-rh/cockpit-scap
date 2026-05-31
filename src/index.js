@@ -1099,6 +1099,14 @@ function parseResultsXml(content) {
 
 /* ---- Results display --------------------------------------- */
 
+function findPreviousScan(manifest, history) {
+    return history.find(m =>
+        m.timestamp < manifest.timestamp &&
+        m.profile_id === manifest.profile_id &&
+        m.sds_file   === manifest.sds_file
+    ) || null;
+}
+
 function buildScoreDonut(score, failCount) {
     const r     = 28;
     const circ  = 2 * Math.PI * r;
@@ -1244,6 +1252,20 @@ function showResults(manifest) {
         uploadedWarn.classList.add('hidden');
     }
 
+    const prev = findPreviousScan(manifest, currentHostHistory);
+    const regressionAlert = document.getElementById('ct-regression-alert');
+    if (prev && counts.fail > prev.counts.fail) {
+        const delta   = counts.fail - prev.counts.fail;
+        const prevDate = prev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
+        document.getElementById('ct-regression-msg').textContent =
+            delta + ' more failing rule' + (delta === 1 ? '' : 's') +
+            ' than your previous scan on ' + prevDate +
+            ' (' + prev.counts.fail + ' → ' + counts.fail + ')';
+        regressionAlert.classList.remove('hidden');
+    } else {
+        regressionAlert.classList.add('hidden');
+    }
+
     const remBtn = document.getElementById('ct-selective-rem-btn');
     const remFailed = !currentRemBashPath;
     remBtn.disabled = remFailed;
@@ -1324,6 +1346,7 @@ function showScanSetup() {
     document.getElementById('ct-results').classList.add('hidden');
     document.getElementById('ct-failing-summary-groups').innerHTML = '';
     document.getElementById('ct-failing-summary-loading').classList.add('hidden');
+    document.getElementById('ct-regression-alert').classList.add('hidden');
     currentScanProc       = null;
     currentRemBashPath    = null;
     currentRemAnsiblePath = null;

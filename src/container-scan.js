@@ -530,6 +530,25 @@ function csShowResults(manifest) {
     scoreEl.innerHTML = '';
     scoreEl.appendChild(buildScoreDonut(score, counts.fail));
 
+    const csPrev = currentCsHistory.find(m =>
+        m.timestamp  <  manifest.timestamp &&
+        m.profile_id === manifest.profile_id &&
+        m.sds_file   === manifest.sds_file &&
+        m.image_id   === manifest.image_id
+    ) || null;
+    const csRegressionAlert = document.getElementById('cs-regression-alert');
+    if (csPrev && counts.fail > csPrev.counts.fail) {
+        const delta    = counts.fail - csPrev.counts.fail;
+        const prevDate = csPrev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
+        document.getElementById('cs-regression-msg').textContent =
+            delta + ' more failing rule' + (delta === 1 ? '' : 's') +
+            ' than your previous scan on ' + prevDate +
+            ' (' + csPrev.counts.fail + ' → ' + counts.fail + ')';
+        csRegressionAlert.classList.remove('hidden');
+    } else {
+        csRegressionAlert.classList.add('hidden');
+    }
+
     const remFailed = !csBashPath;
     const remBtn = document.getElementById('cs-selective-rem-btn');
     remBtn.disabled = remFailed;
@@ -800,6 +819,7 @@ function csShowSetup() {
     document.getElementById('cs-results').classList.add('hidden');
     document.getElementById('cs-failing-summary-groups').innerHTML = '';
     document.getElementById('cs-failing-summary-loading').classList.add('hidden');
+    document.getElementById('cs-regression-alert').classList.add('hidden');
     csProc        = null;
     csBashPath    = null;
     csAnsiblePath = null;
