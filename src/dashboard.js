@@ -3,31 +3,45 @@
 /* ============================================================
    Compliance Dashboard — all logic contained here.
    Entry point: initDashboard()
-   Removal: delete this file + remove initDashboard() call
-            in index.js + remove panel-dashboard from HTML
-            + remove Dashboard tab button from HTML
    ============================================================ */
 
 const DB_RESULTS_BASE = '/var/lib/cockpit-scap/results/';
 
+let dbLoaded   = false;
+let dbHostname = null;
+
 function initDashboard() {
+    cockpit.spawn(['hostname'], { err: 'message' })
+        .then(h => { dbHostname = h.trim(); })
+        .catch(() => { dbHostname = null; });
+
     document.getElementById('tab-btn-dashboard')
-        .addEventListener('click', loadDashboard);
+        .addEventListener('click', () => {
+            if (dbLoaded) return;
+            loadDashboard();
+        });
+
+    document.getElementById('db-refresh-btn')
+        .addEventListener('click', () => {
+            dbLoaded = false;
+            loadDashboard();
+        });
 }
 
 /* ---- Data loading ------------------------------------------ */
 
 function loadDashboard() {
-    const container = document.getElementById('db-content');
-    container.innerHTML = '<p class="db-loading">Loading&#8230;</p>';
+    const el = document.getElementById('db-content');
+    el.innerHTML = '<p class="db-loading">Loading&#8230;</p>';
 
     cockpit.spawn(['ls', DB_RESULTS_BASE], { err: 'message' })
         .then(output => {
             const dirs = output.trim().split('\n')
                 .filter(d => /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/.test(d));
 
-            if (dirs.length === 0) {
-                renderEmpty(container);
+            if (!dirs.length) {
+                renderEmpty(el);
+                dbLoaded = true;
                 return;
             }
 
@@ -44,16 +58,20 @@ function loadDashboard() {
                 const hostMans = valid.filter(m => m.scan_type !== 'container');
                 const csMans   = valid.filter(m => m.scan_type === 'container');
 
-                renderDashboard(container, hostMans, csMans);
+                renderDashboard(el, hostMans, csMans);
+                dbLoaded = true;
             });
         })
-        .catch(() => renderEmpty(document.getElementById('db-content')));
+        .catch(() => {
+            renderEmpty(document.getElementById('db-content'));
+            dbLoaded = true;
+        });
 }
 
 /* ---- Rendering --------------------------------------------- */
 
-function renderEmpty(container) {
-    container.innerHTML =
+function renderEmpty(el) {
+    el.innerHTML =
         '<div class="db-empty-state">' +
             '<p class="db-empty-title">No scans yet</p>' +
             '<p class="db-empty-body">Run your first scan to see your compliance posture here.</p>' +
@@ -66,40 +84,47 @@ function renderEmpty(container) {
 function renderDashboard(el, hostManifests, containerManifests) {
     const sections = [];
 
-    /* Host section */
     if (hostManifests.length > 0) {
         const latest = hostManifests[0];
+        const prev   = hostManifests[1] || null;
         sections.push(
             '<div class="db-section">' +
                 '<h3 class="db-section-title">Host</h3>' +
                 '<div class="db-cards">' +
                     buildStatusCard({
-                        title:     'This Host',
-                        manifest:  latest,
-                        goTabId:   'tab-btn-scan',
-                        goLabel:   'Go to Host Scan',
+                        title:   dbHostname || 'This Host',
+                        manifest: latest,
+                        prev:    prev,
+                        goTabId: 'tab-btn-scan',
+                        goLabel: 'Go to Host Scan',
                     }) +
                 '</div>' +
             '</div>'
         );
     }
 
-    /* Container section — one card per unique image (latest scan per image) */
     if (containerManifests.length > 0) {
         const byImage = {};
+        const prevByImage = {};
         containerManifests.forEach(m => {
             const key = m.image_id || m.image_name || 'unknown';
-            if (!byImage[key]) byImage[key] = m;
+            if (!byImage[key]) {
+                byImage[key] = m;
+            } else if (!prevByImage[key]) {
+                prevByImage[key] = m;
+            }
         });
 
-        const cards = Object.values(byImage).map(m =>
-            buildStatusCard({
+        const cards = Object.values(byImage).map(m => {
+            const key = m.image_id || m.image_name || 'unknown';
+            return buildStatusCard({
                 title:    m.image_name || m.image_id || 'Container',
                 manifest: m,
+                prev:     prevByImage[key] || null,
                 goTabId:  'tab-btn-container-scan',
                 goLabel:  'Go to Container Scan',
-            })
-        ).join('');
+            });
+        }).join('');
 
         sections.push(
             '<div class="db-section">' +
@@ -109,14 +134,13 @@ function renderDashboard(el, hostManifests, containerManifests) {
         );
     }
 
-    if (sections.length === 0) {
-        renderEmpty(document.getElementById('db-content'));
+    if (!sections.length) {
+        renderEmpty(el);
         return;
     }
 
     el.innerHTML = sections.join('');
 
-    /* Wire Go buttons */
     el.querySelectorAll('[data-go-tab]').forEach(btn => {
         btn.addEventListener('click', () => {
             document.getElementById(btn.dataset.goTab).click();
@@ -124,7 +148,7 @@ function renderDashboard(el, hostManifests, containerManifests) {
     });
 }
 
-function buildStatusCard({ title, manifest, goTabId, goLabel }) {
+function buildStatusCard({ title, manifest, prev, goTabId, goLabel }) {
     const score    = parseFloat(manifest.score);
     const hasScore = !isNaN(score);
     const scoreClass = hasScore
@@ -132,25 +156,41 @@ function buildStatusCard({ title, manifest, goTabId, goLabel }) {
         : 'db-score-grey';
 
     const scoreDisplay = hasScore ? score.toFixed(1) + '%' : '—';
+
+    let deltaHtml = '';
+    if (hasScore && prev && prev.score != null) {
+        const prevScore = parseFloat(prev.score);
+        if (!isNaN(prevScore) && Math.abs(score - prevScore) >= 0.05) {
+            const delta = score - prevScore;
+            const sign  = delta > 0 ? '+' : '';
+            const cls   = delta > 0 ? 'db-delta-up' : 'db-delta-down';
+            const arrow = delta > 0 ? '↑' : '↓';
+            deltaHtml = '<span class="db-score-delta ' + cls + '">' +
+                arrow + ' ' + sign + delta.toFixed(1) + '%' +
+            '</span>';
+        }
+    }
+
     const counts       = manifest.counts || {};
     const pass         = counts.pass  != null ? counts.pass  : '—';
     const fail         = counts.fail  != null ? counts.fail  : '—';
     const profileLabel = manifest.profile_title || manifest.profile_id || '—';
     const sdsBase      = manifest.sds_file ? manifest.sds_file.split('/').pop() : '';
     const contentLabel = sdsBase || '—';
-    const age = manifest.timestamp ? dbRelativeTime(manifest.timestamp) : '—';
+    const age          = manifest.timestamp ? dbRelativeTime(manifest.timestamp) : '—';
 
     return (
         '<div class="pf-v6-c-card db-status-card">' +
             '<div class="pf-v6-c-card__header">' +
                 '<div class="pf-v6-c-card__title">' +
-                    '<h4 class="pf-v6-c-title pf-m-md db-card-title">' + escHtml(title) + '</h4>' +
+                    '<h4 class="pf-v6-title pf-m-md db-card-title">' + escHtml(title) + '</h4>' +
                 '</div>' +
             '</div>' +
             '<div class="pf-v6-c-card__body db-card-body">' +
                 '<div class="db-score-block ' + scoreClass + '">' +
                     '<span class="db-score-value">' + scoreDisplay + '</span>' +
                     '<span class="db-score-label">compliance score</span>' +
+                    deltaHtml +
                 '</div>' +
                 '<div class="db-meta">' +
                     '<div class="db-meta-row">' +
@@ -187,7 +227,6 @@ function buildStatusCard({ title, manifest, goTabId, goLabel }) {
 /* ---- Utilities --------------------------------------------- */
 
 function dbRelativeTime(timestamp) {
-    /* timestamp format: 2026-05-30T23-45-00 */
     const iso  = timestamp.replace(/T(\d{2})-(\d{2})-(\d{2})$/, 'T$1:$2:$3');
     const then = new Date(iso);
     if (isNaN(then)) return timestamp;

@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=60">
+    <link rel="stylesheet" href="style.css?v=68">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=60" defer></script>
-    <script src="container-scan.js?v=60" defer></script>
-    <script src="dashboard.js?v=60" defer></script>
+    <script src="index.js?v=68" defer></script>
+    <script src="container-scan.js?v=68" defer></script>
+    <script src="dashboard.js?v=68" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -48,7 +48,7 @@
           <li class="pf-v6-c-tabs__item" role="presentation">
             <button class="pf-v6-c-tabs__link" type="button" role="tab"
                     aria-selected="false" data-panel="panel-dashboard" id="tab-btn-dashboard">
-              <span class="pf-v6-c-tabs__item-text">Dashboard</span>
+              <span class="pf-v6-c-tabs__item-text">Dashboard <span class="ct-tab-preview-badge">Preview</span></span>
             </button>
           </li>
           <li class="pf-v6-c-tabs__item ct-tab-activity" role="presentation">
@@ -785,10 +785,15 @@
         <!-- Sticky header: profile name being edited + save/cancel always visible -->
         <div class="pf-v6-c-card__title ct-tailor-editor-header">
           <div class="ct-tailor-editor-header-inner">
-            <h2 class="pf-v6-c-card__title-text">
-              Editing: <span id="ct-tailor-editor-title"></span>
-            </h2>
+            <div class="ct-tailor-editor-name-row">
+              <span class="ct-tailor-editor-name-edit-icon" id="ct-tailor-editor-name-icon"
+                    title="Click to rename">&#9998;</span>
+              <input class="ct-tailor-editor-name-input" type="text"
+                     id="ct-tailor-editor-name" spellcheck="false">
+            </div>
             <div class="ct-tailor-save-row">
+              <button class="pf-v6-c-button pf-m-primary hidden" type="button"
+                      id="ct-tailor-update-btn">Update</button>
               <button class="pf-v6-c-button pf-m-primary" type="button"
                       id="ct-tailor-save-btn">Save Tailoring File</button>
               <button class="pf-v6-c-button pf-m-secondary" type="button"
@@ -924,6 +929,14 @@
     <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-dashboard"
              role="tabpanel" aria-labelledby="tab-btn-dashboard">
 
+      <div class="db-toolbar">
+        <div class="pf-v6-c-alert pf-m-info db-preview-banner" aria-label="Preview feature">
+          <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9432;</div>
+          <div><span class="pf-v6-c-alert__title">Dashboard is a work in progress.</span>
+          Score trending and additional views are planned for a future release.</div>
+        </div>
+        <button class="pf-v6-c-button pf-m-link" type="button" id="db-refresh-btn">Refresh</button>
+      </div>
       <div id="db-content"></div>
 
     </section>

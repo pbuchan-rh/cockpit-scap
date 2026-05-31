@@ -186,10 +186,11 @@ let remediationDir   = null;   /* full path to scan results dir, trailing slash 
 let remediationRules = [];     /* [{id, title, severity}] from last load */
 
 /* Module state — tailoring */
-let tailorSdsPath       = null;
-let tailorData          = null;
-let tailorRuleChanges   = {};
-let tailorValueChanges  = {};
+let tailorSdsPath         = null;
+let tailorData            = null;
+let tailorRuleChanges     = {};
+let tailorValueChanges    = {};
+let tailorEditingSidecar  = null;
 let tailoringFilesMap   = {};
 
 /* Module state — content */
@@ -275,6 +276,14 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('input', updateTailorLoadBtn);
     document.getElementById('ct-tailor-load-btn')
         .addEventListener('click', onTailorLoadClick);
+    document.getElementById('ct-tailor-editor-name-icon')
+        .addEventListener('click', () => {
+            const input = document.getElementById('ct-tailor-editor-name');
+            input.focus();
+            input.select();
+        });
+    document.getElementById('ct-tailor-update-btn')
+        .addEventListener('click', doUpdateTailoringFile);
     document.getElementById('ct-tailor-save-btn')
         .addEventListener('click', onTailorSaveClick);
     document.getElementById('ct-tailor-cancel-btn')
@@ -1541,9 +1550,16 @@ function onTailorFileSelectChange() {
 /* ---- Tailoring tab ----------------------------------------- */
 
 function resetTailorForm() {
-    tailorData         = null;
-    tailorRuleChanges  = {};
-    tailorValueChanges = {};
+    tailorData           = null;
+    tailorRuleChanges    = {};
+    tailorValueChanges   = {};
+    tailorEditingSidecar = null;
+
+    document.getElementById('ct-tailor-update-btn').classList.add('hidden');
+    const saveBtn = document.getElementById('ct-tailor-save-btn');
+    saveBtn.textContent = 'Save Tailoring File';
+    saveBtn.classList.add('pf-m-primary');
+    saveBtn.classList.remove('pf-m-secondary');
 
     document.getElementById('ct-tailor-editor').classList.add('hidden');
     document.getElementById('ct-tailor-error-alert').classList.add('hidden');
@@ -1671,7 +1687,7 @@ function doLoadProfile(profileId) {
 function renderTailorEditor(data) {
     document.getElementById('ct-tailor-search').value        = '';
     document.getElementById('ct-tailor-values-search').value = '';
-    document.getElementById('ct-tailor-editor-title').textContent =
+    document.getElementById('ct-tailor-editor-name').value =
         document.getElementById('ct-tailor-name-input').value.trim();
     document.getElementById('ct-tailor-values-grid').classList.remove('hidden');
     document.getElementById('ct-tailor-values-search')
@@ -1808,12 +1824,57 @@ function renderTailorValues(values) {
     });
 }
 
+function doUpdateTailoringFile() {
+    if (!tailorData || !tailorEditingSidecar) return;
+
+    const sidecar          = tailorEditingSidecar;
+    const newProfileTitle  = document.getElementById('ct-tailor-editor-name').value.trim() || sidecar.name;
+    const baseProfileId    = sidecar.base_profile_id;
+
+    const xml = generateTailoringXml(
+        baseProfileId, sidecar.profile_id, newProfileTitle,
+        tailorRuleChanges, tailorValueChanges
+    );
+
+    const updatedSidecar = Object.assign({}, sidecar, {
+        name:     newProfileTitle,
+        modified: makeTimestamp(),
+    });
+
+    const jsonPath  = sidecar.path.replace(/\.xml$/, '.json');
+    const saveBtn   = document.getElementById('ct-tailor-update-btn');
+    const statusEl  = document.getElementById('ct-tailor-save-status');
+    saveBtn.disabled     = true;
+    statusEl.textContent = 'Saving…';
+    statusEl.className   = 'ct-tailor-save-status';
+    statusEl.classList.remove('hidden');
+
+    Promise.all([
+        cockpit.file(sidecar.path, { superuser: 'require' }).replace(xml),
+        cockpit.file(jsonPath,     { superuser: 'require' }).replace(JSON.stringify(updatedSidecar, null, 2)),
+    ])
+    .then(() => cockpit.spawn(['chmod', '644', sidecar.path, jsonPath], { superuser: 'require' }))
+    .then(() => {
+        appendActivityLog({ type: 'tailor_save', tab: 'tailoring',
+            file: sidecar.path.split('/').pop(), profile: newProfileTitle });
+        saveBtn.disabled = false;
+        detectTailoringFiles();
+        resetTailorForm();
+    })
+    .catch(err => {
+        statusEl.textContent = 'Update failed: ' + (err.message || String(err));
+        statusEl.className   = 'ct-tailor-save-status ct-tailor-save-status-err';
+        statusEl.classList.remove('hidden');
+        saveBtn.disabled = false;
+    });
+}
+
 function onTailorSaveClick() {
     if (!tailorData) return;
 
     const profileSelect   = document.getElementById('ct-tailor-profile-select');
     const baseProfileId   = profileSelect.value;
-    const newProfileTitle = document.getElementById('ct-tailor-name-input').value.trim();
+    const newProfileTitle = document.getElementById('ct-tailor-editor-name').value.trim();
 
     if (!baseProfileId || !newProfileTitle) return;
 
@@ -1973,9 +2034,16 @@ function onEditTailoringFile(sidecar) {
 
 function doEditTailoringFile(sidecar) {
     appendActivityLog({ type: 'tailor_load', tab: 'tailoring', file: sidecar.path.split('/').pop(), profile: sidecar.name });
-    tailorSdsPath      = sidecar.sds_path;
-    tailorRuleChanges  = {};
-    tailorValueChanges = {};
+    tailorSdsPath        = sidecar.sds_path;
+    tailorRuleChanges    = {};
+    tailorValueChanges   = {};
+    tailorEditingSidecar = sidecar;
+
+    document.getElementById('ct-tailor-update-btn').classList.remove('hidden');
+    const saveBtn = document.getElementById('ct-tailor-save-btn');
+    saveBtn.textContent = 'Save as New';
+    saveBtn.classList.remove('pf-m-primary');
+    saveBtn.classList.add('pf-m-secondary');
 
     /* Pre-populate the setup form fields */
     document.getElementById('ct-tailor-content-select').value = sidecar.sds_path;

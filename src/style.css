@@ -786,6 +786,52 @@ code {
   flex-wrap: wrap;
 }
 
+.ct-tailor-editor-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+
+.ct-tailor-editor-name-input {
+  flex: 1;
+  min-width: 0;
+  max-width: 400px;
+  font-size: var(--ct-font-size-lg);
+  font-weight: 700;
+  color: var(--ct-color-text);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 2px 4px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ct-tailor-editor-name-input:hover {
+  border-bottom-color: var(--ct-color-border);
+  background: rgba(0,0,0,0.03);
+}
+.ct-tailor-editor-name-input:focus {
+  border-bottom-color: #0066cc;
+  background: rgba(0,102,204,0.04);
+}
+
+.ct-tailor-editor-name-edit-icon {
+  font-size: var(--ct-font-size-lg);
+  color: var(--ct-color-text-secondary);
+  cursor: pointer;
+  opacity: 0.5;
+  flex-shrink: 0;
+  user-select: none;
+}
+.ct-tailor-editor-name-edit-icon:hover {
+  opacity: 1;
+  color: #0066cc;
+}
+
 .ct-tailor-section-title {
   font-size: var(--ct-font-size-lg);
   font-weight: 700;
@@ -1315,6 +1361,28 @@ html.pf-v6-theme-dark .ct-badge-error {
     padding: 0;
 }
 
+.ct-tab-preview-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #f0ab00;
+  color: #1a1a1a;
+  vertical-align: middle;
+  margin-left: 4px;
+  letter-spacing: 0.02em;
+}
+
+.db-preview-banner {
+  flex: 1;
+  margin-right: 12px;
+}
+
+.db-toolbar {
+  align-items: center;
+}
+
 .db-loading {
     padding: 24px;
     color: var(--ct-color-text-secondary);
@@ -1408,6 +1476,20 @@ html.pf-v6-theme-dark .ct-badge-error {
 .db-score-yellow { background: #3d2c00; color: #f0ab00; }
 .db-score-red    { background: #460000; color: #f56c6c; }
 .db-score-grey   { background: #3c3c3c; color: #aaa; }
+
+.db-score-delta {
+    font-size: 0.68rem;
+    font-weight: 600;
+    margin-top: 5px;
+}
+.db-delta-up   { color: #6eba72; }
+.db-delta-down { color: #f56c6c; }
+
+.db-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 0 4px;
+}
 
 .db-meta {
     flex: 1;
