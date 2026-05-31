@@ -83,6 +83,8 @@ function initContainerScan() {
             if (csCurrentManifest) csRerunScan(csCurrentManifest);
             else csShowSetup();
         });
+    document.getElementById('cs-results-close-btn')
+        .addEventListener('click', csShowSetup);
     document.getElementById('cs-scan-error-close')
         .addEventListener('click', csClearError);
 

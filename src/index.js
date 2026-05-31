@@ -250,6 +250,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentManifest) rerunHostScan(currentManifest);
             else showScanSetup();
         });
+    document.getElementById('ct-results-close-btn')
+        .addEventListener('click', showScanSetup);
     document.getElementById('ct-scan-error-close')
         .addEventListener('click', hideScanError);
     document.getElementById('ct-selective-rem-btn')

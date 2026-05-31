@@ -666,6 +666,10 @@ code {
   color: var(--ct-color-text);
 }
 
+.ct-results-close {
+  margin-left: auto;
+}
+
 .ct-result-status {
   display: inline-flex;
   align-items: center;
@@ -783,11 +787,9 @@ details[open] .ct-failing-group-summary::before { content: '▼ '; }
   display: flex;
   gap: var(--ct-space-sm);
   flex-wrap: wrap;
+  width: 100%;
 }
 
-.ct-new-scan-btn {
-  margin-left: auto;
-}
 
 .ct-alert-prereq {
   max-width: 800px;
