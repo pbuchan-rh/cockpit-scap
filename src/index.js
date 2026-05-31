@@ -96,6 +96,81 @@ const PY_EXTRACT_PROFILE = [
     'print(json.dumps({"profile": {"id": pid, "title": ptitle}, "groups": gs, "rules": rs, "values": vs}))',
 ].join('\n');
 
+/* Python script: extract failing rules from results.xml.
+ * Args: sys.argv[1]=resultsXmlPath
+ * Output: JSON [{id, title, severity}] sorted high→medium→low */
+const PY_EXTRACT_FAILING_RULES = [
+    'import sys, json, xml.etree.ElementTree as ET',
+    'NS = "http://checklists.nist.gov/xccdf/1.2"',
+    'tree = ET.parse(sys.argv[1])',
+    'root = tree.getroot()',
+    'rinfo = {}',
+    'for rule in root.iter("{%s}Rule" % NS):',
+    '    rid = rule.get("id", "")',
+    '    t = rule.find("{%s}title" % NS)',
+    '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity", "unknown"))',
+    'fails = []; seen = set()',
+    'for rr in root.iter("{%s}rule-result" % NS):',
+    '    r = rr.find("{%s}result" % NS)',
+    '    if r is not None and r.text == "fail":',
+    '        rid = rr.get("idref", "")',
+    '        if rid in seen: continue',
+    '        seen.add(rid)',
+    '        t, s = rinfo.get(rid, (rid, rr.get("severity", "unknown")))',
+    '        fails.append({"id": rid, "title": t, "severity": s})',
+    'order = {"high":0,"medium":1,"low":2}',
+    'fails.sort(key=lambda x: (order.get(x["severity"], 3), x["title"].lower()))',
+    'print(json.dumps(fails))',
+].join('\n');
+
+/* Python script: filter an existing remediation file to selected rule IDs.
+ * Args: sys.argv[1]=remFilePath  sys.argv[2]=fixType('bash'|'ansible')
+ *       sys.argv[3]=JSON array of selected full rule IDs
+ * Output: filtered script content on stdout */
+const PY_FILTER_FIX = [
+    'import sys, json, re',
+    'rem_path, fix_type, selected_json = sys.argv[1], sys.argv[2], sys.argv[3]',
+    'selected = set(json.loads(selected_json))',
+    'with open(rem_path) as f: script = f.read()',
+    'if fix_type == "bash":',
+    '    lines = script.split("\\n")',
+    '    header = []; in_block = False; cur_rule = None; block = []; pre = []; out = []',
+    '    for line in lines:',
+    '        if not in_block:',
+    '            if re.match(r"^#{20,}$", line.strip()):',
+    '                pre.append(line)',
+    '            elif "# BEGIN fix" in line:',
+    '                m = re.search(r"for \'([^\']+)\'", line)',
+    '                if m: cur_rule = m.group(1); block = pre + [line]; pre = []; in_block = True',
+    '                else: header.extend(pre); header.append(line); pre = []',
+    '            else: header.extend(pre); header.append(line); pre = []',
+    '        else:',
+    '            block.append(line)',
+    '            if "# END fix for" in line:',
+    '                if cur_rule in selected: out.append("\\n".join(block))',
+    '                in_block = False; cur_rule = None; block = []',
+    '    sys.stdout.write("\\n".join(header) + "\\n\\n" + "\\n\\n".join(out))',
+    'else:',
+    '    short_sel = set()',
+    '    for rid in selected:',
+    '        short_sel.add(rid.split("_rule_")[-1] if "_rule_" in rid else rid)',
+    '    lines = script.split("\\n")',
+    '    ti = next((i for i, l in enumerate(lines) if re.match(r"^  tasks:\\s*$", l)), -1)',
+    '    if ti == -1: sys.stdout.write(script); sys.exit(0)',
+    '    header = "\\n".join(lines[:ti + 1])',
+    '    task_lines = lines[ti + 1:]',
+    '    blocks = []; cur = []',
+    '    for line in task_lines:',
+    '        if re.match(r"    - ", line) and cur: blocks.append(cur); cur = [line]',
+    '        else: cur.append(line)',
+    '    if cur: blocks.append(cur)',
+    '    kept = []',
+    '    for blk in blocks:',
+    '        tags = set(re.findall(r"^      - (\\S+)", "\\n".join(blk), re.M))',
+    '        if tags & short_sel: kept.append("\\n".join(blk))',
+    '    sys.stdout.write(header + "\\n" + "\\n".join(kept))',
+].join('\n');
+
 /* Module state — scan */
 let currentSdsPath        = null;
 let currentScanProc       = null;
@@ -105,6 +180,10 @@ let currentReportPath     = null;
 let currentRemBashPath    = null;
 let currentRemAnsiblePath = null;
 let scanCancelledByUser   = false;
+
+/* Module state — selective remediation */
+let remediationDir   = null;   /* full path to scan results dir, trailing slash */
+let remediationRules = [];     /* [{id, title, severity}] from last load */
 
 /* Module state — tailoring */
 let tailorSdsPath       = null;
@@ -156,22 +235,30 @@ document.addEventListener('DOMContentLoaded', () => {
             'scap-report-' + currentTimestamp + '.html',
             'text/html'
         ));
-    document.getElementById('ct-download-bash-btn')
-        .addEventListener('click', () => downloadArtifact(
-            currentRemBashPath,
-            'remediation-' + currentTimestamp + '.sh',
-            'text/x-shellscript'
-        ));
-    document.getElementById('ct-download-ansible-btn')
-        .addEventListener('click', () => downloadArtifact(
-            currentRemAnsiblePath,
-            'remediation-' + currentTimestamp + '.yml',
-            'text/yaml'
-        ));
     document.getElementById('ct-new-scan-btn')
         .addEventListener('click', showScanSetup);
     document.getElementById('ct-scan-error-close')
         .addEventListener('click', hideScanError);
+    document.getElementById('ct-selective-rem-btn')
+        .addEventListener('click', () => openRemediationPanel(currentResultsDir));
+    document.getElementById('ct-rem-bash-btn')
+        .addEventListener('click', () => generateSelectiveFix('bash'));
+    document.getElementById('ct-rem-ansible-btn')
+        .addEventListener('click', () => generateSelectiveFix('ansible'));
+    document.getElementById('ct-rem-select-all-btn')
+        .addEventListener('click', () => {
+            document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox').forEach(c => { c.checked = true; });
+            updateRemediationCount();
+        });
+    document.getElementById('ct-rem-deselect-all-btn')
+        .addEventListener('click', () => {
+            document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox').forEach(c => { c.checked = false; });
+            updateRemediationCount();
+        });
+    document.getElementById('ct-rem-close-btn')
+        .addEventListener('click', () => {
+            document.getElementById('ct-remediation-panel').classList.add('hidden');
+        });
 
     /* Tailoring tab */
     document.getElementById('ct-tailor-content-select')
@@ -723,6 +810,179 @@ function generateRemediation(resultId, resultsXmlPath, tailoringPath) {
     return Promise.all([run('bash', currentRemBashPath), run('ansible', currentRemAnsiblePath)]);
 }
 
+/* ---- Selective Remediation --------------------------------- */
+
+function openRemediationPanel(resultsDir) {
+    remediationDir   = resultsDir;
+    remediationRules = [];
+
+    const panel = document.getElementById('ct-remediation-panel');
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    document.getElementById('ct-remediation-loading').classList.remove('hidden');
+    document.getElementById('ct-remediation-content').classList.add('hidden');
+    document.getElementById('ct-remediation-error').classList.add('hidden');
+    document.getElementById('ct-rem-context').classList.add('hidden');
+
+    /* Load manifest for context header */
+    cockpit.file(resultsDir + 'manifest.json').read()
+        .then(content => {
+            const m = JSON.parse(content);
+            const ts      = (m.timestamp || '').replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
+            const profile = m.profile_title || m.profile_id || '—';
+            const sds     = m.sds_file ? m.sds_file.split('/').pop() : '—';
+            const score   = m.score != null ? parseFloat(m.score).toFixed(1) + '%' : '—';
+            const fail    = m.counts && m.counts.fail != null ? m.counts.fail : '—';
+            const ctx = document.getElementById('ct-rem-context');
+            ctx.innerHTML =
+                '<span class="ct-rem-ctx-item"><strong>Profile:</strong> ' + escHtmlRem(profile) + '</span>' +
+                '<span class="ct-rem-ctx-item"><strong>Score:</strong> ' + escHtmlRem(score) + '</span>' +
+                '<span class="ct-rem-ctx-item"><strong>Failing:</strong> ' + escHtmlRem(String(fail)) + '</span>' +
+                '<span class="ct-rem-ctx-item"><strong>Content:</strong> ' + escHtmlRem(sds) + '</span>' +
+                '<span class="ct-rem-ctx-item"><strong>Scanned:</strong> ' + escHtmlRem(ts) + '</span>';
+            ctx.classList.remove('hidden');
+        })
+        .catch(() => {});
+
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsDir + 'results.xml'],
+                  { err: 'message' })
+        .then(output => {
+            remediationRules = JSON.parse(output);
+            document.getElementById('ct-remediation-loading').classList.add('hidden');
+            renderRemediationRules(remediationRules);
+            document.getElementById('ct-remediation-content').classList.remove('hidden');
+        })
+        .catch(err => {
+            document.getElementById('ct-remediation-loading').classList.add('hidden');
+            document.getElementById('ct-remediation-error-msg').textContent =
+                'Failed to load failing rules: ' + (err.message || String(err));
+            document.getElementById('ct-remediation-error').classList.remove('hidden');
+        });
+}
+
+function renderRemediationRules(rules) {
+    const groups = { high: [], medium: [], low: [], unknown: [] };
+    rules.forEach(r => (groups[r.severity] || groups.unknown).push(r));
+
+    const container = document.getElementById('ct-remediation-rules');
+    container.innerHTML = '';
+
+    const order = [['high','High','ct-sev-high'],['medium','Medium','ct-sev-medium'],['low','Low','ct-sev-low']];
+    order.forEach(([sev, label, cls]) => {
+        const list = groups[sev];
+        if (!list || !list.length) return;
+
+        const details = document.createElement('details');
+        details.open = (sev === 'high');
+        details.className = 'ct-rem-group';
+
+        const summary = document.createElement('summary');
+        summary.className = 'ct-rem-group-summary';
+        summary.innerHTML =
+            '<span class="ct-sev-badge ' + cls + '">' + label + '</span>' +
+            '<span class="ct-rem-group-count">' + list.length + ' rule' + (list.length !== 1 ? 's' : '') + '</span>' +
+            '<button class="pf-v6-c-button pf-m-link ct-rem-select-sev" type="button" data-sev="' + sev + '">Select all</button>';
+        details.appendChild(summary);
+
+        list.forEach(rule => {
+            const row = document.createElement('label');
+            row.className = 'ct-rem-rule-row';
+            row.innerHTML =
+                '<input type="checkbox" class="ct-rem-checkbox" data-id="' + escapeAttr(rule.id) + '" checked>' +
+                '<span class="ct-rem-rule-title">' + escHtmlRem(rule.title) + '</span>' +
+                '<span class="ct-rem-rule-id">' + escHtmlRem(rule.id.split('_rule_').pop()) + '</span>';
+            details.appendChild(row);
+        });
+        container.appendChild(details);
+    });
+
+    container.querySelectorAll('.ct-rem-select-sev').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            const sev = btn.dataset.sev;
+            const checks = container.querySelectorAll('.ct-rem-checkbox[data-sev]');
+            const sevChecks = container.querySelectorAll(
+                '.ct-rem-checkbox[data-id]'
+            );
+            /* find checkboxes within this group */
+            const group = btn.closest('details');
+            const groupChecks = group.querySelectorAll('.ct-rem-checkbox');
+            const allChecked = Array.from(groupChecks).every(c => c.checked);
+            groupChecks.forEach(c => { c.checked = !allChecked; });
+            updateRemediationCount();
+        });
+    });
+
+    container.addEventListener('change', updateRemediationCount);
+    updateRemediationCount();
+}
+
+function updateRemediationCount() {
+    const all     = document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox');
+    const checked = Array.from(all).filter(c => c.checked).length;
+    document.getElementById('ct-remediation-count').textContent =
+        checked + ' of ' + all.length + ' rules selected';
+    const disabled = checked === 0;
+    document.getElementById('ct-rem-bash-btn').disabled    = disabled;
+    document.getElementById('ct-rem-ansible-btn').disabled = disabled;
+
+    /* Update per-group counts and Select all / Deselect all toggle */
+    document.querySelectorAll('#ct-remediation-rules .ct-rem-group').forEach(group => {
+        const groupAll     = group.querySelectorAll('.ct-rem-checkbox');
+        const groupChecked = Array.from(groupAll).filter(c => c.checked).length;
+        const countEl      = group.querySelector('.ct-rem-group-count');
+        if (countEl) {
+            countEl.textContent = groupChecked + ' of ' + groupAll.length +
+                ' rule' + (groupAll.length !== 1 ? 's' : '') + ' selected';
+        }
+        const sevBtn = group.querySelector('.ct-rem-select-sev');
+        if (sevBtn) {
+            sevBtn.textContent = groupChecked === groupAll.length ? 'Deselect all' : 'Select all';
+        }
+    });
+}
+
+function generateSelectiveFix(fixType) {
+    const all = document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox');
+    const selected = Array.from(all).filter(c => c.checked).map(c => c.dataset.id);
+    if (!selected.length) return;
+
+    const remFile = remediationDir + (fixType === 'bash' ? 'remediation.sh' : 'remediation.yml');
+    const ext     = fixType === 'bash' ? '.sh' : '.yml';
+    const mime    = fixType === 'bash' ? 'text/x-shellscript' : 'text/yaml';
+    const ts      = remediationDir.replace(/\/$/, '').split('/').pop();
+    const fname   = 'selective-remediation-' + ts + ext;
+
+    cockpit.spawn(
+        ['python3', '-c', PY_FILTER_FIX, remFile, fixType, JSON.stringify(selected)],
+        { err: 'message' }
+    )
+    .then(output => {
+        const blob = new Blob([output], { type: mime });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = fname;
+        a.click();
+        URL.revokeObjectURL(url);
+        appendActivityLog({ type: 'remediate_download', tab: 'host',
+            fix_type: fixType, rules_selected: selected.length });
+    })
+    .catch(err => console.error('Selective remediation failed:', err.message || err));
+}
+
+function escHtmlRem(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escapeAttr(str) {
+    return String(str).replace(/"/g, '&quot;');
+}
+
+/* ---- End Selective Remediation ----------------------------- */
+
 function pruneHistoryByType(scanType) {
     return cockpit.spawn(['ls', RESULTS_BASE], { err: 'message' })
         .then(output => {
@@ -834,12 +1094,6 @@ function showResults(manifest) {
     });
 
     document.getElementById('ct-result-score').textContent = score.toFixed(1) + '%';
-
-    const remFailed = !currentRemBashPath;
-    document.getElementById('ct-download-bash-btn').disabled    = remFailed;
-    document.getElementById('ct-download-ansible-btn').disabled = remFailed;
-    document.getElementById('ct-download-bash-btn').title       = remFailed ? 'Remediation generation failed' : '';
-    document.getElementById('ct-download-ansible-btn').title    = remFailed ? 'Remediation generation failed' : '';
 
     const uploadedWarn = document.getElementById('ct-uploaded-content-warning');
     if (currentSdsPath && currentSdsPath.startsWith(CONTENT_BASE)) {
@@ -1138,16 +1392,7 @@ function buildHistoryRow(manifest) {
 
     [
         ['View Report', () => viewReportFromPath(dir + 'report.html')],
-        ['Bash',        () => downloadArtifact(
-            dir + 'remediation.sh',
-            'remediation-' + manifest.timestamp + '.sh',
-            'text/x-shellscript'
-        )],
-        ['Ansible',     () => downloadArtifact(
-            dir + 'remediation.yml',
-            'remediation-' + manifest.timestamp + '.yml',
-            'text/yaml'
-        )],
+        ['Remediate',   () => openRemediationPanel(dir)],
     ].forEach(([label, handler]) => {
         const btn = document.createElement('button');
         btn.className   = 'pf-v6-c-button pf-m-link';
@@ -2063,7 +2308,8 @@ const ACTIVITY_TYPE_LABELS = {
     scan_complete:  'Scan Completed',
     scan_cancel:    'Scan Cancelled',
     scan_error:     'Scan Failed',
-    scan_delete:    'Scan Deleted',
+    scan_delete:        'Scan Deleted',
+    remediate_download: 'Remediation Downloaded',
     guide:          'Guide Generated',
     validate:       'Content Validated',
     content_delete: 'Content Deleted',
@@ -2074,7 +2320,7 @@ const ACTIVITY_TYPE_LABELS = {
 };
 
 const ACTIVITY_FILTER_MAP = {
-    scan:      ['scan_start', 'scan_complete', 'scan_cancel', 'scan_error', 'scan_delete'],
+    scan:      ['scan_start', 'scan_complete', 'scan_cancel', 'scan_error', 'scan_delete', 'remediate_download'],
     guide:     ['guide'],
     validate:  ['validate', 'content_delete'],
     tailoring: ['tailor_upload', 'tailor_load', 'tailor_save', 'tailor_delete'],

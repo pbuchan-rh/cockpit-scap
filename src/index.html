@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=41">
+    <link rel="stylesheet" href="style.css?v=48">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=41" defer></script>
-    <script src="container-scan.js?v=41" defer></script>
-    <script src="dashboard.js?v=41" defer></script>
+    <script src="index.js?v=48" defer></script>
+    <script src="container-scan.js?v=48" defer></script>
+    <script src="dashboard.js?v=48" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -242,14 +242,47 @@
               <button class="pf-v6-c-button pf-m-secondary" type="button"
                       id="ct-download-report-btn">Download Report</button>
               <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="ct-download-bash-btn">Download Bash Remediation</button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="ct-download-ansible-btn">Download Ansible Remediation</button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="ct-apply-remediation-btn" disabled
-                      title="Coming in a future release">Apply Remediation</button>
+                      id="ct-selective-rem-btn">Remediate</button>
               <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn" type="button"
                       id="ct-new-scan-btn">New Scan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Selective Remediation panel -->
+      <div class="hidden" id="ct-remediation-panel">
+        <div class="pf-v6-c-card">
+          <div class="pf-v6-c-card__title ct-history-title-row">
+            <h2 class="pf-v6-c-card__title-text">Selective Remediation</h2>
+            <button class="pf-v6-c-button pf-m-secondary" type="button"
+                    id="ct-rem-close-btn">Close</button>
+          </div>
+          <div class="ct-rem-context hidden" id="ct-rem-context"></div>
+          <div class="pf-v6-c-card__body">
+            <div id="ct-remediation-loading">
+              <p class="ct-rem-loading">Extracting failing rules&#8230;</p>
+            </div>
+            <div class="pf-v6-c-alert pf-m-danger hidden" id="ct-remediation-error"
+                 aria-label="Remediation error">
+              <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+              <div><p id="ct-remediation-error-msg"></p></div>
+            </div>
+            <div class="hidden" id="ct-remediation-content">
+              <div class="ct-rem-toolbar">
+                <span class="ct-rem-count" id="ct-remediation-count">0 rules selected</span>
+                <button class="pf-v6-c-button pf-m-link" type="button"
+                        id="ct-rem-select-all-btn">Select All</button>
+                <button class="pf-v6-c-button pf-m-link" type="button"
+                        id="ct-rem-deselect-all-btn">Deselect All</button>
+              </div>
+              <div id="ct-remediation-rules"></div>
+              <div class="ct-rem-actions">
+                <button class="pf-v6-c-button pf-m-primary" type="button"
+                        id="ct-rem-bash-btn" disabled>Download Bash Script</button>
+                <button class="pf-v6-c-button pf-m-secondary" type="button"
+                        id="ct-rem-ansible-btn" disabled>Download Ansible Playbook</button>
+              </div>
             </div>
           </div>
         </div>
