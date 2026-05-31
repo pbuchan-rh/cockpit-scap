@@ -311,6 +311,12 @@ Displayed below the pass/fail/score badges, loaded asynchronously after the resu
 
 **Why async:** `PY_EXTRACT_FAILING_RULES` spawns a Python subprocess against `results.xml`. On slower machines this is noticeable. Showing the score and badges immediately, then populating the rule groups when ready, gives a better perceived-performance experience.
 
+### Score Donut
+
+Plain SVG arc (`stroke-dasharray` / `stroke-dashoffset` technique). Arc length = compliance %. Color based on failure count, not score percentage — because 80% compliance is not "good" for a security tool. Thresholds: 0 failures = green, 1–10 = yellow, 11+ = red. Score percentage shown in center text. No library.
+
+**Why failure-count not score-based color:** A score-based threshold (e.g. ≥80% = green) implies 20% of failing security rules is acceptable. For a compliance tool targeting security hardening, any failures represent real risk. The failure count gives a more honest signal — 0 failures is the only clean state.
+
 ### View Scan / Results Persistence
 
 History rows now show "View Scan" instead of separate "View Report" + "Download XML" actions. Clicking "View Scan" calls `loadScanFromHistory(manifest)` which sets all `current*` module vars from the manifest and calls `showResults()` — identical state to a live scan completing. View Report and Download XML are available on the results card itself.
