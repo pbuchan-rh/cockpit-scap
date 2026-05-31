@@ -930,6 +930,7 @@ function renderRemediationRules(rules) {
         });
     });
 
+    container.removeEventListener('change', updateRemediationCount);
     container.addEventListener('change', updateRemediationCount);
     updateRemediationCount();
 }
@@ -1117,9 +1118,15 @@ function showResults(manifest) {
         uploadedWarn.classList.add('hidden');
     }
 
+    const remBtn = document.getElementById('ct-selective-rem-btn');
+    const remFailed = !currentRemBashPath;
+    remBtn.disabled = remFailed;
+    remBtn.title    = remFailed ? 'Remediation scripts were not generated for this scan' : '';
+
     document.getElementById('ct-scan-progress').classList.add('hidden');
     document.getElementById('ct-results').classList.remove('hidden');
     loadHistory();
+    dbInvalidate();
 }
 
 /* ---- Report / artifact actions ----------------------------- */
@@ -1565,9 +1572,14 @@ function resetTailorForm() {
     document.getElementById('ct-tailor-error-alert').classList.add('hidden');
 
     document.getElementById('ct-tailor-profile-select').value = '';
-    document.getElementById('ct-tailor-name-input').value     = '';
-    document.getElementById('ct-tailor-name-input').disabled  = true;
-    document.getElementById('ct-tailor-load-btn').disabled    = true;
+    const nameInput = document.getElementById('ct-tailor-name-input');
+    nameInput.value    = '';
+    nameInput.disabled = true;
+    if (nameInput._editorSyncHandler) {
+        nameInput.removeEventListener('input', nameInput._editorSyncHandler);
+        nameInput._editorSyncHandler = null;
+    }
+    document.getElementById('ct-tailor-load-btn').disabled = true;
     hideTailorProfileDesc();
 }
 
@@ -1687,8 +1699,15 @@ function doLoadProfile(profileId) {
 function renderTailorEditor(data) {
     document.getElementById('ct-tailor-search').value        = '';
     document.getElementById('ct-tailor-values-search').value = '';
-    document.getElementById('ct-tailor-editor-name').value =
-        document.getElementById('ct-tailor-name-input').value.trim();
+    const nameInput  = document.getElementById('ct-tailor-name-input');
+    const editorName = document.getElementById('ct-tailor-editor-name');
+    editorName.value = nameInput.value.trim();
+    /* keep setup-form field in sync with the inline editor name field */
+    if (nameInput._editorSyncHandler) {
+        nameInput.removeEventListener('input', nameInput._editorSyncHandler);
+    }
+    nameInput._editorSyncHandler = () => { editorName.value = nameInput.value; };
+    nameInput.addEventListener('input', nameInput._editorSyncHandler);
     document.getElementById('ct-tailor-values-grid').classList.remove('hidden');
     document.getElementById('ct-tailor-values-search')
         .closest('.ct-tailor-search-wrap').classList.remove('hidden');
@@ -1830,6 +1849,11 @@ function doUpdateTailoringFile() {
     const sidecar          = tailorEditingSidecar;
     const newProfileTitle  = document.getElementById('ct-tailor-editor-name').value.trim() || sidecar.name;
     const baseProfileId    = sidecar.base_profile_id;
+
+    if (!sidecar.path.startsWith(TAILORING_BASE)) {
+        console.error('doUpdateTailoringFile: sidecar.path outside TAILORING_BASE', sidecar.path);
+        return;
+    }
 
     const xml = generateTailoringXml(
         baseProfileId, sidecar.profile_id, newProfileTitle,
@@ -2480,8 +2504,8 @@ function renderActivityTable(entries) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${formatActivityTime(e.ts)}</td>
-            <td>${activityTabLabel(e.tab)}</td>
-            <td><span class="ct-activity-badge ${ACTIVITY_BADGE_CLASS[e.type] || 'ct-activity-scan'}">${ACTIVITY_TYPE_LABELS[e.type] || e.type}</span></td>
+            <td>${escHtmlRem(activityTabLabel(e.tab))}</td>
+            <td><span class="ct-activity-badge ${ACTIVITY_BADGE_CLASS[e.type] || 'ct-activity-scan'}">${escHtmlRem(ACTIVITY_TYPE_LABELS[e.type] || e.type)}</span></td>
             <td class="ct-activity-details">${activityDetails(e)}</td>
             <td>${activityResult(e)}</td>
         `;
@@ -2501,7 +2525,7 @@ function activityTabLabel(tab) {
 }
 
 function activityDetails(e) {
-    const esc = s => String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const esc = s => escHtmlRem(s);
     if (e.type === 'scan_start' || e.type === 'scan_complete') {
         const parts = [esc(e.content), esc(e.profile)];
         if (e.image) parts.unshift(esc(e.image));
@@ -2517,7 +2541,7 @@ function activityDetails(e) {
 }
 
 function activityResult(e) {
-    if (e.type === 'scan_complete') return `${e.score}% &nbsp;<span class="ct-pass-count">${e.pass} pass</span> <span class="ct-fail-count">${e.fail} fail</span>`;
+    if (e.type === 'scan_complete') return `${escHtmlRem(e.score)}% &nbsp;<span class="ct-pass-count">${escHtmlRem(e.pass)} pass</span> <span class="ct-fail-count">${escHtmlRem(e.fail)} fail</span>`;
     if (e.type === 'validate')      return e.result === 'pass' ? '<span class="ct-validate-ok">✓ Valid</span>' : '<span class="ct-validate-fail">✗ Invalid</span>';
     if (e.type === 'scan_error')    return '<span class="ct-validate-fail">Error</span>';
     if (e.type === 'scan_cancel')   return '<span style="color: var(--pf-v6-global--warning-color--100)">Cancelled</span>';

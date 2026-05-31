@@ -10,6 +10,8 @@ const DB_RESULTS_BASE = '/var/lib/cockpit-scap/results/';
 let dbLoaded   = false;
 let dbHostname = null;
 
+function dbInvalidate() { dbLoaded = false; }
+
 function initDashboard() {
     cockpit.spawn(['hostname'], { err: 'message' })
         .then(h => { dbHostname = h.trim(); })
@@ -204,9 +206,9 @@ function buildStatusCard({ title, manifest, prev, goTabId, goLabel }) {
                     '<div class="db-meta-row">' +
                         '<span class="db-meta-label">Pass / Fail</span>' +
                         '<span class="db-meta-value">' +
-                            '<span class="ct-pass-count">' + pass + ' pass</span>' +
+                            '<span class="ct-pass-count">' + escHtml(String(pass)) + ' pass</span>' +
                             ' &nbsp;' +
-                            '<span class="ct-fail-count">' + fail + ' fail</span>' +
+                            '<span class="ct-fail-count">' + escHtml(String(fail)) + ' fail</span>' +
                         '</span>' +
                     '</div>' +
                     '<div class="db-meta-row">' +

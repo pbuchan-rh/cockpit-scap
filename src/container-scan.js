@@ -511,6 +511,7 @@ function csShowResults(manifest) {
     document.getElementById('cs-progress').classList.add('hidden');
     document.getElementById('cs-results').classList.remove('hidden');
     csLoadHistory();
+    dbInvalidate();
 }
 
 /* ---- History ---------------------------------------------- */
@@ -923,6 +924,7 @@ function renderCsRemRules(rules) {
         });
     });
 
+    container.removeEventListener('change', updateCsRemCount);
     container.addEventListener('change', updateCsRemCount);
     updateCsRemCount();
 }
