@@ -51,6 +51,12 @@ function initContainerScan() {
             csReportPath,
             'container-report-' + csTimestamp + '.html',
             'text/html'));
+    document.getElementById('cs-download-xml-btn')
+        .addEventListener('click', () => downloadArtifact(
+            csResultsDir + 'results.xml',
+            'container-results-' + csTimestamp + '.xml',
+            'application/xml'
+        ));
     document.getElementById('cs-selective-rem-btn')
         .addEventListener('click', () => openCsRemPanel(csResultsDir));
     document.getElementById('cs-rem-close-btn')
@@ -588,11 +594,10 @@ function csBuildHistoryRow(manifest) {
         (manifest.score || 0).toFixed(1) + '%',
     ].forEach((text, i) => {
         const td = document.createElement('td');
-        if (i === 3 && text.length > 36) {
-            td.textContent = text.slice(0, 36) + '…';
-            td.title       = text;
-        } else {
-            td.textContent = text;
+        td.textContent = text;
+        if (i === 3) {
+            td.className = 'ct-history-profile-cell';
+            td.title     = text;
         }
         tr.appendChild(td);
     });
@@ -609,8 +614,9 @@ function csBuildHistoryRow(manifest) {
     actionsTd.appendChild(rerunBtn);
 
     [
-        ['View Report', () => viewReportFromPath(dir + 'report.html')],
-        ['Remediate',   () => openCsRemPanel(dir)],
+        ['View Report',  () => viewReportFromPath(dir + 'report.html')],
+        ['Download XML', () => downloadArtifact(dir + 'results.xml', 'container-results-' + manifest.timestamp + '.xml', 'application/xml')],
+        ['Remediate',    () => openCsRemPanel(dir)],
     ].forEach(([label, handler]) => {
         const btn       = document.createElement('button');
         btn.className   = 'pf-v6-c-button pf-m-link';

@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=52">
+    <link rel="stylesheet" href="style.css?v=60">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=52" defer></script>
-    <script src="container-scan.js?v=52" defer></script>
-    <script src="dashboard.js?v=52" defer></script>
+    <script src="index.js?v=60" defer></script>
+    <script src="container-scan.js?v=60" defer></script>
+    <script src="dashboard.js?v=60" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -242,6 +242,8 @@
               <button class="pf-v6-c-button pf-m-secondary" type="button"
                       id="ct-download-report-btn">Download Report</button>
               <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="ct-download-xml-btn">Download Results XML</button>
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
                       id="ct-selective-rem-btn">Remediate</button>
               <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn" type="button"
                       id="ct-new-scan-btn">New Scan</button>
@@ -330,7 +332,7 @@
                 <th scope="col">Pass</th>
                 <th scope="col">Fail</th>
                 <th scope="col">Score</th>
-                <th scope="col">Actions</th>
+                <th scope="col" style="width: 1px">Actions</th>
               </tr>
             </thead>
             <tbody id="ct-history-tbody"></tbody>
@@ -549,6 +551,8 @@
                         id="cs-view-report-btn">View Full Report</button>
                 <button class="pf-v6-c-button pf-m-secondary" type="button"
                         id="cs-download-report-btn">Download Report</button>
+                <button class="pf-v6-c-button pf-m-secondary" type="button"
+                        id="cs-download-xml-btn">Download Results XML</button>
                 <button class="pf-v6-c-button pf-m-secondary" type="button"
                         id="cs-selective-rem-btn">Remediate</button>
                 <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn" type="button"

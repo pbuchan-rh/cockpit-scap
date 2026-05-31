@@ -235,6 +235,12 @@ document.addEventListener('DOMContentLoaded', () => {
             'scap-report-' + currentTimestamp + '.html',
             'text/html'
         ));
+    document.getElementById('ct-download-xml-btn')
+        .addEventListener('click', () => downloadArtifact(
+            currentResultsDir + 'results.xml',
+            'scap-results-' + currentTimestamp + '.xml',
+            'application/xml'
+        ));
     document.getElementById('ct-new-scan-btn')
         .addEventListener('click', showScanSetup);
     document.getElementById('ct-scan-error-close')
@@ -1369,12 +1375,11 @@ function buildHistoryRow(manifest) {
     ].forEach((text, i) => {
         const td = document.createElement('td');
         td.textContent = text;
-        if (i === 1 && isUploaded) {
-            const badge = document.createElement('span');
-            badge.className   = 'ct-history-uploaded-badge';
-            badge.textContent = 'uploaded content';
-            badge.title       = manifest.sds_file;
-            td.appendChild(badge);
+        if (i === 1) {
+            td.className = 'ct-history-profile-cell';
+            td.title     = isUploaded
+                ? text + ' (custom: ' + (manifest.sds_file || '').split('/').pop() + ')'
+                : text;
         }
         tr.appendChild(td);
     });
@@ -1391,8 +1396,9 @@ function buildHistoryRow(manifest) {
     actionsTd.appendChild(rerunBtn);
 
     [
-        ['View Report', () => viewReportFromPath(dir + 'report.html')],
-        ['Remediate',   () => openRemediationPanel(dir)],
+        ['View Report',       () => viewReportFromPath(dir + 'report.html')],
+        ['Download XML',      () => downloadArtifact(dir + 'results.xml', 'scap-results-' + manifest.timestamp + '.xml', 'application/xml')],
+        ['Remediate',         () => openRemediationPanel(dir)],
     ].forEach(([label, handler]) => {
         const btn = document.createElement('button');
         btn.className   = 'pf-v6-c-button pf-m-link';
