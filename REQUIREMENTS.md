@@ -182,6 +182,49 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 ---
 
+---
+
+## v3.3 Requirements
+
+### Selective Remediation Builder
+
+- **REQ-83:** ✅ After any scan (current or history), a "Remediate" button MUST open a Selective Remediation panel showing all failing rules from `results.xml`, grouped by severity (HIGH/MEDIUM/LOW)
+- **REQ-84:** ✅ The HIGH severity group MUST be expanded by default; MEDIUM and LOW collapsed
+- **REQ-85:** ✅ Each group MUST show a per-group selected count and "Select all" / "Deselect all" toggle
+- **REQ-86:** ✅ Global "Select All" / "Deselect All" shortcuts and a total selected count MUST be present
+- **REQ-87:** ✅ "Download Bash Script" MUST filter the existing `remediation.sh` to selected rules only using Python block parsing (`# BEGIN fix` / `# END fix`)
+- **REQ-88:** ✅ "Download Ansible Playbook" MUST filter the existing `remediation.yml` to selected rules only by parsing task blocks and matching rule IDs in the tags list
+- **REQ-89:** ✅ The Selective Remediation panel MUST be available for both host scans and container image scans; the container panel MUST include a warning that remediation scripts apply to Containerfile/Dockerfile, not a live container
+- **REQ-90:** ✅ "Remediate" button MUST be disabled when remediation scripts were not generated for the scan (e.g. oscap generation failure)
+
+### Results XML Download
+
+- **REQ-91:** ✅ A "Download Results XML" button MUST be available on scan results and on each history row for both host and container scans
+- **REQ-92:** ✅ The downloaded file MUST be the unmodified `results.xml` produced by `oscap`
+
+### Activity Log
+
+- **REQ-93:** ✅ All user-initiated actions MUST be logged to `/var/lib/cockpit-scap/activity.log` as JSON lines, capped at 1000 entries
+- **REQ-94:** ✅ Logged event types MUST include: `scan_start`, `scan_complete`, `scan_cancel`, `scan_error`, `scan_delete`, `guide`, `validate`, `content_delete`, `tailor_upload`, `tailor_load`, `tailor_save`, `tailor_delete`, `tailor_download`, `remediate_download`
+- **REQ-95:** ✅ The Activity tab MUST display log entries with semantic badge colors: blue=scan, red=delete/error, orange=remediation, teal=tailoring, yellow=validate
+- **REQ-96:** ✅ The Activity tab MUST support filter chips (All / Scans / Guide / Content / Tailoring), a limit selector, Export CSV, and Clear Log with confirmation
+
+### Compliance Dashboard (Preview)
+
+- **REQ-97:** ✅ A Dashboard tab MUST show the latest scan result per host and per container image as status cards with compliance score, pass/fail counts, profile, content, and time since last scan
+- **REQ-98:** ✅ The host card MUST display the actual hostname; container cards MUST show the image name
+- **REQ-99:** ✅ Score delta vs previous scan MUST be shown (↑/↓) when available and ≥ 0.05% difference
+- **REQ-100:** ✅ Dashboard data MUST be cached on first load; a manual Refresh button reloads it; completing a new scan automatically invalidates the cache
+- **REQ-101:** ✅ The Dashboard tab MUST be marked as a preview feature
+
+### Tailoring Update-in-place
+
+- **REQ-102:** ✅ When editing an existing tailoring file, an "Update" button MUST overwrite the original XML and JSON sidecar in place
+- **REQ-103:** ✅ A "Save as New" button MUST create a new timestamped file, leaving the original unchanged
+- **REQ-104:** ✅ An inline editable name field in the editor header MUST allow renaming the profile; both Update and Save as New MUST use this name
+
+---
+
 ## Out of Scope — v1
 
 The following are explicitly NOT requirements for v1. Do not implement without formal design discussion:

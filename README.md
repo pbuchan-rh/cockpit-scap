@@ -22,17 +22,26 @@ compliance scanning without leaving their management console.
 - **Scan execution** via `oscap xccdf eval` with cancel support
 - **Results summary** — pass, fail, error, and not-checked counts with compliance score
 - **Full HTML report** viewer (opens in new tab)
-- **Remediation download** — bash script and Ansible playbook generated per scan
-- **Scan history** — last 10 scans retained with per-entry report and remediation access, with delete
+- **Results XML download** — download the raw XCCDF results.xml from any scan for auditor archives
+- **Selective Remediation Builder** — after any scan, choose individual failing rules before
+  downloading bash or Ansible remediation scripts; rules grouped HIGH/MEDIUM/LOW with per-group
+  and global select/deselect; available for both host and container scans
+- **Scan history** — last 10 scans retained with per-entry report, XML, and remediation access, with delete
 - **Profile tailoring** — rule tree editor with enable/disable, variable value adjustment, search,
   expand/collapse; saves valid XCCDF tailoring XML; upload/download/edit/delete saved files
+- **Tailoring Update-in-place** — edit an existing tailoring file and overwrite it directly, or save
+  as a new timestamped copy; rename the profile inline in the editor header
 - **Tailored scans** — select a saved tailoring file at scan time; remediation artifacts respect the tailoring
-- **Content tab** — manage user-staged SDS files with per-entry delete and SCP staging instructions
 - **Container image scanning** — scan container images via `oscap-podman`; image enumeration from root Podman store; version mismatch detection; per-image scan history
 - **View Guide** — generate and view the full oscap security guide for any profile, on all three scan tabs
 - **Run Again** — re-run any historical scan with one click; pre-fills content, profile, and tailoring file
 - **Export CSV** — download the full scan history as a CSV file with all metadata fields
+- **Content Library tab** — manage user-staged SDS files with per-entry delete and validation
 - **Content validation** — validate uploaded SDS files with `oscap ds sds-validate` before scanning
+- **Activity log** — real-time log of all user actions with semantic color coding; filterable by type;
+  exportable as CSV; capped at 1000 entries
+- **Compliance Dashboard** *(preview)* — status board showing latest scan per host and container
+  image with compliance score, score delta vs previous scan, and navigation shortcuts
 
 ## Screenshots
 
@@ -106,7 +115,7 @@ Reload Cockpit and navigate to **SCAP Compliance** in the sidebar.
 5. When complete, view the full report, download remediation artifacts, or run another scan
 6. All completed scans appear in the Scan History table below
 
-### Tailoring tab
+### Policy Tailoring tab
 
 1. Select content and a base profile, give the tailored profile a name, click **Load Profile**
 2. Enable or disable individual rules using the checkbox tree; use search and expand/collapse to
@@ -116,6 +125,8 @@ Reload Cockpit and navigate to **SCAP Compliance** in the sidebar.
    and becomes available in the Scan tab's Tailoring File selector
 5. Use **Upload** to import an existing XCCDF tailoring file; **Download** to export one;
    **Edit** to reopen a saved file for modification; **Delete** to remove it
+6. When editing an existing file, click **Update** to overwrite it in place, or **Save as New** to
+   create a timestamped copy. Rename the profile using the inline name field in the editor header.
 
 ## Storage
 
@@ -158,13 +169,12 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 - Remote scanning via SSH (`oscap-ssh`) — explicitly out of scope
 - OVAL vulnerability scanning — not in scope
-- One-click in-place remediation apply — deferred; stub button present in the UI
-- Ansible remediation apply — deferred
-- Arbitrary SDS/XCCDF file upload — deferred
+- One-click in-place remediation apply — deferred; use Selective Remediation Builder to download targeted scripts
+- Arbitrary SDS/XCCDF file upload — stage files via SCP to `/var/lib/cockpit-scap/content/`
 
 ## Development status
 
-**Current version:** v3.1 (COPR and main branch)
+**Current version:** v3.3
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
@@ -174,5 +184,6 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 | Version | Theme |
 |---|---|
 | **v1** | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
-| **v2** | Multi-version SDS content management — stage and use RHEL 6–9 content from a RHEL 10 host, CPE-aware scan blocking, Content tab |
-| **v3** *(current)* | Container image scanning — `oscap-podman` integration, root Podman store enumeration, version mismatch detection, per-image history |
+| **v2** | Multi-version SDS content management — RHEL 6–9 SDS staging, CPE OS detection, Content tab |
+| **v3** | Container image scanning — `oscap-podman`, root Podman store, version mismatch detection, per-image history |
+| **v3.3** *(current)* | Selective Remediation Builder, Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |

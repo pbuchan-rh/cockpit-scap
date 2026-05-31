@@ -1,7 +1,7 @@
 # cockpit-scap — Design Document
 
-**Status:** v1.0 complete | Roadmap locked through v3  
-**Last updated:** 2026-05-29 (v3 container scanning design added)
+**Status:** v3.3 current  
+**Last updated:** 2026-05-31
 
 ---
 
@@ -291,6 +291,7 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 | **v1** ✅ | Local scanning + tailoring | Host scan, tailoring editor, SELinux, Makefile, COPR |
 | **v2** ✅ | Multi-version SDS content | RHEL 6–9 SDS staging, CPE OS detection, content management UI |
 | **v3** ✅ | Container image scanning | `oscap-podman` integration, root Podman store, version mismatch detection, per-image history |
+| **v3.3** ✅ | Selective remediation + observability | Selective Remediation Builder (host + container), Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
 
 **Explicitly out of scope (any version):**
 - Remote SSH scanning — different tool, different trust model
