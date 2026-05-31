@@ -355,12 +355,13 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('change', loadActivityLog);
     document.getElementById('ct-activity-clear-btn')
         .addEventListener('click', () => {
-            document.getElementById('ct-activity-confirm').classList.remove('hidden');
+            showConfirmModal(
+                'Clear Activity Log',
+                'All activity log entries will be permanently deleted. This cannot be undone.',
+                clearActivityLog,
+                'Clear Log'
+            );
         });
-    document.getElementById('ct-activity-confirm-yes')
-        .addEventListener('click', clearActivityLog);
-    document.getElementById('ct-activity-confirm-no')
-        .addEventListener('click', () => document.getElementById('ct-activity-confirm').classList.add('hidden'));
     document.querySelectorAll('.ct-activity-chip').forEach(chip => {
         chip.addEventListener('click', () => {
             document.querySelectorAll('.ct-activity-chip').forEach(c => c.classList.remove('pf-m-active'));
@@ -2549,7 +2550,6 @@ function activityResult(e) {
 }
 
 function clearActivityLog() {
-    document.getElementById('ct-activity-confirm').classList.add('hidden');
     cockpit.file(ACTIVITY_LOG, { superuser: 'require' }).replace('')
         .then(() => loadActivityLog())
         .catch(err => console.error('Failed to clear activity log:', err.message || err));

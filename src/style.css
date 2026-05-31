@@ -1342,17 +1342,6 @@ html.pf-v6-theme-dark .ct-badge-error {
 .ct-fail-count  { color: var(--pf-v6-global--danger-color--100); }
 
 /* Inline confirm strip */
-.ct-activity-confirm {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
-  background: var(--pf-v6-global--warning-color--200, #f5deb3);
-  border-radius: 4px;
-  font-size: 0.875rem;
-}
-
 /* ---- End Activity tab ------------------------------------- */
 
 /* ---- Dashboard tab ---------------------------------------- */
