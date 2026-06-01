@@ -55,20 +55,17 @@ in Cockpit.
 
 ## Screenshots
 
-**Host Scan — configuration and history**
-![Host Scan](docs/screenshots/host-scan.png)
-
-**Selective Remediation Builder — cherry-pick failing rules before downloading scripts**
-![Selective Remediation](docs/screenshots/selective-remediation.png)
-
-**Container Scan — oscap-podman workflow with tailored profile**
-![Container Scan](docs/screenshots/container-scan.png)
-
-**Policy Tailoring — rule tree with severity indicators and variable editor**
+**Policy Tailoring — rule tree editor with severity indicators, search, and variable editor**
 ![Tailoring Editor](docs/screenshots/tailoring.png)
 
-**Activity Log — real-time action log with semantic badge colors**
-![Activity Log](docs/screenshots/activity-log.png)
+**Scan Results — compliance score donut, regression detection, failing rules with CCE identifiers and inline description**
+![Scan Results](docs/screenshots/scan-results.png)
+
+**Selective Remediation Builder — cherry-pick failing rules before downloading targeted bash or Ansible scripts**
+![Selective Remediation](docs/screenshots/selective-remediations.png)
+
+**Host Scan — unified configuration card with profile description and scan history**
+![Host Scan](docs/screenshots/host-scan.png)
 
 ## Requirements
 
