@@ -23,8 +23,10 @@ const SETTINGS_PATH      = '/var/lib/cockpit-scap/settings.json';
 const RETENTION_DEFAULT  = 10;
 const RETENTION_MIN      = 1;
 const RETENTION_MAX      = 50;
-let   hostRetention      = RETENTION_DEFAULT;
-let   containerRetention = RETENTION_DEFAULT;
+let   hostRetention        = RETENTION_DEFAULT;
+let   containerRetention   = RETENTION_DEFAULT;
+let   containerScanEnabled = true;
+let   dashboardEnabled     = true;
 
 const ACTIVITY_LOG   = '/var/lib/cockpit-scap/activity.log';
 const ACTIVITY_MAX   = 1000;
@@ -2868,8 +2870,25 @@ function loadSettings() {
                 hostRetention = Math.min(s.host_retention, RETENTION_MAX);
             if (typeof s.container_retention === 'number' && s.container_retention >= RETENTION_MIN)
                 containerRetention = Math.min(s.container_retention, RETENTION_MAX);
+            if (typeof s.container_scan_enabled === 'boolean')
+                containerScanEnabled = s.container_scan_enabled;
+            if (typeof s.dashboard_enabled === 'boolean')
+                dashboardEnabled = s.dashboard_enabled;
         })
-        .catch(() => {});
+        .catch(() => {})
+        .then(() => applyTabVisibility());
+}
+
+function applyTabVisibility() {
+    document.getElementById('tab-btn-container-scan').closest('li')
+        .classList.toggle('hidden', !containerScanEnabled);
+    document.getElementById('tab-btn-dashboard').closest('li')
+        .classList.toggle('hidden', !dashboardEnabled);
+
+    const cActive = document.getElementById('tab-btn-container-scan').getAttribute('aria-selected') === 'true';
+    const dActive = document.getElementById('tab-btn-dashboard').getAttribute('aria-selected') === 'true';
+    if ((!containerScanEnabled && cActive) || (!dashboardEnabled && dActive))
+        document.getElementById('tab-btn-scan').click();
 }
 
 function initSettings() {
@@ -2884,8 +2903,10 @@ function initSettings() {
 }
 
 function onSettingsTabOpen() {
-    document.getElementById('ct-setting-host-retention').value      = hostRetention;
-    document.getElementById('ct-setting-container-retention').value = containerRetention;
+    document.getElementById('ct-setting-host-retention').value          = hostRetention;
+    document.getElementById('ct-setting-container-retention').value     = containerRetention;
+    document.getElementById('ct-setting-container-enabled').checked     = containerScanEnabled;
+    document.getElementById('ct-setting-dashboard-enabled').checked     = dashboardEnabled;
     document.getElementById('ct-settings-warn').classList.add('hidden');
     document.getElementById('ct-settings-saved').classList.add('hidden');
     fetchDiskUsage();
@@ -2916,14 +2937,27 @@ function saveSettings() {
     hInput.value = hVal;
     cInput.value = cVal;
 
+    const ceVal = document.getElementById('ct-setting-container-enabled').checked;
+    const deVal = document.getElementById('ct-setting-dashboard-enabled').checked;
+
     const prevHost      = hostRetention;
     const prevContainer = containerRetention;
+    const prevCe        = containerScanEnabled;
+    const prevDe        = dashboardEnabled;
 
     cockpit.file(SETTINGS_PATH, { superuser: 'require' })
-        .replace(JSON.stringify({ host_retention: hVal, container_retention: cVal }, null, 2))
+        .replace(JSON.stringify({
+            host_retention:        hVal,
+            container_retention:   cVal,
+            container_scan_enabled: ceVal,
+            dashboard_enabled:     deVal,
+        }, null, 2))
         .then(() => {
-            hostRetention      = hVal;
-            containerRetention = cVal;
+            hostRetention        = hVal;
+            containerRetention   = cVal;
+            containerScanEnabled = ceVal;
+            dashboardEnabled     = deVal;
+            applyTabVisibility();
             return Promise.all([
                 pruneHistoryByType('host'),
                 pruneHistoryByType('container'),
@@ -2931,10 +2965,10 @@ function saveSettings() {
         })
         .then(() => {
             const parts = [];
-            if (hVal !== prevHost)
-                parts.push('host: ' + prevHost + ' → ' + hVal);
-            if (cVal !== prevContainer)
-                parts.push('container: ' + prevContainer + ' → ' + cVal);
+            if (hVal  !== prevHost)      parts.push('host retention: ' + prevHost + ' → ' + hVal);
+            if (cVal  !== prevContainer) parts.push('container retention: ' + prevContainer + ' → ' + cVal);
+            if (ceVal !== prevCe)        parts.push('container scan: ' + (ceVal ? 'enabled' : 'disabled'));
+            if (deVal !== prevDe)        parts.push('dashboard: ' + (deVal ? 'enabled' : 'disabled'));
             if (parts.length)
                 appendActivityLog({ type: 'settings_change', tab: 'settings',
                                     detail: parts.join(', ') });

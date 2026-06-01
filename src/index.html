@@ -1036,6 +1036,22 @@
             Click "Limited access" in the page header to elevate privileges before changing settings.</div>
           </div>
 
+          <h3 class="ct-settings-section-title">Module Features</h3>
+          <p class="ct-settings-desc">Disable tabs that are not relevant to this environment. These settings apply to all users of this host.</p>
+          <div class="ct-settings-form ct-settings-checks">
+            <div class="ct-settings-check-row">
+              <input type="checkbox" class="ct-requires-admin"
+                     id="ct-setting-container-enabled" checked>
+              <label for="ct-setting-container-enabled">Enable Container Scanning</label>
+            </div>
+            <div class="ct-settings-check-row">
+              <input type="checkbox" class="ct-requires-admin"
+                     id="ct-setting-dashboard-enabled" checked>
+              <label for="ct-setting-dashboard-enabled">Enable Dashboard</label>
+            </div>
+          </div>
+
+          <h3 class="ct-settings-section-title">Scan Result Retention</h3>
           <p class="ct-settings-desc">
             Controls how many completed scan results are stored per scan type.
             Older results are removed automatically after each scan when the limit is reached.

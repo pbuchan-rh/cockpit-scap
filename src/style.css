@@ -1492,9 +1492,29 @@ html.pf-v6-theme-dark .ct-badge-error {
   max-width: 560px;
 }
 
+.ct-settings-section-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ct-color-text-secondary);
+  margin: 0 0 8px;
+}
+
 .ct-settings-desc {
   color: var(--ct-color-text-secondary);
-  margin: 0 0 20px;
+  margin: 0 0 14px;
+  font-size: 0.875rem;
+}
+
+.ct-settings-checks {
+  margin-bottom: 24px;
+}
+
+.ct-settings-check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 0.875rem;
 }
 
