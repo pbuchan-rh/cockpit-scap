@@ -1,6 +1,6 @@
 # cockpit-scap
 
-A native [Cockpit](https://cockpit-project.org/) module for RHEL 10 that brings OpenSCAP compliance
+A native [Cockpit](https://cockpit-project.org/) module for RHEL 10 / CentOS Stream 10 that brings OpenSCAP compliance
 scanning, container image scanning, profile tailoring, and selective remediation directly into the
 browser console that RHEL administrators already use — no separate tools, no desktop application,
 no context switching.
@@ -47,7 +47,7 @@ in Cockpit.
 ## Requirements
 
 ### Cockpit
-Cockpit 344 or later on RHEL 10. The module uses no Cockpit internals beyond the published
+Cockpit 344 or later on RHEL 10 / CentOS Stream 10. The module uses no Cockpit internals beyond the published
 `cockpit.js` API.
 
 ### Packages
