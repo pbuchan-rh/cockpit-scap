@@ -929,7 +929,7 @@
             <h2 class="pf-v6-c-card__title-text">Saved Tailoring Files</h2>
             <div class="ct-tailor-tree-controls">
               <input type="file" id="ct-tailor-upload-input" accept=".xml" class="hidden">
-              <button class="pf-v6-c-button pf-m-link" type="button"
+              <button class="pf-v6-c-button pf-m-link ct-requires-admin" type="button"
                       id="ct-tailor-upload-btn">Upload</button>
             </div>
           </div>
@@ -978,17 +978,23 @@
         <div class="pf-v6-c-card__title">
           <div class="ct-tailor-rules-header">
             <h2 class="pf-v6-c-card__title-text">Uploaded Content</h2>
-            <button class="pf-v6-c-button pf-m-link" type="button"
-                    id="ct-content-refresh-btn">Refresh</button>
+            <div>
+              <input type="file" id="ct-content-upload-input" accept=".xml" class="hidden">
+              <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
+                      id="ct-content-upload-btn">Upload SDS File</button>
+              <button class="pf-v6-c-button pf-m-link" type="button"
+                      id="ct-content-refresh-btn">Refresh</button>
+            </div>
           </div>
         </div>
         <div class="pf-v6-c-card__body">
           <p class="ct-content-help">
-            Stage SDS files for other RHEL versions by copying them to
-            <code>/var/lib/cockpit-scap/content/</code>. Tailoring works for any version;
+            Upload SDS files for other RHEL versions directly, or copy them to
+            <code>/var/lib/cockpit-scap/content/</code> via SCP.
+            Tailoring works for any version;
             scanning is blocked for content that does not match this host.
           </p>
-          <pre class="ct-content-scp-hint">scp ssg-rhel8-ds.xml user@host:/var/lib/cockpit-scap/content/</pre>
+          <div id="ct-content-upload-status" class="hidden"></div>
           <div id="ct-user-content-list"></div>
         </div>
       </div>

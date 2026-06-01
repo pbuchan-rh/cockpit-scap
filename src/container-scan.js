@@ -170,9 +170,16 @@ function csCheckPrereqFail(step, err) {
             { code: 'sudo podman pull <image>' },
         ]);
     } else {
-        csShowPrereq('Failed to enumerate images', [
-            (err && err.message) || 'Unknown error',
-        ]);
+        const msg = (err && err.message) || '';
+        const isPermission = /not permitted|permission denied|access denied/i.test(msg);
+        if (isPermission) {
+            csShowPrereq('Administrative access required', [
+                'Listing container images requires root access to the system Podman store.',
+                'Click "Administrative access" in the page header, then reload this tab.',
+            ]);
+        } else {
+            csShowPrereq('Failed to enumerate images', [msg || 'Unknown error']);
+        }
     }
 }
 
@@ -630,6 +637,7 @@ function csRenderHistory(manifests) {
     manifests.forEach(m => tbody.appendChild(csBuildHistoryRow(m)));
     empty.classList.add('hidden');
     table.classList.remove('hidden');
+    updateAdminControls();
 }
 
 function csShortImageName(imageName) {
@@ -699,7 +707,7 @@ function csBuildHistoryRow(manifest) {
     });
 
     const delBtn       = document.createElement('button');
-    delBtn.className   = 'pf-v6-c-button pf-m-link ct-btn-danger-link';
+    delBtn.className   = 'pf-v6-c-button pf-m-link ct-btn-danger-link ct-requires-admin';
     delBtn.type        = 'button';
     delBtn.textContent = 'Delete';
     delBtn.addEventListener('click', () => {

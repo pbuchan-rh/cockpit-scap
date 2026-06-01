@@ -251,7 +251,8 @@ let hostOsVersion     = null;   /* cached from /etc/os-release at startup */
 let currentHostHistory = [];    /* last rendered host scan manifests */
 
 /* Module state — confirm modal */
-let confirmCallback = null;
+let confirmCallback  = null;
+let adminPermission  = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     cockpit.file('/etc/os-release').read()
@@ -381,6 +382,24 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Content tab */
     document.getElementById('ct-content-refresh-btn')
         .addEventListener('click', () => { renderContentTab(); detectContent(); });
+
+    /* Admin permission gate — disables upload/delete controls for non-admins.
+     * cockpit.permission is not available in all Cockpit versions; guard defensively. */
+    if (typeof cockpit.permission === 'function') {
+        adminPermission = cockpit.permission({ admin: true });
+        adminPermission.addEventListener('changed', updateAdminControls);
+        updateAdminControls();
+    }
+
+    document.getElementById('ct-content-upload-btn')
+        .addEventListener('click', () => document.getElementById('ct-content-upload-input').click());
+
+    document.getElementById('ct-content-upload-input')
+        .addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) uploadContent(file);
+            e.target.value = '';
+        });
 
     /* Confirm modal */
     document.getElementById('ct-confirm-ok')
@@ -1695,6 +1714,7 @@ function renderHistory(manifests) {
     manifests.forEach(m => tbody.appendChild(buildHistoryRow(m)));
     empty.classList.add('hidden');
     table.classList.remove('hidden');
+    updateAdminControls();
 }
 
 function restoreLastResults() {
@@ -1781,7 +1801,7 @@ function buildHistoryRow(manifest) {
     });
 
     const delBtn = document.createElement('button');
-    delBtn.className   = 'pf-v6-c-button pf-m-link ct-btn-danger-link';
+    delBtn.className   = 'pf-v6-c-button pf-m-link ct-btn-danger-link ct-requires-admin';
     delBtn.type        = 'button';
     delBtn.textContent = 'Delete';
     delBtn.addEventListener('click', () => onDeleteHistoryEntry(manifest));
@@ -2384,7 +2404,7 @@ function renderTailoringList(sidecars) {
         });
 
         const delBtn       = document.createElement('button');
-        delBtn.className   = 'pf-v6-c-button pf-m-link ct-btn-danger-link';
+        delBtn.className   = 'pf-v6-c-button pf-m-link ct-btn-danger-link ct-requires-admin';
         delBtn.type        = 'button';
         delBtn.textContent = 'Delete';
         delBtn.addEventListener('click', () => onDeleteTailoringFile(sc));
@@ -2395,6 +2415,7 @@ function renderTailoringList(sidecars) {
         tr.appendChild(actionsTd);
         tbody.appendChild(tr);
     });
+    updateAdminControls();
 }
 
 function onEditTailoringFile(sidecar) {
@@ -2617,6 +2638,22 @@ function handleTailoringUpload(file) {
     reader.readAsText(file);
 }
 
+/* ---- Admin gate -------------------------------------------- */
+
+function updateAdminControls() {
+    /* Default to allowed when permission API unavailable — { superuser: 'require' }
+     * on the operations themselves is the real enforcement boundary. */
+    const allowed = !adminPermission || adminPermission.allowed !== false;
+    document.querySelectorAll('.ct-requires-admin').forEach(btn => {
+        btn.disabled = !allowed;
+        if (!allowed) {
+            btn.title = 'Administrative access required';
+        } else {
+            btn.removeAttribute('title');
+        }
+    });
+}
+
 /* ---- Content tab ------------------------------------------- */
 
 function renderContentTab() {
@@ -2706,7 +2743,7 @@ function renderUserContentList() {
                 tdA.appendChild(valBtn);
 
                 const btn    = document.createElement('button');
-                btn.className = 'pf-v6-c-button pf-m-link ct-danger-link';
+                btn.className = 'pf-v6-c-button pf-m-link ct-danger-link ct-requires-admin';
                 btn.type      = 'button';
                 btn.textContent = 'Delete';
                 btn.addEventListener('click', () => {
@@ -2720,6 +2757,7 @@ function renderUserContentList() {
             });
             container.innerHTML = '';
             container.appendChild(table);
+            updateAdminControls();
         })
         .catch(() => {
             container.innerHTML = '<p class="ct-content-empty">Could not read content directory.</p>';
@@ -2735,6 +2773,76 @@ function deleteUserContent(xmlPath, jsonPath) {
             detectContent();
         })
         .catch(err => console.error('Failed to delete content file:', err.message || err));
+}
+
+function uploadContent(file) {
+    const status   = document.getElementById('ct-content-upload-status');
+    const btn      = document.getElementById('ct-content-upload-btn');
+    const destPath = CONTENT_BASE + file.name;
+    const sizeMB   = (file.size / 1024 / 1024).toFixed(1);
+
+    btn.disabled       = true;
+    btn.textContent    = 'Checking…';
+    status.className   = 'ct-content-upload-status';
+    status.textContent = 'Checking ' + file.name + '…';
+    status.classList.remove('hidden');
+
+    cockpit.spawn(['stat', '--format=%s %Y', destPath], { err: 'ignore' })
+        .then(out => {
+            const parts  = out.trim().split(' ');
+            const exMB   = (parseInt(parts[0], 10) / 1024 / 1024).toFixed(1);
+            const exDate = new Date(parseInt(parts[1], 10) * 1000).toLocaleDateString();
+
+            btn.disabled    = false;
+            btn.textContent = 'Upload SDS File';
+            status.classList.add('hidden');
+
+            showConfirmModal(
+                'Replace existing file?',
+                file.name + ' already exists (' + exMB + ' MB, ' + exDate + '). Replace with new file (' + sizeMB + ' MB)?',
+                () => doWriteContent(file, destPath, sizeMB),
+                'Replace'
+            );
+        })
+        .catch(() => doWriteContent(file, destPath, sizeMB));
+}
+
+function doWriteContent(file, destPath, sizeMB) {
+    const status = document.getElementById('ct-content-upload-status');
+    const btn    = document.getElementById('ct-content-upload-btn');
+
+    btn.disabled       = true;
+    btn.textContent    = 'Uploading…';
+    status.className   = 'ct-content-upload-status';
+    status.textContent = 'Uploading ' + file.name + ' (' + sizeMB + ' MB)…';
+    status.classList.remove('hidden');
+
+    const reader = new FileReader();
+    reader.onload = ev => {
+        cockpit.file(destPath, { superuser: 'require' }).replace(ev.target.result)
+            .then(() => {
+                status.className   = 'ct-content-upload-status ct-content-upload-ok';
+                status.textContent = file.name + ' (' + sizeMB + ' MB) uploaded successfully.';
+                appendActivityLog({ type: 'content_upload', tab: 'content', file: file.name });
+                renderUserContentList();
+                detectContent();
+            })
+            .catch(err => {
+                status.className   = 'ct-content-upload-status ct-content-upload-err';
+                status.textContent = 'Upload failed: ' + (err.message || String(err));
+            })
+            .finally(() => {
+                btn.disabled    = false;
+                btn.textContent = 'Upload SDS File';
+            });
+    };
+    reader.onerror = () => {
+        status.className   = 'ct-content-upload-status ct-content-upload-err';
+        status.textContent = 'Failed to read file from disk.';
+        btn.disabled    = false;
+        btn.textContent = 'Upload SDS File';
+    };
+    reader.readAsText(file);
 }
 
 /* ---- CSV export -------------------------------------------- */
@@ -2767,6 +2875,7 @@ const ACTIVITY_TYPE_LABELS = {
     scan_delete:         'Scan Deleted',
     guide:               'Guide Generated',
     validate:            'Content Validated',
+    content_upload:      'Content Uploaded',
     content_delete:      'Content Deleted',
     tailor_upload:       'Tailoring Uploaded',
     tailor_load:         'Tailoring Loaded',
@@ -2784,6 +2893,7 @@ const ACTIVITY_BADGE_CLASS = {
     scan_delete:         'ct-activity-danger',
     guide:               'ct-activity-guide',
     validate:            'ct-activity-validate',
+    content_upload:      'ct-activity-validate',
     content_delete:      'ct-activity-danger',
     tailor_upload:       'ct-activity-tailor',
     tailor_load:         'ct-activity-tailor',
@@ -2844,8 +2954,9 @@ function renderActivityTable(entries) {
     const clearBtn  = document.getElementById('ct-activity-clear-btn');
 
     const hasEntries = entries.length > 0;
+    const isAdmin    = adminPermission && adminPermission.allowed === true;
     exportBtn.disabled = !hasEntries;
-    clearBtn.disabled  = !hasEntries;
+    clearBtn.disabled  = !hasEntries || !isAdmin;
 
     if (!hasEntries) {
         table.classList.add('hidden');
