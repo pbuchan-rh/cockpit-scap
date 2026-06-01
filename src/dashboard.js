@@ -7,6 +7,32 @@
 
 const DB_RESULTS_BASE = '/var/lib/cockpit-scap/results/';
 
+const PY_EXTRACT_HIGH_FAILURES = [
+    'import xml.etree.ElementTree as ET, json, sys',
+    'res, sds = sys.argv[1], sys.argv[2]',
+    'NS = "http://checklists.nist.gov/xccdf/1.2"',
+    'def t(n): return "{"+NS+"}"+n',
+    'def u(e): return e.split("}")[-1] if "}" in e else e',
+    'fails = set()',
+    'for _, el in ET.iterparse(res, events=("end",)):',
+    '    if u(el.tag) == "rule-result":',
+    '        if el.get("severity","") == "high":',
+    '            for ch in el:',
+    '                if u(ch.tag) == "result" and (ch.text or "").strip() == "fail":',
+    '                    fails.add(el.get("idref",""))',
+    '        el.clear()',
+    'if not fails:',
+    '    print("[]"); sys.exit(0)',
+    'titles = {}',
+    'for _, el in ET.iterparse(sds, events=("end",)):',
+    '    if el.tag == t("Rule") and el.get("id","") in fails:',
+    '        tl = el.find(t("title"))',
+    '        titles[el.get("id","")] = (tl.text or "").strip() if tl is not None else el.get("id","")',
+    '        el.clear()',
+    'out = [{"id": rid, "title": titles.get(rid, rid)} for rid in sorted(fails)]',
+    'print(json.dumps(out))',
+].join('\n');
+
 let dbLoaded    = false;
 let dbHostname  = null;
 let dbManifests = [];
@@ -93,37 +119,21 @@ function renderDashboard(el, hostManifests, containerManifests) {
         return;
     }
 
-    const hostGroups = hostManifests.length
-        ? groupManifests(hostManifests, m => (m.profile_id || '') + '|' + (m.sds_file || ''))
-        : [];
-    const csGroups = containerManifests.length
-        ? groupManifests(containerManifests, m => m.image_id || m.image_name || 'unknown')
-        : [];
+    const sections = [];
 
-    const allGroups  = [...hostGroups, ...csGroups];
-    const bannerHtml = buildAttentionBanner(allGroups);
-    const sections   = [];
-
-    if (hostGroups.length) {
-        const cards = hostGroups.map(group =>
-            buildStatusCard({
-                title:    group[0].profile_title || group[0].profile_id || 'Unknown Profile',
-                subtitle: dbHostname || 'This Host',
-                group,
-                goTabId:  'tab-btn-scan',
-                goLabel:  'Go to Host Scan',
-                scanType: 'host',
-            })
-        ).join('');
-        sections.push(
-            '<div class="db-section">' +
-                '<h3 class="db-section-title">Host — ' + escHtml(dbHostname || 'This Host') + '</h3>' +
-                '<div class="db-cards">' + cards + '</div>' +
-            '</div>'
-        );
+    if (hostManifests.length) {
+        const latest = hostManifests[0];
+        const prev   = hostManifests.find(m =>
+            m.timestamp < latest.timestamp &&
+            m.profile_id === latest.profile_id &&
+            m.sds_file   === latest.sds_file
+        ) || null;
+        sections.push(buildHostCard(latest, prev));
     }
 
-    if (csGroups.length) {
+    if (containerManifests.length) {
+        const csGroups = groupManifests(containerManifests,
+            m => m.image_id || m.image_name || 'unknown');
         const cards = csGroups.map(group =>
             buildStatusCard({
                 title:    group[0].image_name || group[0].image_id || 'Container',
@@ -142,12 +152,9 @@ function renderDashboard(el, hostManifests, containerManifests) {
         );
     }
 
-    el.innerHTML = bannerHtml + sections.join('');
+    el.innerHTML = sections.join('');
 
-    el.querySelectorAll('[data-go-tab]').forEach(btn => {
-        btn.addEventListener('click', () =>
-            document.getElementById(btn.dataset.goTab).click());
-    });
+    if (hostManifests.length) loadTopFailures(hostManifests[0]);
 
     el.querySelectorAll('[data-view-ts]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -174,6 +181,170 @@ function renderDashboard(el, hostManifests, containerManifests) {
             }
         });
     });
+}
+
+function loadTopFailures(manifest) {
+    if (!manifest || !manifest.sds_file || !manifest.timestamp) return;
+    const resultsXml = DB_RESULTS_BASE + manifest.timestamp + '/results.xml';
+
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_HIGH_FAILURES, resultsXml, manifest.sds_file],
+                  { err: 'message' })
+        .then(output => {
+            const rules = JSON.parse(output);
+            const el = document.getElementById('db-host-critical');
+            if (!el) return;
+
+            if (!rules.length) {
+                el.innerHTML =
+                    '<p class="db-critical-clean">&#10003; No HIGH severity failures</p>';
+                return;
+            }
+
+            const MAX_SHOWN = 8;
+            const shown   = rules.slice(0, MAX_SHOWN);
+            const overflow = rules.length - shown.length;
+
+            const items = shown.map(r =>
+                '<button class="db-critical-item" type="button" ' +
+                    'data-view-ts="' + escHtml(manifest.timestamp) + '">' +
+                    escHtml(r.title || r.id) +
+                '</button>'
+            ).join('');
+
+            const more = overflow > 0
+                ? '<p class="db-critical-more">+ ' + overflow + ' more HIGH severity failures</p>'
+                : '';
+
+            el.innerHTML =
+                '<p class="db-critical-label">Critical Findings &mdash; ' +
+                    rules.length + ' HIGH Severity Failure' + (rules.length > 1 ? 's' : '') +
+                '</p>' +
+                '<div class="db-critical-list">' + items + '</div>' +
+                more;
+
+            el.querySelectorAll('[data-view-ts]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const m = dbManifests.find(x => x.timestamp === btn.dataset.viewTs);
+                    if (!m) return;
+                    document.getElementById('tab-btn-scan').click();
+                    loadScanFromHistory(m);
+                });
+            });
+        })
+        .catch(() => {
+            const el = document.getElementById('db-host-critical');
+            if (el) el.innerHTML = '';
+        });
+}
+
+function calcRiskScore(sc) {
+    if (!sc) return null;
+    return (sc.high || 0) * 10 + (sc.medium || 0) * 3 + (sc.low || 0);
+}
+
+function buildHostCard(manifest, prev) {
+    const score    = parseFloat(manifest.score);
+    const hasScore = !isNaN(score);
+
+    const scoreClass = hasScore
+        ? (score >= 80 ? 'db-score-green' : score >= 50 ? 'db-score-yellow' : 'db-score-red')
+        : 'db-score-grey';
+    const scoreDisplay = hasScore ? score.toFixed(1) + '%' : '—';
+
+    let deltaHtml = '';
+    if (hasScore && prev && prev.score != null) {
+        const prevScore = parseFloat(prev.score);
+        if (!isNaN(prevScore) && Math.abs(score - prevScore) >= 0.05) {
+            const delta = score - prevScore;
+            const sign  = delta > 0 ? '+' : '';
+            const cls   = delta > 0 ? 'db-delta-up' : 'db-delta-down';
+            const arrow = delta > 0 ? '↑' : '↓';
+            deltaHtml = '<span class="db-score-delta ' + cls + '">' +
+                arrow + ' ' + sign + delta.toFixed(1) + '%' +
+            '</span>';
+        }
+    }
+
+    const counts  = manifest.counts || {};
+    const pass    = counts.pass != null ? counts.pass : null;
+    const fail    = counts.fail != null ? counts.fail : null;
+    const sc      = manifest.severity_counts;
+    const risk    = calcRiskScore(sc);
+    const age     = manifest.timestamp ? dbRelativeTime(manifest.timestamp) : '—';
+    const ageDays = dbAgeDays(manifest.timestamp);
+
+    const riskClass = risk === null ? '' : risk === 0 ? 'db-risk-zero'
+                    : risk <= 30 ? 'db-risk-low' : risk <= 100 ? 'db-risk-med' : 'db-risk-high';
+
+    const passHtml = pass !== null
+        ? '<span class="db-stat-pass">' + pass + ' passed</span>' : '';
+    const failCls  = fail === 0 ? 'db-stat-fail db-stat-fail-zero' : 'db-stat-fail';
+    const failHtml = fail !== null
+        ? '<span class="' + failCls + '">' + fail + ' failed</span>' : '';
+
+    let sevHtml = '';
+    if (sc && (sc.high || sc.medium || sc.low)) {
+        const parts = [];
+        if (sc.high)   parts.push('<span class="db-sev-high">'   + sc.high   + ' high</span>');
+        if (sc.medium) parts.push('<span class="db-sev-medium">' + sc.medium + ' med</span>');
+        if (sc.low)    parts.push('<span class="db-sev-low">'    + sc.low    + ' low</span>');
+        sevHtml = '<div class="db-sev-row">' +
+            parts.join('<span class="db-sev-dot">·</span>') +
+        '</div>';
+    }
+
+    const ageStaleClass = ageDays !== null && ageDays >= STALE_ERR_DAYS  ? ' db-age-err'
+                        : ageDays !== null && ageDays >= STALE_WARN_DAYS ? ' db-age-warn'
+                        : '';
+
+    const riskHtml = risk !== null
+        ? '<div class="db-risk-block">' +
+              '<span class="db-risk-value ' + riskClass + '">' + risk + '</span>' +
+              '<span class="db-risk-label">risk score</span>' +
+              '<span class="db-risk-hint">high×10 + med×3 + low×1</span>' +
+          '</div>'
+        : '';
+
+    return (
+        '<div class="pf-v6-c-card db-host-card">' +
+            '<div class="pf-v6-c-card__header db-host-header">' +
+                '<div>' +
+                    '<h4 class="db-host-title">Host Compliance</h4>' +
+                    '<p class="db-host-subtitle">' +
+                        escHtml(manifest.profile_title || manifest.profile_id || 'Unknown Profile') +
+                        ' &nbsp;·&nbsp; ' +
+                        escHtml(dbHostname || 'This Host') +
+                    '</p>' +
+                '</div>' +
+                '<p class="db-age' + ageStaleClass + '">Last scanned ' + escHtml(age) + '</p>' +
+            '</div>' +
+            '<div class="pf-v6-c-card__body db-host-body">' +
+                '<div class="db-host-score-col">' +
+                    '<div class="db-score-block ' + scoreClass + '">' +
+                        '<span class="db-score-value">' + scoreDisplay + '</span>' +
+                        deltaHtml +
+                    '</div>' +
+                    riskHtml +
+                '</div>' +
+                '<div class="db-host-detail-col">' +
+                    (passHtml || failHtml
+                        ? '<div class="db-stats-row db-host-counts">' + passHtml + failHtml + '</div>'
+                        : '') +
+                    sevHtml +
+                    '<div id="db-host-critical" class="db-host-critical">' +
+                        '<span class="db-critical-loading">Loading critical findings…</span>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="pf-v6-c-card__footer db-card-footer">' +
+                '<button class="pf-v6-c-button pf-m-primary pf-m-sm" type="button" ' +
+                        'data-quick-ts="' + escHtml(manifest.timestamp) + '">Quick Scan</button>' +
+                '<button class="pf-v6-c-button pf-m-link" type="button" ' +
+                        'data-view-ts="' + escHtml(manifest.timestamp) + '" ' +
+                        'data-scan-type="host">View Last Scan</button>' +
+            '</div>' +
+        '</div>'
+    );
 }
 
 function buildAttentionBanner(groups) {
