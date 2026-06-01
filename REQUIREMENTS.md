@@ -1,7 +1,7 @@
 # cockpit-scap — Requirements
 
 **Status:** v1 requirements locked  
-**Last updated:** 2026-05-28
+**Last updated:** 2026-06-01
 
 ---
 
@@ -302,6 +302,21 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 ### Policy Tailoring Layout (v3.4)
 
 - **REQ-146:** ✅ The Policy Tailoring tab configuration section MUST use the same unified single-card two-column grid layout as the Host Scan and Container Scan tabs
+
+### Content Compatibility (v3.5 session)
+
+- **REQ-147:** ✅ The Host Scan content dropdown MUST only show SDS files whose RHEL version matches the current host OS version — cross-version files MUST be silently excluded; no warning banner is shown
+- **REQ-148:** ✅ The Policy Tailoring and Container Scan content selectors MUST continue to show all available SDS files regardless of host OS version
+
+### Tailoring UX (v3.5 session)
+
+- **REQ-149:** ✅ Selecting a tailoring file on the Host Scan tab MUST automatically populate the content and profile dropdowns from the tailoring file's sidecar metadata (`base_profile_id`, `sds_path`)
+- **REQ-150:** ✅ Selecting a tailoring file on the Container Scan tab MUST automatically populate the profile dropdown from the sidecar `base_profile_id`
+
+### EPEL Submission Prep (v3.5 session)
+
+- **REQ-151:** ✅ The RPM spec file MUST include a `%check` section explaining why no automated build-time tests are possible for a vanilla JS Cockpit module
+- **REQ-152:** ✅ The RPM spec MUST pass `rpmlint` with no ERROR or WARNING findings other than known false-positive spelling errors for technical terms (`oscap`, `podman`, `optgroup`)
 
 ---
 

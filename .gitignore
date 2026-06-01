@@ -20,6 +20,12 @@ tools/
 pdf-export/
 *.pdf
 
+# Playwright test harness — dev-only, never committed
+tests/
+node_modules/
+package.json
+package-lock.json
+
 # Editor and OS files
 .vscode/
 .idea/
