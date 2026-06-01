@@ -450,17 +450,18 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
         .then(output => {
             const parsed   = JSON.parse(output);
             const manifest = {
-                timestamp:      csTimestamp,
-                scan_type:      'container',
-                image_name:     csImageName,
-                image_id:       csImageId,
-                sds_file:       csSdsPath,
-                profile_id:     profileId,
-                profile_title:  profileTitle,
-                tailoring_file: tailoringPath || null,
-                result_id:      parsed.result_id,
-                counts:         parsed.counts,
-                score:          parsed.score,
+                timestamp:       csTimestamp,
+                scan_type:       'container',
+                image_name:      csImageName,
+                image_id:        csImageId,
+                sds_file:        csSdsPath,
+                profile_id:      profileId,
+                profile_title:   profileTitle,
+                tailoring_file:  tailoringPath || null,
+                result_id:       parsed.result_id,
+                counts:          parsed.counts,
+                severity_counts: parsed.sev,
+                score:           parsed.score,
             };
             return cockpit.file(csResultsDir + 'manifest.json', { superuser: 'require' })
                 .replace(JSON.stringify(manifest, null, 2))

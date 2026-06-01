@@ -19,7 +19,13 @@ const SDS_DISPLAY_NAMES = {
     'ssg-ubuntu2404-ds.xml': 'Ubuntu 24.04',
 };
 
-const HISTORY_MAX    = 10;
+const SETTINGS_PATH      = '/var/lib/cockpit-scap/settings.json';
+const RETENTION_DEFAULT  = 10;
+const RETENTION_MIN      = 1;
+const RETENTION_MAX      = 50;
+let   hostRetention      = RETENTION_DEFAULT;
+let   containerRetention = RETENTION_DEFAULT;
+
 const ACTIVITY_LOG   = '/var/lib/cockpit-scap/activity.log';
 const ACTIVITY_MAX   = 1000;
 const ACTIVITY_TRIM  = 500;
@@ -31,6 +37,7 @@ const PY_PARSE_RESULTS = [
     'path = sys.argv[1]',
     'result_id = ""; score = 0.0',
     'counts = {"pass":0,"fail":0,"error":0,"notchecked":0,"notapplicable":0,"notselected":0}',
+    'sev = {"high":0,"medium":0,"low":0}',
     'def t(tag): return tag.split("}")[-1] if "}" in tag else tag',
     'for _, el in ET.iterparse(path, events=("end",)):',
     '    tag = t(el.tag)',
@@ -39,12 +46,14 @@ const PY_PARSE_RESULTS = [
     '        try: score = float(el.text or "0")',
     '        except: pass',
     '    elif tag == "rule-result":',
+    '        severity = el.get("severity", "")',
     '        for ch in el:',
     '            if t(ch.tag) == "result":',
     '                v = (ch.text or "").strip()',
     '                if v in counts: counts[v] += 1',
+    '                if v == "fail" and severity in sev: sev[severity] += 1',
     '        el.clear()',
-    'print(json.dumps({"result_id": result_id, "score": score, "counts": counts}))',
+    'print(json.dumps({"result_id": result_id, "score": score, "counts": counts, "sev": sev}))',
 ].join('\n');
 
 /* Python script: parse an SDS file, extract a profile's rule tree and values.
@@ -261,6 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(() => {});
 
+    loadSettings();
     initTabs();
     detectContent();
     loadHistory();
@@ -268,6 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderContentTab();
     initContainerScan();
     initDashboard();
+    initSettings();
 
     /* Scan tab */
     document.getElementById('ct-content-select')
@@ -842,14 +853,15 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
         .then(output => {
             const parsed   = JSON.parse(output);
             const manifest = {
-                timestamp:      currentTimestamp,
-                sds_file:       currentSdsPath,
-                profile_id:     profileId,
-                profile_title:  profileTitle,
-                tailoring_file: tailoringPath || null,
-                result_id:      parsed.result_id,
-                counts:         parsed.counts,
-                score:          parsed.score,
+                timestamp:       currentTimestamp,
+                sds_file:        currentSdsPath,
+                profile_id:      profileId,
+                profile_title:   profileTitle,
+                tailoring_file:  tailoringPath || null,
+                result_id:       parsed.result_id,
+                counts:          parsed.counts,
+                severity_counts: parsed.sev,
+                score:           parsed.score,
             };
             return cockpit.file(currentResultsDir + 'manifest.json', { superuser: 'require' })
                 .replace(JSON.stringify(manifest, null, 2))
@@ -1095,7 +1107,8 @@ function pruneHistoryByType(scanType) {
                 )
             ).then(results => {
                 const matching = results.filter(Boolean).sort().reverse();
-                const toDelete = matching.slice(HISTORY_MAX);
+                const limit    = scanType === 'container' ? containerRetention : hostRetention;
+                const toDelete = matching.slice(limit);
                 if (!toDelete.length) return;
                 return Promise.all(
                     toDelete.map(dir =>
@@ -2624,6 +2637,8 @@ function updateAdminControls() {
             btn.removeAttribute('title');
         }
     });
+    document.getElementById('ct-settings-admin-alert')
+        .classList.toggle('hidden', allowed);
 }
 
 /* ---- Content tab ------------------------------------------- */
@@ -2842,6 +2857,95 @@ function doWriteContent(file, destPath, sizeMB) {
 
 /* ---- Activity log ------------------------------------------ */
 
+/* ---- Settings tab ------------------------------------------ */
+
+function loadSettings() {
+    return cockpit.file(SETTINGS_PATH).read()
+        .then(content => {
+            if (!content) return;
+            const s = JSON.parse(content);
+            if (typeof s.host_retention === 'number' && s.host_retention >= RETENTION_MIN)
+                hostRetention = Math.min(s.host_retention, RETENTION_MAX);
+            if (typeof s.container_retention === 'number' && s.container_retention >= RETENTION_MIN)
+                containerRetention = Math.min(s.container_retention, RETENTION_MAX);
+        })
+        .catch(() => {});
+}
+
+function initSettings() {
+    document.getElementById('tab-btn-settings')
+        .addEventListener('click', onSettingsTabOpen);
+    document.getElementById('ct-settings-save-btn')
+        .addEventListener('click', saveSettings);
+    document.getElementById('ct-setting-host-retention')
+        .addEventListener('input', onRetentionInput);
+    document.getElementById('ct-setting-container-retention')
+        .addEventListener('input', onRetentionInput);
+}
+
+function onSettingsTabOpen() {
+    document.getElementById('ct-setting-host-retention').value      = hostRetention;
+    document.getElementById('ct-setting-container-retention').value = containerRetention;
+    document.getElementById('ct-settings-warn').classList.add('hidden');
+    document.getElementById('ct-settings-saved').classList.add('hidden');
+    fetchDiskUsage();
+}
+
+function fetchDiskUsage() {
+    const el = document.getElementById('ct-settings-disk-usage');
+    el.textContent = '…';
+    cockpit.spawn(['du', '-sh', '/var/lib/cockpit-scap/results/'], { err: 'message' })
+        .then(out => { el.textContent = out.split('\t')[0].trim(); })
+        .catch(() => { el.textContent = '—'; });
+}
+
+function onRetentionInput() {
+    const hVal = parseInt(document.getElementById('ct-setting-host-retention').value, 10);
+    const cVal = parseInt(document.getElementById('ct-setting-container-retention').value, 10);
+    const reducing = (!isNaN(hVal) && hVal < hostRetention) ||
+                     (!isNaN(cVal) && cVal < containerRetention);
+    document.getElementById('ct-settings-warn').classList.toggle('hidden', !reducing);
+}
+
+function saveSettings() {
+    const hInput = document.getElementById('ct-setting-host-retention');
+    const cInput = document.getElementById('ct-setting-container-retention');
+    const hVal = Math.max(RETENTION_MIN, Math.min(RETENTION_MAX, parseInt(hInput.value, 10) || RETENTION_DEFAULT));
+    const cVal = Math.max(RETENTION_MIN, Math.min(RETENTION_MAX, parseInt(cInput.value, 10) || RETENTION_DEFAULT));
+
+    hInput.value = hVal;
+    cInput.value = cVal;
+
+    const prevHost      = hostRetention;
+    const prevContainer = containerRetention;
+
+    cockpit.file(SETTINGS_PATH, { superuser: 'require' })
+        .replace(JSON.stringify({ host_retention: hVal, container_retention: cVal }, null, 2))
+        .then(() => {
+            hostRetention      = hVal;
+            containerRetention = cVal;
+            return Promise.all([
+                pruneHistoryByType('host'),
+                pruneHistoryByType('container'),
+            ]);
+        })
+        .then(() => {
+            const parts = [];
+            if (hVal !== prevHost)
+                parts.push('host: ' + prevHost + ' → ' + hVal);
+            if (cVal !== prevContainer)
+                parts.push('container: ' + prevContainer + ' → ' + cVal);
+            if (parts.length)
+                appendActivityLog({ type: 'settings_change', tab: 'settings',
+                                    detail: parts.join(', ') });
+
+            document.getElementById('ct-settings-warn').classList.add('hidden');
+            document.getElementById('ct-settings-saved').classList.remove('hidden');
+            fetchDiskUsage();
+        })
+        .catch(err => console.error('Settings save failed:', err.message || err));
+}
+
 function appendActivityLog(entry) {
     const line = JSON.stringify({ ts: new Date().toISOString(), ...entry });
     const f    = cockpit.file(ACTIVITY_LOG, { superuser: 'require' });
@@ -2876,6 +2980,7 @@ const ACTIVITY_TYPE_LABELS = {
     tailor_delete:       'Tailoring Deleted',
     tailor_download:     'Tailoring Downloaded',
     remediate_download:  'Remediation Downloaded',
+    settings_change:     'Retention Updated',
 };
 
 const ACTIVITY_BADGE_CLASS = {
@@ -2894,6 +2999,7 @@ const ACTIVITY_BADGE_CLASS = {
     tailor_delete:       'ct-activity-danger',
     tailor_download:     'ct-activity-tailor',
     remediate_download:  'ct-activity-remediate',
+    settings_change:     'ct-activity-validate',
 };
 
 const ACTIVITY_FILTER_MAP = {
@@ -2981,7 +3087,7 @@ function formatActivityTime(ts) {
 }
 
 function activityTabLabel(tab) {
-    const labels = { host: 'Host', container: 'Container', tailoring: 'Tailoring', content: 'Content' };
+    const labels = { host: 'Host', container: 'Container', tailoring: 'Tailoring', content: 'Content', settings: 'Settings' };
     return labels[tab] || (tab || '—');
 }
 
@@ -2997,7 +3103,8 @@ function activityDetails(e) {
     if (e.type === 'validate')      return esc(e.file);
     if (e.type === 'tailor_save' || e.type === 'tailor_load' || e.type === 'tailor_delete')
         return esc(e.profile || e.file);
-    if (e.type === 'scan_error')    return esc(e.message);
+    if (e.type === 'scan_error')      return esc(e.message);
+    if (e.type === 'settings_change') return esc(e.detail || '');
     return '';
 }
 

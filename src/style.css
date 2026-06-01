@@ -262,6 +262,19 @@ code {
   justify-content: space-between;
 }
 
+.ct-table-scroll-wrap {
+  max-height: 440px;
+  overflow-y: auto;
+  border-radius: var(--ct-border-radius-sm, 4px);
+}
+
+.ct-table-scroll-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--pf-v6-c-card--BackgroundColor, var(--pf-v6-global--BackgroundColor--100, #fff));
+}
+
 .pf-v6-c-card__title-text {
   font-size: var(--ct-font-size-lg);
   font-weight: 700;
@@ -1461,7 +1474,6 @@ html.pf-v6-theme-dark .ct-badge-error {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
 }
 
 #panel-dashboard .pf-v6-c-empty-state {
@@ -1472,8 +1484,81 @@ html.pf-v6-theme-dark .ct-badge-error {
 /* ---- Activity tab ----------------------------------------- */
 
 /* Push Activity tab to the far right of the tab bar */
-.ct-tab-activity {
+.ct-tab-settings {
   margin-left: auto;
+}
+
+.ct-settings-body {
+  max-width: 560px;
+}
+
+.ct-settings-desc {
+  color: var(--ct-color-text-secondary);
+  margin: 0 0 20px;
+  font-size: 0.875rem;
+}
+
+.ct-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.ct-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ct-settings-label {
+  min-width: 140px;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.ct-settings-input {
+  width: 72px;
+  text-align: center;
+}
+
+.ct-settings-unit {
+  font-size: 0.8rem;
+  color: var(--ct-color-text-secondary);
+}
+
+.ct-settings-disk-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 0.875rem;
+}
+
+.ct-settings-disk-label {
+  min-width: 140px;
+  font-weight: 500;
+}
+
+.ct-settings-disk-value {
+  color: var(--ct-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ct-settings-warn {
+  margin-bottom: 20px;
+}
+
+.ct-settings-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ct-settings-saved {
+  color: var(--ct-color-success);
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .ct-activity-title-actions {
@@ -1646,23 +1731,16 @@ html.pf-v6-theme-dark .ct-badge-error {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-width: 80px;
-    padding: 12px 8px;
+    min-width: 100px;
+    padding: 14px 12px;
     border-radius: 8px;
     flex-shrink: 0;
 }
 
 .db-score-value {
-    font-size: 1.5rem;
+    font-size: 2rem;
     font-weight: 700;
     line-height: 1;
-}
-
-.db-score-label {
-    font-size: 0.7rem;
-    margin-top: 4px;
-    text-align: center;
-    opacity: 0.85;
 }
 
 .db-score-green  { background: #1e4620; color: #6eba72; }
@@ -1688,28 +1766,56 @@ html.pf-v6-theme-dark .ct-badge-error {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    justify-content: center;
 }
 
-.db-meta-row {
+.db-stats-row {
     display: flex;
-    flex-direction: column;
+    gap: 14px;
+    align-items: baseline;
 }
 
-.db-meta-label {
-    font-size: 0.72rem;
+.db-stat-pass {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ct-color-success);
+}
+
+.db-stat-fail {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ct-color-danger);
+}
+
+.db-stat-fail-zero {
+    color: var(--ct-color-success);
+}
+
+.db-sev-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+}
+
+.db-sev-dot {
     color: var(--ct-color-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    line-height: 1;
 }
 
-.db-meta-value {
-    font-size: 0.85rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 200px;
+.db-sev-high   { color: var(--ct-color-danger);  font-weight: 600; }
+.db-sev-medium { color: var(--ct-color-warning); font-weight: 600; }
+.db-sev-low    { color: var(--ct-color-text-secondary); }
+
+.db-age {
+    font-size: 0.8rem;
+    color: var(--ct-color-text-secondary);
+    margin: 0;
 }
+
+.db-age-warn { color: var(--ct-color-warning); }
+.db-age-err  { color: var(--ct-color-danger); }
 
 .db-card-subtitle {
     font-size: 0.78rem;
@@ -1719,16 +1825,6 @@ html.pf-v6-theme-dark .ct-badge-error {
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 280px;
-}
-
-.db-trend {
-    padding: 4px 16px 8px;
-}
-
-.db-sparkline {
-    display: block;
-    width: 100%;
-    height: 28px;
 }
 
 .db-card-footer {

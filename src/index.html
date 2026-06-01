@@ -51,7 +51,13 @@
               <span class="pf-v6-c-tabs__item-text">Dashboard <span class="ct-tab-preview-badge">Preview</span></span>
             </button>
           </li>
-          <li class="pf-v6-c-tabs__item ct-tab-activity" role="presentation">
+          <li class="pf-v6-c-tabs__item ct-tab-settings" role="presentation">
+            <button class="pf-v6-c-tabs__link" type="button" role="tab"
+                    aria-selected="false" data-panel="panel-settings" id="tab-btn-settings">
+              <span class="pf-v6-c-tabs__item-text">Settings</span>
+            </button>
+          </li>
+          <li class="pf-v6-c-tabs__item" role="presentation">
             <button class="pf-v6-c-tabs__link" type="button" role="tab"
                     aria-selected="false" data-panel="panel-activity" id="tab-btn-activity">
               <span class="pf-v6-c-tabs__item-text">Activity</span>
@@ -350,20 +356,22 @@
           </div>
 
           <!-- History table -->
-          <table class="pf-v6-c-table pf-m-compact hidden" id="ct-history-table"
-                 aria-label="Scan history">
-            <thead>
-              <tr>
-                <th scope="col">Date</th>
-                <th scope="col">Profile</th>
-                <th scope="col">Pass</th>
-                <th scope="col">Fail</th>
-                <th scope="col">Score</th>
-                <th scope="col" class="ct-col-actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="ct-history-tbody"></tbody>
-          </table>
+          <div class="ct-table-scroll-wrap">
+            <table class="pf-v6-c-table pf-m-compact hidden" id="ct-history-table"
+                   aria-label="Scan history">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Profile</th>
+                  <th scope="col">Pass</th>
+                  <th scope="col">Fail</th>
+                  <th scope="col">Score</th>
+                  <th scope="col" class="ct-col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="ct-history-tbody"></tbody>
+            </table>
+          </div>
 
         </div>
       </div>
@@ -703,22 +711,24 @@
               </div>
             </div>
 
-            <table class="pf-v6-c-table pf-m-compact hidden" id="cs-history-table"
-                   aria-label="Container scan history">
-              <thead>
-                <tr>
-                  <th scope="col">Date</th>
-                  <th scope="col">Image</th>
-                  <th scope="col">Content</th>
-                  <th scope="col">Profile</th>
-                  <th scope="col">Pass</th>
-                  <th scope="col">Fail</th>
-                  <th scope="col">Score</th>
-                  <th scope="col">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="cs-history-tbody"></tbody>
-            </table>
+            <div class="ct-table-scroll-wrap">
+              <table class="pf-v6-c-table pf-m-compact hidden" id="cs-history-table"
+                     aria-label="Container scan history">
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Image</th>
+                    <th scope="col">Content</th>
+                    <th scope="col">Profile</th>
+                    <th scope="col">Pass</th>
+                    <th scope="col">Fail</th>
+                    <th scope="col">Score</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="cs-history-tbody"></tbody>
+              </table>
+            </div>
 
           </div>
         </div>
@@ -924,18 +934,20 @@
           <p class="ct-tailor-list-empty" id="ct-tailor-list-empty">
             No tailoring files saved yet. Load a profile above to create one, or upload an existing file.
           </p>
-          <table class="pf-v6-c-table pf-m-compact hidden" id="ct-tailor-list-table"
-                 aria-label="Saved tailoring files">
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Base Profile</th>
-                <th scope="col">Created</th>
-                <th scope="col">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="ct-tailor-list-tbody"></tbody>
-          </table>
+          <div class="ct-table-scroll-wrap">
+            <table class="pf-v6-c-table pf-m-compact hidden" id="ct-tailor-list-table"
+                   aria-label="Saved tailoring files">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Base Profile</th>
+                  <th scope="col">Created</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="ct-tailor-list-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1006,6 +1018,65 @@
 
     </section>
     <!-- END DASHBOARD TAB PANEL -->
+
+    <!-- Settings panel -->
+    <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-settings"
+             role="tabpanel" aria-labelledby="tab-btn-settings">
+
+      <div class="pf-v6-c-card">
+        <div class="pf-v6-c-card__title">
+          <h2 class="pf-v6-c-card__title-text">Scan Result Retention</h2>
+        </div>
+        <div class="pf-v6-c-card__body ct-settings-body">
+
+          <div class="pf-v6-c-alert pf-m-warning hidden" id="ct-settings-admin-alert"
+               aria-label="Limited access warning">
+            <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+            <div><span class="pf-v6-c-alert__title">Administrative access required.</span>
+            Click "Limited access" in the page header to elevate privileges before changing settings.</div>
+          </div>
+
+          <p class="ct-settings-desc">
+            Controls how many completed scan results are stored per scan type.
+            Older results are removed automatically after each scan when the limit is reached.
+          </p>
+
+          <div class="ct-settings-form">
+            <div class="ct-settings-row">
+              <label class="ct-settings-label" for="ct-setting-host-retention">Host scans</label>
+              <input class="pf-v6-c-form-control ct-settings-input ct-requires-admin" type="number"
+                     id="ct-setting-host-retention" min="1" max="50" value="10">
+              <span class="ct-settings-unit">most recent scans retained</span>
+            </div>
+            <div class="ct-settings-row">
+              <label class="ct-settings-label" for="ct-setting-container-retention">Container scans</label>
+              <input class="pf-v6-c-form-control ct-settings-input ct-requires-admin" type="number"
+                     id="ct-setting-container-retention" min="1" max="50" value="10">
+              <span class="ct-settings-unit">most recent scans retained</span>
+            </div>
+          </div>
+
+          <div class="ct-settings-disk-row">
+            <span class="ct-settings-disk-label">Results storage</span>
+            <span class="ct-settings-disk-value" id="ct-settings-disk-usage">—</span>
+          </div>
+
+          <div class="pf-v6-c-alert pf-m-warning ct-settings-warn hidden" id="ct-settings-warn"
+               aria-label="Retention reduction warning">
+            <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+            <div><span class="pf-v6-c-alert__title">Reducing retention will permanently delete older scan results.</span></div>
+          </div>
+
+          <div class="ct-settings-footer">
+            <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
+                    id="ct-settings-save-btn">Save</button>
+            <span class="ct-settings-saved hidden" id="ct-settings-saved">&#10003; Settings saved</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+    <!-- END SETTINGS TAB PANEL -->
 
     <!-- Activity panel -->
     <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-activity"

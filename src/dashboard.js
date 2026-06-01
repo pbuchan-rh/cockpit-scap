@@ -248,17 +248,11 @@ function buildStatusCard({ title, subtitle, group, goTabId, goLabel, scanType })
         }
     }
 
-    const scores = group
-        .map(m => parseFloat(m.score))
-        .filter(s => !isNaN(s))
-        .reverse();
-
-    const counts       = manifest.counts || {};
-    const pass         = counts.pass != null ? counts.pass : '—';
-    const fail         = counts.fail != null ? counts.fail : '—';
-    const sdsBase      = manifest.sds_file ? manifest.sds_file.split('/').pop() : '';
-    const age          = manifest.timestamp ? dbRelativeTime(manifest.timestamp) : '—';
-    const ageDays      = dbAgeDays(manifest.timestamp);
+    const counts  = manifest.counts || {};
+    const pass    = counts.pass != null ? counts.pass : null;
+    const fail    = counts.fail != null ? counts.fail : null;
+    const age     = manifest.timestamp ? dbRelativeTime(manifest.timestamp) : '—';
+    const ageDays = dbAgeDays(manifest.timestamp);
 
     const staleClass = ageDays !== null && ageDays >= STALE_ERR_DAYS ? 'db-stale-err'
                      : ageDays !== null && ageDays >= STALE_WARN_DAYS ? 'db-stale-warn'
@@ -267,11 +261,31 @@ function buildStatusCard({ title, subtitle, group, goTabId, goLabel, scanType })
         ? '<span class="db-stale-badge ' + staleClass + '">Stale</span>'
         : '';
 
-    const trendHtml = buildSparkline(scores);
-
     const subtitleHtml = subtitle
         ? '<p class="db-card-subtitle">' + escHtml(subtitle) + '</p>'
         : '';
+
+    const passHtml = pass !== null
+        ? '<span class="db-stat-pass">' + escHtml(String(pass)) + ' passed</span>'
+        : '';
+    const failCls  = fail === 0 ? 'db-stat-fail db-stat-fail-zero' : 'db-stat-fail';
+    const failHtml = fail !== null
+        ? '<span class="' + failCls + '">' + escHtml(String(fail)) + ' failed</span>'
+        : '';
+
+    const sc  = manifest.severity_counts;
+    let sevHtml = '';
+    if (sc && (sc.high || sc.medium || sc.low)) {
+        const parts = [];
+        if (sc.high)   parts.push('<span class="db-sev-high">'   + sc.high   + ' high</span>');
+        if (sc.medium) parts.push('<span class="db-sev-medium">' + sc.medium + ' med</span>');
+        if (sc.low)    parts.push('<span class="db-sev-low">'    + sc.low    + ' low</span>');
+        sevHtml = '<div class="db-sev-row">' + parts.join('<span class="db-sev-dot">·</span>') + '</div>';
+    }
+
+    const ageStaleClass = ageDays !== null && ageDays >= STALE_ERR_DAYS ? ' db-age-err'
+                        : ageDays !== null && ageDays >= STALE_WARN_DAYS ? ' db-age-warn'
+                        : '';
 
     return (
         '<div class="pf-v6-c-card db-status-card">' +
@@ -287,62 +301,24 @@ function buildStatusCard({ title, subtitle, group, goTabId, goLabel, scanType })
             '<div class="pf-v6-c-card__body db-card-body">' +
                 '<div class="db-score-block ' + scoreClass + '">' +
                     '<span class="db-score-value">' + scoreDisplay + '</span>' +
-                    '<span class="db-score-label">compliance score</span>' +
                     deltaHtml +
                 '</div>' +
                 '<div class="db-meta">' +
-                    '<div class="db-meta-row">' +
-                        '<span class="db-meta-label">Content</span>' +
-                        '<span class="db-meta-value">' + escHtml(sdsBase || '—') + '</span>' +
-                    '</div>' +
-                    '<div class="db-meta-row">' +
-                        '<span class="db-meta-label">Pass / Fail</span>' +
-                        '<span class="db-meta-value">' +
-                            '<span class="ct-pass-count">' + escHtml(String(pass)) + ' pass</span>' +
-                            ' &nbsp;' +
-                            '<span class="ct-fail-count">' + escHtml(String(fail)) + ' fail</span>' +
-                        '</span>' +
-                    '</div>' +
-                    '<div class="db-meta-row">' +
-                        '<span class="db-meta-label">Last scan</span>' +
-                        '<span class="db-meta-value">' + escHtml(age) + '</span>' +
-                    '</div>' +
-                    '<div class="db-meta-row">' +
-                        '<span class="db-meta-label">Scans tracked</span>' +
-                        '<span class="db-meta-value">' + group.length + '</span>' +
-                    '</div>' +
+                    (passHtml || failHtml
+                        ? '<div class="db-stats-row">' + passHtml + failHtml + '</div>'
+                        : '') +
+                    sevHtml +
+                    '<p class="db-age' + ageStaleClass + '">Last scanned ' + escHtml(age) + '</p>' +
                 '</div>' +
             '</div>' +
-            (trendHtml ? '<div class="db-trend">' + trendHtml + '</div>' : '') +
             '<div class="pf-v6-c-card__footer db-card-footer">' +
                 '<button class="pf-v6-c-button pf-m-primary pf-m-sm" type="button" ' +
                         'data-quick-ts="' + escHtml(manifest.timestamp) + '">Quick Scan</button>' +
                 '<button class="pf-v6-c-button pf-m-link" type="button" ' +
                         'data-view-ts="' + escHtml(manifest.timestamp) + '" ' +
-                        'data-scan-type="' + scanType + '">View Last Scan</button>' +
-                '<button class="pf-v6-c-button pf-m-link" type="button" ' +
-                        'data-go-tab="' + goTabId + '">' + goLabel + '</button>' +
+                        'data-scan-type="' + escHtml(scanType) + '">View Last Scan</button>' +
             '</div>' +
         '</div>'
-    );
-}
-
-function buildSparkline(scores) {
-    if (scores.length < 2) return '';
-    const W = 200, H = 28, pad = 2;
-    const pts = scores.map((s, i) => {
-        const x = pad + (i / (scores.length - 1)) * (W - pad * 2);
-        const y = pad + ((100 - s) / 100) * (H - pad * 2);
-        return x.toFixed(1) + ',' + y.toFixed(1);
-    }).join(' ');
-    const trending = scores[scores.length - 1] >= scores[0];
-    const color = trending ? 'var(--ct-color-success)' : 'var(--ct-color-danger)';
-    return (
-        '<svg class="db-sparkline" viewBox="0 0 ' + W + ' ' + H + '" ' +
-              'preserveAspectRatio="none" aria-hidden="true">' +
-            '<polyline points="' + pts + '" fill="none" stroke="' + color + '" ' +
-                      'stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
-        '</svg>'
     );
 }
 
