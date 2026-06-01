@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.3
+Version:        3.4
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -84,6 +84,29 @@ fi
 %dir /var/lib/%{name}/content
 
 %changelog
+* Sun May 31 2026 Peter Buchan <pbuchan@redhat.com> - 3.4-1
+- Compliance Dashboard: per-profile cards with score sparkline (trend over
+  time), Quick Scan one-click re-run, View Last Scan navigation, Needs
+  Attention banner (regressions + stale profiles), staleness badges
+- SDS file upload: browser file picker writes directly to content library;
+  overwrite confirmation shows existing file size and date; confirmed
+  working up to 26 MB through Cockpit bridge
+- Admin gate: upload and delete operations disabled for non-admin sessions
+  via cockpit.permission; clear tooltip feedback; Container Scan tab shows
+  actionable guidance in limited access mode
+- Failing rules summary: collapsible HIGH/MEDIUM/LOW groups; CCE identifiers;
+  Automated/Manual remediation annotation; inline description and rationale
+  expansion via <details>/<summary>
+- Regression and improvement detection: banner fires automatically comparing
+  same profile; "See what changed" diffs two results.xml files showing
+  Fixed/Regressed/New rule groups
+- Compliance score visualization with pass/fail/error counts and timestamp
+- View Scan from history loads full results card; Run Again on results card
+- Unified single-card scan configuration layout on all three scan tabs
+- Content Library: Size and Modified columns on uploaded content table
+- Code review and security audit: path traversal hardening, timestamp
+  re-validation on rm paths, dead code removal, CSS consistency fixes
+
 * Sun May 31 2026 Peter Buchan <pbuchan@redhat.com> - 3.3-1
 - Selective Remediation Builder: after any scan, choose individual failing
   rules before downloading bash or Ansible remediation scripts; rules grouped
