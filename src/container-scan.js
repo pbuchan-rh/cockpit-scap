@@ -109,6 +109,7 @@ function initContainerScan() {
         .addEventListener('click', () => {
             if (prereqChecked) return;
             prereqChecked = true;
+            csLoadHistory();
             csPrereqEager.then(([oscapErr, podmanErr]) => {
                 if (oscapErr) { csCheckPrereqFail(oscapErr.step); return; }
                 if (podmanErr) { csCheckPrereqFail(podmanErr.step); return; }
@@ -145,7 +146,6 @@ function csCheckImages() {
             csPopulateImages(images);
             csDetectContent();
             csDetectTailoringFiles();
-            csLoadHistory();
         })
 
         .catch(reason => {
@@ -529,6 +529,7 @@ function csLoadScanFromHistory(manifest) {
     csAnsiblePath = dir + 'remediation.yml';
     csImageName   = manifest.image_name || null;
     csImageId     = manifest.image_id   || null;
+    csHidePrereq();
     document.getElementById('cs-scan-row').classList.add('hidden');
     csShowResults(manifest);
     document.getElementById('cs-results').scrollIntoView({ behavior: 'smooth' });
@@ -712,7 +713,7 @@ function csBuildHistoryRow(manifest) {
     actionsTd.className = 'ct-history-actions';
 
     const rerunBtn = document.createElement('button');
-    rerunBtn.className   = 'pf-v6-c-button pf-m-link cs-history-rerun-btn';
+    rerunBtn.className   = 'pf-v6-c-button pf-m-link cs-history-rerun-btn ct-requires-admin';
     rerunBtn.type        = 'button';
     rerunBtn.textContent = 'Run Again';
     rerunBtn.disabled    = !!csProc;
@@ -881,6 +882,14 @@ function csShowProgress() {
 }
 
 function csShowSetup() {
+    const adminAllowed = !adminPermission || adminPermission.allowed !== false;
+    if (!adminAllowed) {
+        csShowPrereq('Administrative access required', [
+            'Listing container images requires root access to the system Podman store.',
+            'Click "Administrative access" in the page header, then reload this tab.',
+        ]);
+        return;
+    }
     document.getElementById('cs-scan-row').classList.remove('hidden');
     document.getElementById('cs-progress').classList.add('hidden');
     document.getElementById('cs-results').classList.add('hidden');
@@ -954,6 +963,7 @@ function openCsRemPanel(resultsDir) {
     csRemRules = [];
 
     document.getElementById('cs-rem-search').value = '';
+    csHidePrereq();
 
     const panel = document.getElementById('cs-remediation-panel');
     panel.classList.remove('hidden');

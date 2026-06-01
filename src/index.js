@@ -5,6 +5,7 @@ const SSG_CONTENT_DIR = '/usr/share/xml/scap/ssg/content/';
 const RESULTS_BASE    = '/var/lib/cockpit-scap/results/';
 const TAILORING_BASE  = '/var/lib/cockpit-scap/tailoring/';
 const CONTENT_BASE    = '/var/lib/cockpit-scap/content/';
+const REMEDIATION_LOG_BASE = '/var/lib/cockpit-scap/remediation-logs/';
 
 const SDS_DISPLAY_NAMES = {
     'ssg-rhel10-ds.xml':     'Red Hat Enterprise Linux 10',
@@ -469,6 +470,30 @@ document.addEventListener('DOMContentLoaded', () => {
             loadActivityLog();
         });
     });
+
+    document.getElementById('ct-activity-tbody').addEventListener('click', e => {
+        const btn = e.target.closest('.ct-activity-view-log');
+        if (!btn) return;
+        const logPath = btn.dataset.logPath;
+        if (!logPath) return;
+        cockpit.file(logPath, { superuser: 'require' }).read()
+            .then(content => {
+                document.getElementById('ct-log-modal-path').textContent = logPath;
+                document.getElementById('ct-log-modal-content').textContent = content || '(empty)';
+                document.getElementById('ct-log-modal').classList.remove('hidden');
+            })
+            .catch(err => {
+                document.getElementById('ct-log-modal-path').textContent = logPath;
+                document.getElementById('ct-log-modal-content').textContent = 'Could not read log file:\n' + (err.message || String(err));
+                document.getElementById('ct-log-modal').classList.remove('hidden');
+            });
+    });
+
+    document.getElementById('ct-log-modal-close')
+        .addEventListener('click', () => document.getElementById('ct-log-modal').classList.add('hidden'));
+
+    document.getElementById('ct-apply-goto-activity')
+        .addEventListener('click', () => document.getElementById('tab-btn-activity').click());
 });
 
 /* ---- Tab wiring -------------------------------------------- */
@@ -1175,13 +1200,50 @@ function onApplyGate2Execute() {
     const okEl          = document.getElementById('ct-apply-status-ok');
     const errEl         = document.getElementById('ct-apply-status-err');
     const exitEl        = document.getElementById('ct-apply-exit-code');
+    const logSavedEl    = document.getElementById('ct-apply-log-saved');
+
+    const ts         = remediationDir.replace(/\/$/, '').split('/').pop();
+    const profileSlug = (currentManifest && currentManifest.profile_id || 'unknown')
+        .replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 60);
+    const logFile    = REMEDIATION_LOG_BASE + ts + '-' + profileSlug + '.log';
 
     outputEl.textContent = '';
     okEl.classList.add('hidden');
     errEl.classList.add('hidden');
+    logSavedEl.classList.add('hidden');
     titleEl.textContent = 'Applying remediation…';
     areaEl.classList.remove('hidden');
     areaEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    function persistLog(exitCode) {
+        const profile   = (currentManifest && currentManifest.profile_title) || profileSlug;
+        const sds       = (currentManifest && currentManifest.content_file)  || '?';
+        const header    = [
+            '# cockpit-scap remediation log',
+            '# timestamp:     ' + new Date().toISOString(),
+            '# user:          ' + (currentUser || '?'),
+            '# profile:       ' + profile,
+            '# sds:           ' + sds,
+            '# rules_applied: ' + pendingApplyRules.length,
+            '# exit_code:     ' + exitCode,
+            '',
+        ].join('\n');
+
+        cockpit.spawn(['mkdir', '-p', REMEDIATION_LOG_BASE], { superuser: 'require' })
+            .then(() => cockpit.file(logFile, { superuser: 'require' })
+                .replace(header + outputEl.textContent))
+            .then(() => {
+                logSavedEl.classList.remove('hidden');
+                cockpit.spawn([
+                    'logger', '-t', 'cockpit-scap',
+                    'Remediation script executed — user: ' + (currentUser || '?') +
+                    ', profile: ' + profile +
+                    ', rules: ' + pendingApplyRules.length +
+                    ', exit: ' + exitCode,
+                ], { superuser: 'require' }).catch(() => {});
+            })
+            .catch(() => {});
+    }
 
     cockpit.file(applyPath, { superuser: 'require' })
         .replace(scriptContent)
@@ -1194,8 +1256,10 @@ function onApplyGate2Execute() {
                 .then(() => {
                     titleEl.textContent = 'Remediation complete';
                     okEl.classList.remove('hidden');
+                    persistLog(0);
                     appendActivityLog({ type: 'remediate_apply', tab: 'host',
-                        rules_applied: pendingApplyRules.length, exit_code: 0 });
+                        rules_applied: pendingApplyRules.length, exit_code: 0,
+                        log_path: logFile });
                     cockpit.spawn(['rm', '-f', applyPath], { superuser: 'require' }).catch(() => {});
                 })
                 .catch(err => {
@@ -1203,8 +1267,10 @@ function onApplyGate2Execute() {
                     titleEl.textContent = 'Remediation finished';
                     exitEl.textContent  = code;
                     errEl.classList.remove('hidden');
+                    persistLog(code);
                     appendActivityLog({ type: 'remediate_apply', tab: 'host',
-                        rules_applied: pendingApplyRules.length, exit_code: code });
+                        rules_applied: pendingApplyRules.length, exit_code: code,
+                        log_path: logFile });
                     cockpit.spawn(['rm', '-f', applyPath], { superuser: 'require' }).catch(() => {});
                 })
         )
@@ -1632,7 +1698,7 @@ function viewReportFromPath(reportPath) {
 
 function downloadArtifact(filePath, filename, mimeType) {
     if (!filePath) return;
-    cockpit.file(filePath).read()
+    cockpit.file(filePath, { max_read_size: -1 }).read()
         .then(content => {
             const blob = new Blob([content], { type: mimeType });
             const url  = URL.createObjectURL(blob);
@@ -1646,7 +1712,7 @@ function downloadArtifact(filePath, filename, mimeType) {
         })
         .catch(err => {
             console.error('Failed to download:', err);
-            alert('Download failed — file may not exist: ' + (err.message || String(err)));
+            alert('Download failed: ' + (err.message || String(err)));
         });
 }
 
@@ -1894,8 +1960,8 @@ function buildHistoryRow(manifest) {
     actionsTd.appendChild(rerunBtn);
 
     [
-        ['View Scan',  () => loadScanFromHistory(manifest), !!currentScanProc],
-        ['Remediate',  () => openRemediationPanel(dir),     false],
+        ['View Scan',  () => loadScanFromHistory(manifest),                          !!currentScanProc],
+        ['Remediate',  () => { loadScanFromHistory(manifest); openRemediationPanel(dir); }, false],
     ].forEach(([label, handler, disabled]) => {
         const btn = document.createElement('button');
         btn.className   = 'pf-v6-c-button pf-m-link';
@@ -1930,6 +1996,7 @@ function onDeleteHistoryEntry(manifest) {
                 .then(() => {
                     appendActivityLog({ type: 'scan_delete', tab: 'host', content: manifest.sds_file, profile: manifest.profile_id });
                     loadHistory();
+                    dbInvalidate();
                 })
                 .catch(err => console.error('Failed to delete scan:', err.message || err));
         }
@@ -2393,6 +2460,7 @@ function doUpdateTailoringFile() {
             file: sidecar.path.split('/').pop(), profile: newProfileTitle });
         saveBtn.disabled = false;
         detectTailoringFiles();
+        if (typeof csDetectTailoringFiles === 'function') csDetectTailoringFiles();
         resetTailorForm();
     })
     .catch(err => {
@@ -2451,6 +2519,7 @@ function onTailorSaveClick() {
             appendActivityLog({ type: 'tailor_save', tab: 'tailoring', file: filename + '.xml', profile: newProfileTitle });
             saveBtn.disabled = false;
             detectTailoringFiles();
+            if (typeof csDetectTailoringFiles === 'function') csDetectTailoringFiles();
             resetTailorForm();
         })
         .catch(err => {
@@ -2666,6 +2735,7 @@ function onDeleteTailoringFile(sidecar) {
             .then(() => {
                 appendActivityLog({ type: 'tailor_delete', tab: 'tailoring', file: sidecar.path.split('/').pop(), profile: sidecar.name });
                 detectTailoringFiles();
+                if (typeof csDetectTailoringFiles === 'function') csDetectTailoringFiles();
             })
             .catch(err => console.error('Failed to delete tailoring file:', err.message || err));
         }
@@ -2769,6 +2839,7 @@ function handleTailoringUpload(file) {
             .then(() => {
                 appendActivityLog({ type: 'tailor_upload', tab: 'tailoring', file: filename + '.xml', profile: name });
                 detectTailoringFiles();
+                if (typeof csDetectTailoringFiles === 'function') csDetectTailoringFiles();
             })
             .catch(err => console.error('Upload failed:', err.message || err));
     };
@@ -2930,6 +3001,7 @@ function deleteUserContent(xmlPath, jsonPath) {
             appendActivityLog({ type: 'content_delete', tab: 'content', file: fileName });
             renderUserContentList();
             detectContent();
+            if (typeof csDetectContent === 'function') csDetectContent();
         })
         .catch(err => console.error('Failed to delete content file:', err.message || err));
 }
@@ -2991,6 +3063,7 @@ function doWriteContent(file, destPath, sizeMB) {
                 appendActivityLog({ type: 'content_upload', tab: 'content', file: file.name });
                 renderUserContentList();
                 detectContent();
+                if (typeof csDetectContent === 'function') csDetectContent();
             })
             .catch(err => {
                 status.className   = 'ct-content-upload-status ct-content-upload-err';
@@ -3147,6 +3220,46 @@ function appendActivityLog(entry) {
         })
         .catch(() => { /* fire-and-forget — never surface log errors to user */ })
         .finally(() => f.close());
+
+    const journalMsg = buildJournalMessage(entry);
+    if (journalMsg) {
+        cockpit.spawn(['logger', '-t', 'cockpit-scap',
+            'user: ' + (currentUser || '?') + ' — ' + journalMsg
+        ], { superuser: 'require' }).catch(() => {});
+    }
+}
+
+function buildJournalMessage(e) {
+    switch (e.type) {
+        case 'scan_start':
+            return 'Scan started — ' + (e.tab === 'container' ? 'container ' + (e.image || '') + ' ' : '') +
+                   'profile: ' + (e.profile || '?') + ', content: ' + (e.content || '?');
+        case 'scan_complete':
+            return 'Scan completed — ' + (e.tab === 'container' ? 'container ' + (e.image || '') + ' ' : '') +
+                   'profile: ' + (e.profile || '?') + ', score: ' + (e.score || '?') + '%, pass: ' + (e.pass || 0) + ', fail: ' + (e.fail || 0);
+        case 'scan_cancel':
+            return 'Scan cancelled — profile: ' + (e.profile || '?');
+        case 'scan_error':
+            return 'Scan failed — profile: ' + (e.profile || '?') + ', error: ' + (e.message || '?');
+        case 'scan_delete':
+            return 'Scan record deleted — ' + (e.timestamp || '?');
+        case 'remediate_apply':
+            return 'Remediation applied — rules: ' + (e.rules_applied || 0) + ', exit: ' + e.exit_code;
+        case 'content_upload':
+            return 'SDS content uploaded — ' + (e.file || '?');
+        case 'content_delete':
+            return 'SDS content deleted — ' + (e.file || '?');
+        case 'tailor_save':
+            return 'Tailoring policy saved — ' + (e.file || e.profile || '?');
+        case 'tailor_delete':
+            return 'Tailoring policy deleted — ' + (e.file || '?');
+        case 'settings_change':
+            return 'Settings updated — ' + (e.detail || '?');
+        case 'activity_clear':
+            return 'Activity log cleared';
+        default:
+            return null;
+    }
 }
 
 /* ---- Activity tab ------------------------------------------ */
@@ -3297,7 +3410,13 @@ function activityDetails(e) {
         return esc(e.profile || e.file);
     if (e.type === 'scan_error')      return esc(e.message);
     if (e.type === 'settings_change')  return esc(e.detail || '');
-    if (e.type === 'remediate_apply')  return esc(e.rules_applied + ' rule' + (e.rules_applied !== 1 ? 's' : '') + ' applied');
+    if (e.type === 'remediate_apply') {
+        const rulesText = esc(e.rules_applied + ' rule' + (e.rules_applied !== 1 ? 's' : '') + ' applied');
+        if (e.log_path) {
+            return rulesText + ' &nbsp;<button class="pf-v6-c-button pf-m-link ct-activity-view-log" type="button" data-log-path="' + escapeAttr(e.log_path) + '">View Log</button>';
+        }
+        return rulesText;
+    }
     return '';
 }
 
@@ -3314,7 +3433,12 @@ function activityResult(e) {
 
 function clearActivityLog() {
     cockpit.file(ACTIVITY_LOG, { superuser: 'require' }).replace('')
-        .then(() => loadActivityLog())
+        .then(() => {
+            cockpit.spawn(['logger', '-t', 'cockpit-scap',
+                'user: ' + (currentUser || '?') + ' — Activity log cleared'
+            ], { superuser: 'require' }).catch(() => {});
+            loadActivityLog();
+        })
         .catch(err => console.error('Failed to clear activity log:', err.message || err));
 }
 

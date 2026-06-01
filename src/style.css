@@ -1359,6 +1359,39 @@ details.ct-tailor-group .ct-tailor-rule {
 .ct-apply-status-ok  { color: var(--ct-color-success); }
 .ct-apply-status-err { color: var(--ct-color-danger); }
 
+.ct-apply-log-saved {
+  margin-top: 10px;
+  font-size: var(--ct-font-size-sm, 12px);
+  color: var(--ct-color-success);
+}
+
+.ct-log-modal-dialog {
+  max-width: 780px;
+  width: 90vw;
+}
+
+.ct-log-modal-path {
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: var(--ct-color-text-secondary);
+  margin-bottom: 8px;
+  word-break: break-all;
+}
+
+.ct-log-modal-content {
+  font-size: 0.75rem;
+  font-family: monospace;
+  background: var(--ct-color-bg-page);
+  border-radius: 4px;
+  padding: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--ct-color-text);
+  margin-bottom: 16px;
+}
+
 .ct-apply-output {
   font-size: 0.75rem;
   font-family: monospace;

@@ -277,7 +277,7 @@
                       id="ct-download-xml-btn">Download Results XML</button>
               <button class="pf-v6-c-button pf-m-secondary" type="button"
                       id="ct-selective-rem-btn">Remediate</button>
-              <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn" type="button"
+              <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn ct-requires-admin" type="button"
                       id="ct-new-scan-btn">Run Again</button>
               <button class="pf-v6-c-button pf-m-secondary ct-results-close" type="button"
                       id="ct-results-close-btn">Close</button>
@@ -331,6 +331,10 @@
                   <span class="hidden ct-apply-status-err" id="ct-apply-status-err">&#10007; Completed with errors (exit code <span id="ct-apply-exit-code"></span>)</span>
                 </div>
                 <pre class="ct-apply-output" id="ct-apply-output"></pre>
+                <div class="hidden ct-apply-log-saved" id="ct-apply-log-saved">
+                  &#10003; Full remediation log saved. &nbsp;<button class="pf-v6-c-button pf-m-link" type="button"
+                    id="ct-apply-goto-activity">View in Activity tab &#8594;</button>
+                </div>
               </div>
             </div>
           </div>
@@ -639,7 +643,7 @@
                         id="cs-download-xml-btn">Download Results XML</button>
                 <button class="pf-v6-c-button pf-m-secondary" type="button"
                         id="cs-selective-rem-btn">Remediate</button>
-                <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn" type="button"
+                <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn ct-requires-admin" type="button"
                         id="cs-new-scan-btn">Run Again</button>
                 <button class="pf-v6-c-button pf-m-secondary ct-results-close" type="button"
                         id="cs-results-close-btn">Close</button>
@@ -702,60 +706,60 @@
           </div>
         </div>
 
-        <!-- Container scan history -->
-        <div class="pf-v6-c-card" id="cs-history-card">
-          <div class="pf-v6-c-card__title ct-history-title-row">
-            <h2 class="pf-v6-c-card__title-text">Container Scan History</h2>
-            <button class="pf-v6-c-button pf-m-link" type="button"
-                    id="cs-export-csv-btn" disabled>Export CSV</button>
-          </div>
-          <div class="pf-v6-c-card__body">
-
-            <div class="pf-v6-c-empty-state" id="cs-history-empty">
-              <div class="pf-v6-c-empty-state__content">
-                <div class="pf-v6-c-empty-state__icon" aria-hidden="true">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"
-                       viewBox="0 0 512 512" fill="currentColor" aria-hidden="true">
-                    <path d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111
-                             248-248S393 8 256 8zm0 448c-110.5 0-200-89.5-200-200S145.5
-                             56 256 56s200 89.5 200 200-89.5 200-200 200zm61.8-104.4
-                             l-84.9-61.7c-3.1-2.3-4.9-5.9-4.9-9.7V116c0-6.6
-                             5.4-12 12-12h32c6.6 0 12 5.4 12 12v141.7l66.8
-                             48.6c5.4 3.9 6.5 11.4 2.6 16.8L334.6
-                             349c-3.9 5.3-11.4 6.5-16.8 2.6z"/>
-                  </svg>
-                </div>
-                <h3 class="pf-v6-c-empty-state__title">No container scans yet</h3>
-                <div class="pf-v6-c-empty-state__body">
-                  Select an image and profile above, then run your first container scan.
-                </div>
-              </div>
-            </div>
-
-            <div class="ct-table-scroll-wrap">
-              <table class="pf-v6-c-table pf-m-compact hidden" id="cs-history-table"
-                     aria-label="Container scan history">
-                <thead>
-                  <tr>
-                    <th scope="col">Date</th>
-                    <th scope="col">Image</th>
-                    <th scope="col">Content</th>
-                    <th scope="col">Profile</th>
-                    <th scope="col">Pass</th>
-                    <th scope="col">Fail</th>
-                    <th scope="col">Score</th>
-                    <th scope="col">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="cs-history-tbody"></tbody>
-              </table>
-            </div>
-
-          </div>
-        </div>
-
       </div>
       <!-- end cs-scan-section -->
+
+      <!-- Container scan history — outside cs-scan-section so it renders for limited users too -->
+      <div class="pf-v6-c-card" id="cs-history-card">
+        <div class="pf-v6-c-card__title ct-history-title-row">
+          <h2 class="pf-v6-c-card__title-text">Container Scan History</h2>
+          <button class="pf-v6-c-button pf-m-link" type="button"
+                  id="cs-export-csv-btn" disabled>Export CSV</button>
+        </div>
+        <div class="pf-v6-c-card__body">
+
+          <div class="pf-v6-c-empty-state" id="cs-history-empty">
+            <div class="pf-v6-c-empty-state__content">
+              <div class="pf-v6-c-empty-state__icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"
+                     viewBox="0 0 512 512" fill="currentColor" aria-hidden="true">
+                  <path d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111
+                           248-248S393 8 256 8zm0 448c-110.5 0-200-89.5-200-200S145.5
+                           56 256 56s200 89.5 200 200-89.5 200-200 200zm61.8-104.4
+                           l-84.9-61.7c-3.1-2.3-4.9-5.9-4.9-9.7V116c0-6.6
+                           5.4-12 12-12h32c6.6 0 12 5.4 12 12v141.7l66.8
+                           48.6c5.4 3.9 6.5 11.4 2.6 16.8L334.6
+                           349c-3.9 5.3-11.4 6.5-16.8 2.6z"/>
+                </svg>
+              </div>
+              <h3 class="pf-v6-c-empty-state__title">No container scans yet</h3>
+              <div class="pf-v6-c-empty-state__body">
+                Select an image and profile above, then run your first container scan.
+              </div>
+            </div>
+          </div>
+
+          <div class="ct-table-scroll-wrap">
+            <table class="pf-v6-c-table pf-m-compact hidden" id="cs-history-table"
+                   aria-label="Container scan history">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Image</th>
+                  <th scope="col">Content</th>
+                  <th scope="col">Profile</th>
+                  <th scope="col">Pass</th>
+                  <th scope="col">Fail</th>
+                  <th scope="col">Score</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="cs-history-tbody"></tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
 
     </section>
     <!-- END CONTAINER SCAN TAB PANEL -->
@@ -882,9 +886,9 @@
                      id="ct-tailor-editor-name" spellcheck="false" placeholder="Policy name">
             </div>
             <div class="ct-tailor-save-row">
-              <button class="pf-v6-c-button pf-m-primary hidden" type="button"
+              <button class="pf-v6-c-button pf-m-primary hidden ct-requires-admin" type="button"
                       id="ct-tailor-update-btn">Update</button>
-              <button class="pf-v6-c-button pf-m-primary" type="button"
+              <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
                       id="ct-tailor-save-btn">Save Tailoring File</button>
               <button class="pf-v6-c-button pf-m-secondary" type="button"
                       id="ct-tailor-cancel-btn">Cancel</button>
@@ -1200,6 +1204,19 @@
     <div class="ct-confirm-footer">
       <button class="pf-v6-c-button pf-m-danger" type="button" id="ct-apply-gate2-apply">Apply Now</button>
       <button class="pf-v6-c-button pf-m-link" type="button" id="ct-apply-gate2-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Remediation log viewer modal -->
+<div class="ct-confirm-backdrop hidden" id="ct-log-modal"
+     role="dialog" aria-modal="true" aria-labelledby="ct-log-modal-title">
+  <div class="ct-confirm-dialog ct-log-modal-dialog">
+    <p class="ct-confirm-title" id="ct-log-modal-title">Remediation Log</p>
+    <p class="ct-log-modal-path" id="ct-log-modal-path"></p>
+    <pre class="ct-log-modal-content" id="ct-log-modal-content"></pre>
+    <div class="ct-confirm-footer">
+      <button class="pf-v6-c-button pf-m-primary" type="button" id="ct-log-modal-close">Close</button>
     </div>
   </div>
 </div>
