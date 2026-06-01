@@ -16,42 +16,19 @@ in Cockpit.
 
 ## Features
 
-- **Auto-detection** of installed SSG data stream files from `/usr/share/xml/scap/ssg/content/`
-- **Multi-version content** — stage RHEL 6–9 SDS files in `/var/lib/cockpit-scap/content/` and scan
-  with the correct content for any RHEL version; system and user content shown in grouped selector
-- **CPE compatibility check** — cross-version content is detected automatically; scan is blocked with
-  an inline explanation; tailoring remains available for cross-version profile work
-- **Profile selection** with full profile description display
-- **Scan execution** via `oscap xccdf eval` with cancel support
-- **Results card** — compliance score with pass/fail/error counts and scan timestamp
 - **Failing rules summary** — collapsible HIGH/MEDIUM/LOW groups; each rule shows title, CCE identifier, Automated/Manual remediation annotation, and expandable description and rationale inline
-- **Regression and improvement detection** — banner fires automatically when failure count changes vs the previous scan of the same profile; "See what changed" diffs the two scans showing exactly which rules were Fixed, Regressed, or are New failures
-- **Full HTML report** viewer (opens in new tab)
-- **Results XML download** — download the raw XCCDF results.xml from any scan for auditor archives
-- **Selective Remediation Builder** — after any scan, choose individual failing rules before
-  downloading bash or Ansible remediation scripts; rules grouped HIGH/MEDIUM/LOW with per-group
-  and global select/deselect; available for both host and container scans
-- **Scan history** — last 10 scans retained; **View Scan** loads any historical scan into the full results card; Run Again pre-fills the scan form from any history entry; Export CSV
-- **Profile tailoring** — rule tree editor with enable/disable, variable value adjustment, search,
-  expand/collapse; saves valid XCCDF tailoring XML; upload/download/edit/delete saved files
-- **Tailoring Update-in-place** — edit an existing tailoring file and overwrite it directly, or save
-  as a new timestamped copy; rename the profile inline in the editor header
-- **Tailored scans** — select a saved tailoring file at scan time; remediation artifacts respect the tailoring
-- **Container image scanning** — scan container images via `oscap-podman`; image enumeration from root Podman store; version mismatch detection; per-image scan history
-- **View Guide** — generate and view the full oscap security guide for any profile, on all three scan tabs
-- **Run Again** — re-run any historical scan with one click; pre-fills content, profile, and tailoring file
-- **Export CSV** — download the full scan history as a CSV file with all metadata fields
-- **Content Library tab** — upload SDS files directly via browser (up to 30+ MB confirmed); overwrite
-  confirmation shows existing file size and date; per-entry size, modified date, validate, and delete;
-  SCP staging also supported
-- **Content validation** — validate uploaded SDS files with `oscap ds sds-validate` before scanning
-- **Activity log** — real-time log of all user actions with semantic color coding; filterable by type;
-  exportable as CSV; capped at 1000 entries
-- **Compliance Dashboard** *(preview)* — per-profile compliance cards with score sparkline (trend over
-  time), staleness badges, regression/attention banner, Quick Scan (one-click re-run from dashboard),
-  and View Last Scan navigation
-- **Admin gate** — upload and delete operations disabled for non-admin Cockpit sessions; clear visual
-  feedback via disabled state and tooltip; scan execution remains the natural privilege boundary
+- **Regression and improvement detection** — banner fires when failure count changes vs the previous scan of the same profile; "See what changed" diffs the two result sets showing exactly which rules were Fixed, Regressed, or are New failures
+- **Selective Remediation Builder** — after any scan, search and select individual failing rules; expand inline description and rationale per rule; download filtered bash or Ansible scripts; or **Apply Now** directly on the host with two-gate danger confirmation and live streaming output; host-only, admin-gated
+- **Profile tailoring** — rule tree editor with enable/disable, variable value adjustment, search, and expand/collapse; saves valid XCCDF tailoring XML with full upload/download/edit/delete; edit files in place or save as a new copy; tailoring files are selectable at scan time and respected by remediation artifacts
+- **Container image scanning** — scan images via `oscap-podman`; enumerates from the root Podman store; per-image scan history; selective remediation download for use in image build pipelines
+- **Scan history** — configurable retention per scan type; **View Scan** loads any historical result into the full results card; Run Again pre-fills from any history entry; Export CSV
+- **Content Library** — upload SDS files directly via browser; RHEL 6–10 SDS supported; host scan silently filters to version-compatible content only; validate with `oscap ds sds-validate`; SCP staging to `/var/lib/cockpit-scap/content/` also supported
+- **Report and results export** — full oscap HTML report opens in a new tab; raw XCCDF results.xml download for auditor archives
+- **View Compliance Guide** — generate and view the full oscap security guide for the selected profile on any scan tab
+- **Compliance Dashboard** *(preview)* — host compliance hero card with score, weighted risk score (high×10 + med×3 + low×1), severity breakdown, and live-loaded HIGH severity failure names clickable to scan results; compact per-image container cards below
+- **Activity log** — timestamped record of all user actions; filterable by type; exportable as CSV
+- **Settings tab** — configure scan result retention per scan type; enable/disable Container Scan and Dashboard tabs; system-wide, admin-gated, audit-logged
+- **Admin gate** — Run Scan, Apply Now, upload, and delete are visually disabled with tooltip in limited Cockpit sessions; no error popup after the fact
 
 ## Screenshots
 
@@ -118,9 +95,10 @@ Reload Cockpit and navigate to **SCAP Compliance** in the sidebar.
 1. Select a content file (auto-detected from the SSG directory)
 2. Select a profile — the profile description is displayed to the right
 3. Optionally select a saved tailoring file to customize the profile
-4. Click **Run Scan**
-5. When complete, view the full report, download remediation artifacts, or run another scan
-6. All completed scans appear in the Scan History table below
+4. Click **Run Scan** (requires administrative access)
+5. When complete, review the compliance score, failing rules summary, and regression/improvement detection
+6. Click **Remediate** to open the Selective Remediation Builder — search and select failing rules, expand each rule to review its description and rationale, then download a filtered bash or Ansible script or click **Apply Now** to remediate directly on the host
+7. All completed scans appear in the Scan History table; **View Scan** reloads any historical result
 
 ### Policy Tailoring tab
 
@@ -134,6 +112,12 @@ Reload Cockpit and navigate to **SCAP Compliance** in the sidebar.
    **Edit** to reopen a saved file for modification; **Delete** to remove it
 6. When editing an existing file, click **Update** to overwrite it in place, or **Save as New** to
    create a timestamped copy. Rename the profile using the inline name field in the editor header.
+
+### Settings tab
+
+- **Scan result retention** — set how many completed scans to keep per scan type (host and container independently); older results are removed automatically after each scan when the limit is reached
+- **Module features** — disable the Container Scan or Dashboard tabs for environments where they are not relevant; takes effect immediately and applies to all Cockpit users on the host
+- All settings changes are logged to the Activity log; all controls require administrative access
 
 ## Storage
 
@@ -155,7 +139,7 @@ All runtime data is written to `/var/lib/cockpit-scap/`:
     └── ssg-rhel<N>-ds.xml    # User-staged SDS files (root:root ownership required)
 ```
 
-Scan history is pruned automatically to the 10 most recent entries.
+Scan history is pruned automatically after each scan. Retention defaults to 10 results per scan type and is configurable via the Settings tab (1–50).
 
 ## SELinux
 
@@ -166,9 +150,13 @@ install time via `semanage fcontext` and `restorecon` — no manual SELinux step
 
 ## Privilege model
 
-Cockpit's native `{ superuser: "require" }` mechanism is used, scoped to scan execution and file
-writes only. Browsing content, selecting profiles, and viewing history require no elevation.
-The standard Cockpit administrative access prompt fires at the moment the user clicks Run Scan.
+Cockpit's native `{ superuser: "require" }` mechanism is used, scoped to scan execution, file
+writes, and remediation apply only. Browsing content, selecting profiles, viewing history, and
+generating compliance guides require no elevation.
+
+Privileged actions (Run Scan, Apply Now, upload, delete) are visually disabled with a tooltip in
+limited Cockpit sessions — no error popup after the fact. Elevation is requested once via the
+standard Cockpit prompt and applies for the session.
 
 No polkit action file, sudoers entry, or setuid binary is required.
 
@@ -176,8 +164,6 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 - Remote scanning via SSH (`oscap-ssh`) — explicitly out of scope
 - OVAL vulnerability scanning — not in scope
-- One-click in-place remediation apply — deferred; use Selective Remediation Builder to download targeted scripts
-- Arbitrary SDS/XCCDF file upload — stage files via SCP to `/var/lib/cockpit-scap/content/`
 
 ## Development status
 

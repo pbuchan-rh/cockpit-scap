@@ -172,7 +172,12 @@ Container scans additionally include `"scan_type": "container"`, `"image_name"`,
 
 **Selective Remediation Builder (v3.3)** — after any scan (current or history), the Remediate button opens a panel showing all failing rules from `results.xml`, grouped HIGH/MEDIUM/LOW. Admin selects rules, downloads a filtered bash or Ansible artifact. Python block parsing (`PY_FILTER_FIX`) filters the already-generated scripts. Available for both host and container scans. Container panel includes a warning that scripts apply to image builds, not live containers.
 
-**Apply in place:** Disabled/stubbed. Requires design discussion — risk acknowledgment flow, fapolicyd interaction. `oscap-podman` explicitly rejects `--remediate` for container scans; container remediation is permanently stubbed.
+**Apply in place (v3.5):** Implemented for host scans only. Two-gate confirmation flow:
+1. **Gate 1** — danger modal: "This will modify system configuration. Changes cannot be automatically reversed." Proceed / Cancel.
+2. **Gate 2** — script review modal: filtered bash content displayed in a scrollable code block with rule count. Apply Now / Cancel.
+3. **Execution** — `PY_FILTER_FIX` generates the filtered script, written to `remediationDir/remediation-apply.sh`, executed via `cockpit.spawn(['bash', path], { superuser: 'require' })` with streaming output. Temp file deleted on completion. Exit code logged to activity log as `remediate_apply`.
+
+Admin-gated (`ct-requires-admin`) — disabled in limited Cockpit sessions. `oscap-podman` explicitly rejects `--remediate` for container scans; container Apply Now is permanently excluded (download-only). fapolicyd note: if fapolicyd is enforcing, script execution in `/var/lib/cockpit-scap/` may be blocked — document in release notes if reported.
 
 **fapolicyd advisory:** Originally planned as an inline alert. **Struck (REQ-23)** — security admins know their stack; advisory would require equivalent warnings for SELinux, auditd, etc.
 
@@ -288,7 +293,8 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 | **v2** ✅ | Multi-version SDS content | RHEL 6–9 SDS staging, CPE OS detection, content management UI |
 | **v3** ✅ | Container image scanning | `oscap-podman` integration, root Podman store, version mismatch detection, per-image history |
 | **v3.3** ✅ | Selective remediation + observability | Selective Remediation Builder (host + container), Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
-| **v3.4** 🔲 | UI polish release | Failing rules summary with CCE identifiers, score donut, View Scan from history, results card persistence, unified scan config card, close button; scheduled scanning deliberately deferred (see design note) |
+| **v3.4** ✅ | UI polish release | Failing rules summary with CCE identifiers, score donut, View Scan from history, results card persistence, unified scan config card, close button; scheduled scanning deliberately deferred (see design note) |
+| **v3.5** ✅ | Actionability + intelligence | One-click remediation apply (two-gate confirmation, live output, admin-gated); rule detail expansion in selective remediation; remediation search (title + rule ID); dashboard hero card (single host compliance card, weighted risk score, async critical findings by name); Settings tab (retention, tab visibility, admin gate, activity audit); table scroll caps; cross-version content filtering; tailoring auto-fill |
 
 **Explicitly out of scope (any version):**
 - Remote SSH scanning — different tool, different trust model

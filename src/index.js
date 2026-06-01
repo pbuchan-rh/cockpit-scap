@@ -1705,7 +1705,8 @@ function hideProfileDescription() {
 }
 
 function setScanButtonEnabled(enabled) {
-    document.getElementById('ct-scan-btn').disabled = !enabled;
+    const adminAllowed = !adminPermission || adminPermission.allowed !== false;
+    document.getElementById('ct-scan-btn').disabled = !enabled || !adminAllowed;
 }
 
 function updateGuideButton() {
@@ -1735,7 +1736,7 @@ function onViewGuideClick() {
     const win = window.open('about:blank', '_blank');
     if (!win) {
         btn.disabled    = false;
-        btn.textContent = 'View Guide';
+        btn.textContent = 'View Compliance Guide';
         console.error('Popup blocked — cannot open guide');
         return;
     }
@@ -1751,7 +1752,7 @@ function onViewGuideClick() {
         })
         .then(() => {
             btn.disabled    = false;
-            btn.textContent = 'View Guide';
+            btn.textContent = 'View Compliance Guide';
         });
 }
 
@@ -1765,7 +1766,7 @@ function onTailorViewGuideClick() {
     const win = window.open('about:blank', '_blank');
     if (!win) {
         btn.disabled    = false;
-        btn.textContent = 'View Guide';
+        btn.textContent = 'View Compliance Guide';
         console.error('Popup blocked — cannot open guide');
         return;
     }
@@ -1782,7 +1783,7 @@ function onTailorViewGuideClick() {
         })
         .then(() => {
             btn.disabled    = false;
-            btn.textContent = 'View Guide';
+            btn.textContent = 'View Compliance Guide';
         });
 }
 
@@ -2787,6 +2788,11 @@ function updateAdminControls() {
     });
     document.getElementById('ct-settings-admin-alert')
         .classList.toggle('hidden', allowed);
+
+    /* Re-evaluate scan buttons so admin state is reflected immediately */
+    const scanBtn = document.getElementById('ct-scan-btn');
+    if (scanBtn && !scanBtn.disabled) setScanButtonEnabled(true);
+    if (typeof csUpdateScanBtn === 'function') csUpdateScanBtn();
 }
 
 /* ---- Content tab ------------------------------------------- */
@@ -3150,7 +3156,7 @@ const ACTIVITY_TYPE_LABELS = {
     scan_cancel:         'Scan Cancelled',
     scan_error:          'Scan Failed',
     scan_delete:         'Scan Deleted',
-    guide:               'Guide Generated',
+    guide:               'Compliance Guide Generated',
     validate:            'Content Validated',
     content_upload:      'Content Uploaded',
     content_delete:      'Content Deleted',

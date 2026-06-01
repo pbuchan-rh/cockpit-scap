@@ -68,14 +68,18 @@ function initContainerScan() {
         .addEventListener('click', () => generateCsSelectiveFix('bash'));
     document.getElementById('cs-rem-ansible-btn')
         .addEventListener('click', () => generateCsSelectiveFix('ansible'));
+    document.getElementById('cs-rem-search')
+        .addEventListener('input', onCsRemSearch);
     document.getElementById('cs-rem-select-all-btn')
         .addEventListener('click', () => {
-            document.querySelectorAll('#cs-remediation-rules .ct-rem-checkbox').forEach(c => { c.checked = true; });
+            document.querySelectorAll('#cs-remediation-rules .ct-rem-rule-item:not([style*="none"]) .ct-rem-checkbox')
+                .forEach(c => { c.checked = true; });
             updateCsRemCount();
         });
     document.getElementById('cs-rem-deselect-all-btn')
         .addEventListener('click', () => {
-            document.querySelectorAll('#cs-remediation-rules .ct-rem-checkbox').forEach(c => { c.checked = false; });
+            document.querySelectorAll('#cs-remediation-rules .ct-rem-rule-item:not([style*="none"]) .ct-rem-checkbox')
+                .forEach(c => { c.checked = false; });
             updateCsRemCount();
         });
     document.getElementById('cs-new-scan-btn')
@@ -352,11 +356,12 @@ function onCsTailorFileChange() {
 }
 
 function csUpdateScanBtn() {
-    const imageVal  = document.getElementById('cs-image-select').value;
-    const profileId = document.getElementById('cs-profile-select').value;
-    const tailoring = document.getElementById('cs-tailor-file-select').value;
+    const imageVal     = document.getElementById('cs-image-select').value;
+    const profileId    = document.getElementById('cs-profile-select').value;
+    const tailoring    = document.getElementById('cs-tailor-file-select').value;
+    const adminAllowed = !adminPermission || adminPermission.allowed !== false;
     document.getElementById('cs-scan-btn').disabled =
-        !imageVal || (!profileId && !tailoring) || csVersionBlocked;
+        !imageVal || (!profileId && !tailoring) || csVersionBlocked || !adminAllowed;
     document.getElementById('cs-guide-btn').disabled =
         !csSdsPath || (!profileId && !tailoring);
 }
@@ -771,7 +776,7 @@ function onCsViewGuideClick() {
     const win = window.open('about:blank', '_blank');
     if (!win) {
         btn.disabled    = false;
-        btn.textContent = 'View Guide';
+        btn.textContent = 'View Compliance Guide';
         console.error('Popup blocked — cannot open guide');
         return;
     }
@@ -787,7 +792,7 @@ function onCsViewGuideClick() {
         })
         .then(() => {
             btn.disabled    = false;
-            btn.textContent = 'View Guide';
+            btn.textContent = 'View Compliance Guide';
         });
 }
 
@@ -948,6 +953,8 @@ function openCsRemPanel(resultsDir) {
     csRemDir   = resultsDir;
     csRemRules = [];
 
+    document.getElementById('cs-rem-search').value = '';
+
     const panel = document.getElementById('cs-remediation-panel');
     panel.classList.remove('hidden');
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1019,13 +1026,36 @@ function renderCsRemRules(rules) {
         details.appendChild(summary);
 
         list.forEach(rule => {
+            const shortId = rule.id.split('_rule_').pop();
+            const item = document.createElement('div');
+            item.className = 'ct-rem-rule-item';
+            item.dataset.title  = (rule.title || '').toLowerCase();
+            item.dataset.ruleid = shortId.toLowerCase();
+
             const row = document.createElement('label');
             row.className = 'ct-rem-rule-row';
             row.innerHTML =
                 '<input type="checkbox" class="ct-rem-checkbox" data-id="' + escapeAttr(rule.id) + '" checked>' +
                 '<span class="ct-rem-rule-title">' + escHtmlRem(rule.title) + '</span>' +
-                '<span class="ct-rem-rule-id">' + escHtmlRem(rule.id.split('_rule_').pop()) + '</span>';
-            details.appendChild(row);
+                '<span class="ct-rem-rule-id">' + escHtmlRem(shortId) + '</span>';
+            item.appendChild(row);
+
+            if (rule.desc) {
+                const det = document.createElement('details');
+                det.className = 'ct-rem-rule-detail';
+                const rat = rule.rat
+                    ? '<p class="ct-rem-detail-rat"><strong>Rationale:</strong> ' + escHtmlRem(rule.rat) + '</p>'
+                    : '';
+                det.innerHTML =
+                    '<summary class="ct-rem-detail-toggle">Details</summary>' +
+                    '<div class="ct-rem-detail-body">' +
+                        '<p class="ct-rem-detail-desc">' + escHtmlRem(rule.desc) + '</p>' +
+                        rat +
+                    '</div>';
+                item.appendChild(det);
+            }
+
+            details.appendChild(item);
         });
         container.appendChild(details);
     });
@@ -1045,6 +1075,34 @@ function renderCsRemRules(rules) {
     container.removeEventListener('change', updateCsRemCount);
     container.addEventListener('change', updateCsRemCount);
     updateCsRemCount();
+}
+
+function onCsRemSearch() {
+    const term = document.getElementById('cs-rem-search').value.toLowerCase();
+    document.querySelectorAll('#cs-remediation-rules .ct-rem-rule-item').forEach(item => {
+        const match = !term ||
+            item.dataset.title.includes(term) ||
+            item.dataset.ruleid.includes(term);
+        item.style.display = match ? '' : 'none';
+    });
+    document.querySelectorAll('#cs-remediation-rules .ct-rem-group').forEach(group => {
+        const hasVisible = Array.from(group.querySelectorAll('.ct-rem-rule-item'))
+            .some(i => i.style.display !== 'none');
+        group.style.display = hasVisible ? '' : 'none';
+        if (hasVisible && term) group.open = true;
+    });
+    const anyVisible = Array.from(
+        document.querySelectorAll('#cs-remediation-rules .ct-rem-rule-item')
+    ).some(i => i.style.display !== 'none');
+    let noResults = document.getElementById('cs-rem-no-results');
+    if (!noResults) {
+        noResults = document.createElement('p');
+        noResults.id = 'cs-rem-no-results';
+        noResults.className = 'ct-rem-no-results';
+        noResults.textContent = 'No matching rules.';
+        document.getElementById('cs-remediation-rules').after(noResults);
+    }
+    noResults.classList.toggle('hidden', !term || anyVisible);
 }
 
 function updateCsRemCount() {

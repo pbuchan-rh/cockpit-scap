@@ -318,6 +318,28 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 - **REQ-151:** ✅ The RPM spec file MUST include a `%check` section explaining why no automated build-time tests are possible for a vanilla JS Cockpit module
 - **REQ-152:** ✅ The RPM spec MUST pass `rpmlint` with no ERROR or WARNING findings other than known false-positive spelling errors for technical terms (`oscap`, `podman`, `optgroup`)
 
+### Selective Remediation — Apply Now (v3.5 session)
+
+- **REQ-153:** ✅ The Selective Remediation panel MUST include an Apply Now button for host scans that executes the filtered bash remediation script on the local host
+- **REQ-154:** ✅ Apply Now MUST present a two-gate confirmation flow: Gate 1 = danger warning modal ("changes cannot be automatically reversed"); Gate 2 = scrollable script preview with rule count; execution only proceeds after both gates are confirmed
+- **REQ-155:** ✅ Apply Now MUST be disabled (admin-gated with tooltip) in limited Cockpit sessions — identical to upload and delete operations
+- **REQ-156:** ✅ Apply Now MUST stream live bash output to an inline panel and display exit code and success/error status on completion
+- **REQ-157:** ✅ Apply Now MUST log a `remediate_apply` entry to the activity log with rule count and exit code
+- **REQ-158:** ✅ Container scan selective remediation MUST NOT include an Apply Now button — `oscap-podman` rejects `--remediate`; container remediation is permanently download-only
+- **REQ-159:** ✅ The Selective Remediation panel MUST include a search bar filtering rules by title OR short rule ID; non-matching rules and empty severity groups MUST be hidden; Select All / Deselect All MUST respect the active search filter
+- **REQ-160:** ✅ Each rule in the Selective Remediation panel MUST include a collapsible Details section showing the rule description and rationale inline
+
+### Dashboard (v3.5 session)
+
+- **REQ-161:** ✅ The Dashboard MUST display a single full-width host compliance hero card showing the most recent host scan regardless of profile — not grouped per profile
+- **REQ-162:** ✅ The host compliance card MUST display a weighted risk score: `(high × 10) + (medium × 3) + (low × 1)`, color-coded red/yellow/green
+- **REQ-163:** ✅ The host compliance card MUST async-load and display the human-readable titles of all HIGH severity failing rules; each title MUST be clickable and navigate to View Last Scan; a loading state MUST be shown while the Python script runs
+
+### Settings Tab (v3.5 session)
+
+- **REQ-164:** ✅ A Settings tab MUST appear left of Activity providing system-wide module configuration; settings MUST be stored in `/var/lib/cockpit-scap/settings.json` and apply to all Cockpit users on the host
+- **REQ-165:** ✅ Settings MUST include configurable scan result retention (1–50 scans, per scan type) and module feature toggles (Enable Container Scanning, Enable Dashboard); disabling a tab MUST hide it immediately and redirect if it is currently active; all controls MUST be admin-gated
+
 ---
 
 ## Out of Scope — v1
