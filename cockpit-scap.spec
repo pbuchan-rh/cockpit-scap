@@ -39,6 +39,10 @@ Features:
 %build
 # nothing to build — vanilla JS module
 
+%check
+# No automated build-time tests for a vanilla JS Cockpit module.
+# Runtime integration tests require a live Cockpit + RHEL environment.
+
 %install
 # Module files → /usr/share/cockpit/cockpit-scap/
 install -d -m 755 %{buildroot}%{_datadir}/cockpit/%{name}
