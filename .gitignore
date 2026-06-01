@@ -19,6 +19,7 @@ WORKBENCH_FEATURES.md
 tools/
 pdf-export/
 *.pdf
+inspiration/
 
 # Playwright test harness — dev-only, never committed
 tests/

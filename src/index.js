@@ -263,6 +263,7 @@ let currentHostHistory = [];    /* last rendered host scan manifests */
 /* Module state — confirm modal */
 let confirmCallback  = null;
 let adminPermission  = null;
+let currentUser      = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     cockpit.file('/etc/os-release').read()
@@ -271,6 +272,8 @@ document.addEventListener('DOMContentLoaded', () => {
             hostOsVersion = m ? parseInt(m[1], 10) : null;
         })
         .catch(() => {});
+
+    cockpit.user().then(u => { currentUser = u.name || u.full || '?'; }).catch(() => {});
 
     loadSettings();
     initTabs();
@@ -3133,7 +3136,7 @@ function saveSettings() {
 }
 
 function appendActivityLog(entry) {
-    const line = JSON.stringify({ ts: new Date().toISOString(), ...entry });
+    const line = JSON.stringify({ ts: new Date().toISOString(), user: currentUser || '?', ...entry });
     const f    = cockpit.file(ACTIVITY_LOG, { superuser: 'require' });
     f.read()
         .then(content => {
@@ -3259,6 +3262,7 @@ function renderActivityTable(entries) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${escHtmlRem(formatActivityTime(e.ts))}</td>
+            <td class="ct-activity-user">${escHtmlRem(e.user || '—')}</td>
             <td>${escHtmlRem(activityTabLabel(e.tab))}</td>
             <td><span class="ct-activity-badge ${ACTIVITY_BADGE_CLASS[e.type] || 'ct-activity-scan'}">${escHtmlRem(ACTIVITY_TYPE_LABELS[e.type] || e.type)}</span></td>
             <td class="ct-activity-details">${activityDetails(e)}</td>
@@ -3324,11 +3328,12 @@ function exportActivityCSV() {
                 .reverse();
 
             const headers = [
-                'Timestamp', 'Tab', 'Action', 'Content', 'Profile',
+                'Timestamp', 'User', 'Tab', 'Action', 'Content', 'Profile',
                 'Tailoring File', 'Image', 'Score %', 'Pass', 'Fail', 'Detail',
             ];
             const rows = entries.map(e => [
                 e.ts || '',
+                e.user || '—',
                 activityTabLabel(e.tab),
                 ACTIVITY_TYPE_LABELS[e.type] || e.type,
                 e.content  || '',
