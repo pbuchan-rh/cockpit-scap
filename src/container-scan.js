@@ -36,7 +36,7 @@ function initContainerScan() {
     document.getElementById('cs-profile-select')
         .addEventListener('change', onCsProfileChange);
     document.getElementById('cs-tailor-file-select')
-        .addEventListener('change', csUpdateScanBtn);
+        .addEventListener('change', onCsTailorFileChange);
     document.getElementById('cs-scan-btn')
         .addEventListener('click', onCsScanClick);
     document.getElementById('cs-guide-btn')
@@ -336,6 +336,19 @@ function onCsProfileChange() {
             if (desc) csShowProfileDesc(profileTitle, desc);
         })
         .catch(() => {});
+}
+
+function onCsTailorFileChange() {
+    const tailoringPath = document.getElementById('cs-tailor-file-select').value;
+    if (tailoringPath && csTailoringMap[tailoringPath]) {
+        const sidecar = csTailoringMap[tailoringPath];
+        if (sidecar.base_profile_id) {
+            const profileSelect = document.getElementById('cs-profile-select');
+            const opt = Array.from(profileSelect.options).find(o => o.value === sidecar.base_profile_id);
+            if (opt) profileSelect.value = sidecar.base_profile_id;
+        }
+    }
+    csUpdateScanBtn();
 }
 
 function csUpdateScanBtn() {

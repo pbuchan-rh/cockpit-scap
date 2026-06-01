@@ -246,7 +246,6 @@ let tailorEditingSidecar  = null;
 let tailoringFilesMap   = {};
 
 /* Module state — content */
-let cpeBlocksScan  = false;
 let hostOsVersion     = null;   /* cached from /etc/os-release at startup */
 let currentHostHistory = [];    /* last rendered host scan manifests */
 
@@ -501,12 +500,22 @@ function detectContent() {
 
     return Promise.all([listSystemContent(), listUserContent()])
         .then(([sysFiles, userFiles]) => {
-            scanSelect.innerHTML   = '';
             tailorSelect.innerHTML = '';
+            scanSelect.innerHTML   = '';
 
-            const total = sysFiles.length + userFiles.length;
+            const scanSys  = sysFiles.filter(f => {
+                const v = detectSdsVersion(f.path);
+                return v === null || v === hostOsVersion;
+            });
+            const scanUser = userFiles.filter(f => {
+                const v = detectSdsVersion(f.path);
+                return v === null || v === hostOsVersion;
+            });
 
-            if (total === 0) {
+            const tailorTotal = sysFiles.length + userFiles.length;
+            const scanTotal   = scanSys.length  + scanUser.length;
+
+            if (tailorTotal === 0) {
                 showNoContentAlert();
                 appendOption(scanSelect,   '', 'No content found');
                 appendOption(tailorSelect, '', 'No content found');
@@ -515,27 +524,36 @@ function detectContent() {
 
             hideNoContentAlert();
 
-            if (total === 1) {
+            // Tailor select always shows all content
+            if (tailorTotal === 1) {
                 const item = sysFiles.length ? sysFiles[0] : userFiles[0];
-
-                appendOption(scanSelect, item.path, item.name);
-                scanSelect.value = item.path;
-                currentSdsPath   = item.path;
-                loadProfiles(item.path);
-                checkCpeCompat(item.path);
-                detectTailoringFiles();
-
                 appendOption(tailorSelect, item.path, item.name);
                 tailorSelect.value = item.path;
                 tailorSdsPath      = item.path;
                 loadProfiles(item.path, 'ct-tailor-profile-select');
+            } else {
+                appendOption(tailorSelect, '', 'Select content…');
+                populateContentOptGroups(tailorSelect, sysFiles, userFiles);
+            }
+
+            // Scan select shows only host-compatible content
+            if (scanTotal === 0) {
+                appendOption(scanSelect, '', 'No compatible content found');
                 return;
             }
 
-            appendOption(scanSelect,   '', 'Select content…');
-            appendOption(tailorSelect, '', 'Select content…');
-            populateContentOptGroups(scanSelect,   sysFiles, userFiles);
-            populateContentOptGroups(tailorSelect, sysFiles, userFiles);
+            if (scanTotal === 1) {
+                const item = scanSys.length ? scanSys[0] : scanUser[0];
+                appendOption(scanSelect, item.path, item.name);
+                scanSelect.value = item.path;
+                currentSdsPath   = item.path;
+                loadProfiles(item.path);
+                detectTailoringFiles();
+                return;
+            }
+
+            appendOption(scanSelect, '', 'Select content…');
+            populateContentOptGroups(scanSelect, scanSys, scanUser);
         });
 }
 
@@ -587,7 +605,6 @@ function onContentChange() {
 
     resetProfileSelect();
     hideProfileDescription();
-    clearCpeAlert();
     setScanButtonEnabled(false);
     updateGuideButton();
     currentSdsPath = null;
@@ -599,40 +616,14 @@ function onContentChange() {
 
     currentSdsPath = sdsPath;
     loadProfiles(sdsPath);
-    checkCpeCompat(sdsPath);
     detectTailoringFiles();
 }
 
-/* ---- CPE / OS compatibility -------------------------------- */
+/* ---- SDS version detection --------------------------------- */
 
 function detectSdsVersion(sdsPath) {
     const m = sdsPath.match(/ssg-rhel(\d+)-ds\.xml$/);
     return m ? parseInt(m[1], 10) : null;
-}
-
-function checkCpeCompat(sdsPath) {
-    const sdsVer = detectSdsVersion(sdsPath);
-    if (!sdsVer || !hostOsVersion) return;
-
-    if (sdsVer !== hostOsVersion) {
-        cpeBlocksScan = true;
-        setScanButtonEnabled(false);
-        showCpeAlert(sdsVer, hostOsVersion);
-    } else {
-        clearCpeAlert();
-    }
-}
-
-function showCpeAlert(sdsVer, hostVer) {
-    document.getElementById('ct-cpe-alert-text').textContent =
-        'This content targets RHEL ' + sdsVer + '. This host is RHEL ' + hostVer +
-        '. Scanning is not supported for cross-version content. Tailoring is still available.';
-    document.getElementById('ct-cpe-alert').classList.remove('hidden');
-}
-
-function clearCpeAlert() {
-    cpeBlocksScan = false;
-    document.getElementById('ct-cpe-alert').classList.add('hidden');
 }
 
 /* ---- Profile loading --------------------------------------- */
@@ -726,7 +717,7 @@ function onProfileChange() {
 
     if (!profileId || !currentSdsPath) return;
 
-    if (!cpeBlocksScan) setScanButtonEnabled(true);
+    setScanButtonEnabled(true);
     updateGuideButton();
     loadProfileDescription(currentSdsPath, profileId);
 }
@@ -1792,9 +1783,7 @@ function rerunHostScan(manifest, autoStart = false) {
     currentSdsPath = manifest.sds_file;
     resetProfileSelect();
     hideProfileDescription();
-    clearCpeAlert();
     setScanButtonEnabled(false);
-    checkCpeCompat(manifest.sds_file);
 
     Promise.all([
         loadProfiles(manifest.sds_file),
@@ -1872,14 +1861,41 @@ function detectTailoringFiles() {
 }
 
 function onTailorFileSelectChange() {
-    if (cpeBlocksScan) return;
     const tailoringPath = document.getElementById('ct-tailor-file-select').value;
-    if (tailoringPath) {
-        setScanButtonEnabled(true);
-    } else {
+
+    if (!tailoringPath) {
         const profileId = document.getElementById('ct-profile-select').value;
         setScanButtonEnabled(!!profileId);
+        updateGuideButton();
+        return;
     }
+
+    const sidecar = tailoringFilesMap[tailoringPath];
+    if (sidecar && sidecar.base_profile_id && sidecar.sds_path) {
+        const profileSelect = document.getElementById('ct-profile-select');
+        const contentSelect = document.getElementById('ct-content-select');
+
+        const setProfile = () => {
+            const opt = Array.from(profileSelect.options).find(o => o.value === sidecar.base_profile_id);
+            if (opt) {
+                profileSelect.value = sidecar.base_profile_id;
+                loadProfileDescription(sidecar.sds_path, sidecar.base_profile_id);
+            }
+        };
+
+        if (currentSdsPath !== sidecar.sds_path) {
+            contentSelect.value = sidecar.sds_path;
+            if (contentSelect.value === sidecar.sds_path) {
+                currentSdsPath = sidecar.sds_path;
+                loadProfiles(sidecar.sds_path).then(setProfile);
+                detectTailoringFiles();
+            }
+        } else {
+            setProfile();
+        }
+    }
+
+    setScanButtonEnabled(true);
     updateGuideButton();
 }
 
