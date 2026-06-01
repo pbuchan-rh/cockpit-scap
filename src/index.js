@@ -318,18 +318,32 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', hideScanError);
     document.getElementById('ct-selective-rem-btn')
         .addEventListener('click', () => openRemediationPanel(currentResultsDir));
+    document.getElementById('ct-rem-apply-btn')
+        .addEventListener('click', onApplyNowClick);
+    document.getElementById('ct-apply-gate1-proceed')
+        .addEventListener('click', onApplyGate1Proceed);
+    document.getElementById('ct-apply-gate1-cancel')
+        .addEventListener('click', () => document.getElementById('ct-apply-gate1').classList.add('hidden'));
+    document.getElementById('ct-apply-gate2-apply')
+        .addEventListener('click', onApplyGate2Execute);
+    document.getElementById('ct-apply-gate2-cancel')
+        .addEventListener('click', () => document.getElementById('ct-apply-gate2').classList.add('hidden'));
     document.getElementById('ct-rem-bash-btn')
         .addEventListener('click', () => generateSelectiveFix('bash'));
     document.getElementById('ct-rem-ansible-btn')
         .addEventListener('click', () => generateSelectiveFix('ansible'));
+    document.getElementById('ct-rem-search')
+        .addEventListener('input', onRemediationSearch);
     document.getElementById('ct-rem-select-all-btn')
         .addEventListener('click', () => {
-            document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox').forEach(c => { c.checked = true; });
+            document.querySelectorAll('#ct-remediation-rules .ct-rem-rule-item:not([style*="none"]) .ct-rem-checkbox')
+                .forEach(c => { c.checked = true; });
             updateRemediationCount();
         });
     document.getElementById('ct-rem-deselect-all-btn')
         .addEventListener('click', () => {
-            document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox').forEach(c => { c.checked = false; });
+            document.querySelectorAll('#ct-remediation-rules .ct-rem-rule-item:not([style*="none"]) .ct-rem-checkbox')
+                .forEach(c => { c.checked = false; });
             updateRemediationCount();
         });
     document.getElementById('ct-rem-close-btn')
@@ -346,12 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('input', updateTailorLoadBtn);
     document.getElementById('ct-tailor-load-btn')
         .addEventListener('click', onTailorLoadClick);
-    document.getElementById('ct-tailor-editor-name-icon')
-        .addEventListener('click', () => {
-            const input = document.getElementById('ct-tailor-editor-name');
-            input.focus();
-            input.select();
-        });
+
     document.getElementById('ct-tailor-update-btn')
         .addEventListener('click', doUpdateTailoringFile);
     document.getElementById('ct-tailor-save-btn')
@@ -913,6 +922,9 @@ function openRemediationPanel(resultsDir) {
     remediationDir   = resultsDir;
     remediationRules = [];
 
+    document.getElementById('ct-rem-search').value = '';
+    document.getElementById('ct-apply-output-area').classList.add('hidden');
+
     const panel = document.getElementById('ct-remediation-panel');
     panel.classList.remove('hidden');
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -983,13 +995,36 @@ function renderRemediationRules(rules) {
         details.appendChild(summary);
 
         list.forEach(rule => {
+            const shortId = rule.id.split('_rule_').pop();
+            const item = document.createElement('div');
+            item.className = 'ct-rem-rule-item';
+            item.dataset.title  = (rule.title || '').toLowerCase();
+            item.dataset.ruleid = shortId.toLowerCase();
+
             const row = document.createElement('label');
             row.className = 'ct-rem-rule-row';
             row.innerHTML =
                 '<input type="checkbox" class="ct-rem-checkbox" data-id="' + escapeAttr(rule.id) + '" checked>' +
                 '<span class="ct-rem-rule-title">' + escHtmlRem(rule.title) + '</span>' +
-                '<span class="ct-rem-rule-id">' + escHtmlRem(rule.id.split('_rule_').pop()) + '</span>';
-            details.appendChild(row);
+                '<span class="ct-rem-rule-id">' + escHtmlRem(shortId) + '</span>';
+            item.appendChild(row);
+
+            if (rule.desc) {
+                const det = document.createElement('details');
+                det.className = 'ct-rem-rule-detail';
+                const rat = rule.rat
+                    ? '<p class="ct-rem-detail-rat"><strong>Rationale:</strong> ' + escHtmlRem(rule.rat) + '</p>'
+                    : '';
+                det.innerHTML =
+                    '<summary class="ct-rem-detail-toggle">Details</summary>' +
+                    '<div class="ct-rem-detail-body">' +
+                        '<p class="ct-rem-detail-desc">' + escHtmlRem(rule.desc) + '</p>' +
+                        rat +
+                    '</div>';
+                item.appendChild(det);
+            }
+
+            details.appendChild(item);
         });
         container.appendChild(details);
     });
@@ -1012,12 +1047,41 @@ function renderRemediationRules(rules) {
     updateRemediationCount();
 }
 
+function onRemediationSearch() {
+    const term = document.getElementById('ct-rem-search').value.toLowerCase();
+    document.querySelectorAll('#ct-remediation-rules .ct-rem-rule-item').forEach(item => {
+        const match = !term ||
+            item.dataset.title.includes(term) ||
+            item.dataset.ruleid.includes(term);
+        item.style.display = match ? '' : 'none';
+    });
+    document.querySelectorAll('#ct-remediation-rules .ct-rem-group').forEach(group => {
+        const hasVisible = Array.from(group.querySelectorAll('.ct-rem-rule-item'))
+            .some(i => i.style.display !== 'none');
+        group.style.display = hasVisible ? '' : 'none';
+        if (hasVisible && term) group.open = true;
+    });
+    const anyVisible = Array.from(
+        document.querySelectorAll('#ct-remediation-rules .ct-rem-rule-item')
+    ).some(i => i.style.display !== 'none');
+    let noResults = document.getElementById('ct-rem-no-results');
+    if (!noResults) {
+        noResults = document.createElement('p');
+        noResults.id = 'ct-rem-no-results';
+        noResults.className = 'ct-rem-no-results';
+        noResults.textContent = 'No matching rules.';
+        document.getElementById('ct-remediation-rules').after(noResults);
+    }
+    noResults.classList.toggle('hidden', !term || anyVisible);
+}
+
 function updateRemediationCount() {
     const all     = document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox');
     const checked = Array.from(all).filter(c => c.checked).length;
     document.getElementById('ct-remediation-count').textContent =
         checked + ' of ' + all.length + ' rules selected';
     const disabled = checked === 0;
+    document.getElementById('ct-rem-apply-btn').disabled   = disabled;
     document.getElementById('ct-rem-bash-btn').disabled    = disabled;
     document.getElementById('ct-rem-ansible-btn').disabled = disabled;
 
@@ -1064,6 +1128,88 @@ function generateSelectiveFix(fixType) {
             fix_type: fixType, rules_selected: selected.length });
     })
     .catch(err => console.error('Selective remediation failed:', err.message || err));
+}
+
+let pendingApplyRules = [];
+
+function onApplyNowClick() {
+    const all = document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox');
+    pendingApplyRules = Array.from(all).filter(c => c.checked).map(c => c.dataset.id);
+    if (!pendingApplyRules.length) return;
+    document.getElementById('ct-apply-gate1').classList.remove('hidden');
+}
+
+function onApplyGate1Proceed() {
+    document.getElementById('ct-apply-gate1').classList.add('hidden');
+
+    const remFile = remediationDir + 'remediation.sh';
+    cockpit.spawn(
+        ['python3', '-c', PY_FILTER_FIX, remFile, 'bash', JSON.stringify(pendingApplyRules)],
+        { err: 'message' }
+    )
+    .then(scriptContent => {
+        document.getElementById('ct-apply-gate2-desc').textContent =
+            pendingApplyRules.length + ' rule' + (pendingApplyRules.length > 1 ? 's' : '') +
+            ' selected for remediation. Review the script below before applying.';
+        document.getElementById('ct-apply-script-preview').textContent = scriptContent;
+        document.getElementById('ct-apply-gate2').classList.remove('hidden');
+    })
+    .catch(err => {
+        showConfirmModal('Script Generation Failed',
+            'Could not generate remediation script: ' + (err.message || String(err)),
+            () => {}, 'OK');
+    });
+}
+
+function onApplyGate2Execute() {
+    document.getElementById('ct-apply-gate2').classList.add('hidden');
+
+    const scriptContent = document.getElementById('ct-apply-script-preview').textContent;
+    const applyPath     = remediationDir + 'remediation-apply.sh';
+    const outputEl      = document.getElementById('ct-apply-output');
+    const areaEl        = document.getElementById('ct-apply-output-area');
+    const titleEl       = document.getElementById('ct-apply-output-title');
+    const okEl          = document.getElementById('ct-apply-status-ok');
+    const errEl         = document.getElementById('ct-apply-status-err');
+    const exitEl        = document.getElementById('ct-apply-exit-code');
+
+    outputEl.textContent = '';
+    okEl.classList.add('hidden');
+    errEl.classList.add('hidden');
+    titleEl.textContent = 'Applying remediation…';
+    areaEl.classList.remove('hidden');
+    areaEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    cockpit.file(applyPath, { superuser: 'require' })
+        .replace(scriptContent)
+        .then(() =>
+            cockpit.spawn(['bash', applyPath], { superuser: 'require', err: 'out' })
+                .stream(data => {
+                    outputEl.textContent += data;
+                    outputEl.scrollTop = outputEl.scrollHeight;
+                })
+                .then(() => {
+                    titleEl.textContent = 'Remediation complete';
+                    okEl.classList.remove('hidden');
+                    appendActivityLog({ type: 'remediate_apply', tab: 'host',
+                        rules_applied: pendingApplyRules.length, exit_code: 0 });
+                    cockpit.spawn(['rm', '-f', applyPath], { superuser: 'require' }).catch(() => {});
+                })
+                .catch(err => {
+                    const code = err.exit_status || '?';
+                    titleEl.textContent = 'Remediation finished';
+                    exitEl.textContent  = code;
+                    errEl.classList.remove('hidden');
+                    appendActivityLog({ type: 'remediate_apply', tab: 'host',
+                        rules_applied: pendingApplyRules.length, exit_code: code });
+                    cockpit.spawn(['rm', '-f', applyPath], { superuser: 'require' }).catch(() => {});
+                })
+        )
+        .catch(err => {
+            titleEl.textContent = 'Failed to write script';
+            outputEl.textContent = err.message || String(err);
+            errEl.classList.remove('hidden');
+        });
 }
 
 function escHtmlRem(str) {
@@ -3014,7 +3160,8 @@ const ACTIVITY_TYPE_LABELS = {
     tailor_delete:       'Tailoring Deleted',
     tailor_download:     'Tailoring Downloaded',
     remediate_download:  'Remediation Downloaded',
-    settings_change:     'Retention Updated',
+    settings_change:     'Settings Updated',
+    remediate_apply:     'Remediation Applied',
 };
 
 const ACTIVITY_BADGE_CLASS = {
@@ -3034,6 +3181,7 @@ const ACTIVITY_BADGE_CLASS = {
     tailor_download:     'ct-activity-tailor',
     remediate_download:  'ct-activity-remediate',
     settings_change:     'ct-activity-validate',
+    remediate_apply:     'ct-activity-danger',
 };
 
 const ACTIVITY_FILTER_MAP = {
@@ -3138,7 +3286,8 @@ function activityDetails(e) {
     if (e.type === 'tailor_save' || e.type === 'tailor_load' || e.type === 'tailor_delete')
         return esc(e.profile || e.file);
     if (e.type === 'scan_error')      return esc(e.message);
-    if (e.type === 'settings_change') return esc(e.detail || '');
+    if (e.type === 'settings_change')  return esc(e.detail || '');
+    if (e.type === 'remediate_apply')  return esc(e.rules_applied + ' rule' + (e.rules_applied !== 1 ? 's' : '') + ' applied');
     return '';
 }
 
@@ -3146,7 +3295,10 @@ function activityResult(e) {
     if (e.type === 'scan_complete') return `${escHtmlRem(e.score)}% &nbsp;<span class="ct-pass-count">${escHtmlRem(e.pass)} pass</span> <span class="ct-fail-count">${escHtmlRem(e.fail)} fail</span>`;
     if (e.type === 'validate')      return e.result === 'pass' ? '<span class="ct-validate-ok">✓ Valid</span>' : '<span class="ct-validate-fail">✗ Invalid</span>';
     if (e.type === 'scan_error')    return '<span class="ct-validate-fail">Error</span>';
-    if (e.type === 'scan_cancel')   return '<span class="ct-activity-scan-cancel">Cancelled</span>';
+    if (e.type === 'scan_cancel')    return '<span class="ct-activity-scan-cancel">Cancelled</span>';
+    if (e.type === 'remediate_apply') return e.exit_code === 0
+        ? '<span class="ct-validate-ok">&#10003; Exit 0</span>'
+        : '<span class="ct-validate-fail">Exit ' + escHtmlRem(String(e.exit_code)) + '</span>';
     return '—';
 }
 

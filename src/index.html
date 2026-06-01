@@ -311,12 +311,25 @@
                 <button class="pf-v6-c-button pf-m-link" type="button"
                         id="ct-rem-deselect-all-btn">Deselect All</button>
               </div>
+              <input class="pf-v6-c-form-control ct-rem-search" type="search"
+                     id="ct-rem-search" placeholder="Search rules&#8230;" autocomplete="off">
               <div id="ct-remediation-rules"></div>
               <div class="ct-rem-actions">
-                <button class="pf-v6-c-button pf-m-primary" type="button"
+                <button class="pf-v6-c-button pf-m-danger ct-requires-admin" type="button"
+                        id="ct-rem-apply-btn" disabled>Apply Now</button>
+                <button class="pf-v6-c-button pf-m-secondary" type="button"
                         id="ct-rem-bash-btn" disabled>Download Bash Script</button>
                 <button class="pf-v6-c-button pf-m-secondary" type="button"
                         id="ct-rem-ansible-btn" disabled>Download Ansible Playbook</button>
+              </div>
+              <!-- Apply execution output (hidden until Apply Now runs) -->
+              <div class="hidden" id="ct-apply-output-area">
+                <div class="ct-apply-output-header">
+                  <span id="ct-apply-output-title">Applying remediation…</span>
+                  <span class="hidden ct-apply-status-ok" id="ct-apply-status-ok">&#10003; Completed successfully</span>
+                  <span class="hidden ct-apply-status-err" id="ct-apply-status-err">&#10007; Completed with errors (exit code <span id="ct-apply-exit-code"></span>)</span>
+                </div>
+                <pre class="ct-apply-output" id="ct-apply-output"></pre>
               </div>
             </div>
           </div>
@@ -855,10 +868,9 @@
         <div class="pf-v6-c-card__title ct-tailor-editor-header">
           <div class="ct-tailor-editor-header-inner">
             <div class="ct-tailor-editor-name-row">
-              <span class="ct-tailor-editor-name-edit-icon" id="ct-tailor-editor-name-icon"
-                    title="Click to rename">&#9998;</span>
-              <input class="ct-tailor-editor-name-input" type="text"
-                     id="ct-tailor-editor-name" spellcheck="false">
+              <span class="ct-tailor-editor-name-edit-icon" aria-hidden="true">&#9998;</span>
+              <input class="pf-v6-c-form-control ct-tailor-editor-name-input" type="text"
+                     id="ct-tailor-editor-name" spellcheck="false" placeholder="Policy name">
             </div>
             <div class="ct-tailor-save-row">
               <button class="pf-v6-c-button pf-m-primary hidden" type="button"
@@ -1154,6 +1166,33 @@
   </main>
 </div>
 
+
+<!-- Apply Gate 1: danger warning -->
+<div class="ct-confirm-backdrop hidden" id="ct-apply-gate1"
+     role="dialog" aria-modal="true" aria-labelledby="ct-apply-gate1-title">
+  <div class="ct-confirm-dialog">
+    <p class="ct-confirm-title" id="ct-apply-gate1-title">Apply Remediation to This Host?</p>
+    <p class="ct-confirm-body">This will modify system configuration on this host. Some changes restart services or alter security settings and <strong>cannot be automatically reversed</strong>. Review the script carefully before proceeding.</p>
+    <div class="ct-confirm-footer">
+      <button class="pf-v6-c-button pf-m-danger" type="button" id="ct-apply-gate1-proceed">Proceed</button>
+      <button class="pf-v6-c-button pf-m-link" type="button" id="ct-apply-gate1-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Apply Gate 2: script review -->
+<div class="ct-confirm-backdrop hidden" id="ct-apply-gate2"
+     role="dialog" aria-modal="true" aria-labelledby="ct-apply-gate2-title">
+  <div class="ct-confirm-dialog ct-apply-review-dialog">
+    <p class="ct-confirm-title" id="ct-apply-gate2-title">Review Remediation Script</p>
+    <p class="ct-confirm-body" id="ct-apply-gate2-desc"></p>
+    <pre class="ct-apply-script-preview" id="ct-apply-script-preview"></pre>
+    <div class="ct-confirm-footer">
+      <button class="pf-v6-c-button pf-m-danger" type="button" id="ct-apply-gate2-apply">Apply Now</button>
+      <button class="pf-v6-c-button pf-m-link" type="button" id="ct-apply-gate2-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <!-- Confirmation modal -->
 <div class="ct-confirm-backdrop hidden" id="ct-confirm-backdrop"
