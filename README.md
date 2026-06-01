@@ -10,8 +10,8 @@ no context switching.
 Cockpit is the centralized web-based administration console for RHEL — the single interface where
 administrators manage storage, networking, containers, services, and more without leaving their
 browser. cockpit-scap extends that model to compliance. OpenSCAP and the SCAP Security Guide are
-powerful, well-supported tools that ship with RHEL — cockpit-scap gives them a native home in the
-a console administrators already use, with the same look, feel, and security model as everything else
+powerful, well-supported tools that ship with RHEL — cockpit-scap gives them a native home in a
+console administrators already use, with the same look, feel, and security model as everything else
 in Cockpit.
 
 ## Features
