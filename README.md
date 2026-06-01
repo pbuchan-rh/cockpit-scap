@@ -11,7 +11,7 @@ Cockpit is the centralized web-based administration console for RHEL — the sin
 administrators manage storage, networking, containers, services, and more without leaving their
 browser. cockpit-scap extends that model to compliance. OpenSCAP and the SCAP Security Guide are
 powerful, well-supported tools that ship with RHEL — cockpit-scap gives them a native home in the
-console administrators already use, with the same look, feel, and security model as everything else
+a console administrators already use, with the same look, feel, and security model as everything else
 in Cockpit.
 
 ## Features
@@ -23,7 +23,7 @@ in Cockpit.
   an inline explanation; tailoring remains available for cross-version profile work
 - **Profile selection** with full profile description display
 - **Scan execution** via `oscap xccdf eval` with cancel support
-- **Results card** — compliance score donut (arc length = score %, color = failure count: 0=green, 1–10=yellow, 11+=red); pass/fail/error counts; scan timestamp
+- **Results card** — compliance score with pass/fail/error counts and scan timestamp
 - **Failing rules summary** — collapsible HIGH/MEDIUM/LOW groups; each rule shows title, CCE identifier, Automated/Manual remediation annotation, and expandable description and rationale inline
 - **Regression and improvement detection** — banner fires automatically when failure count changes vs the previous scan of the same profile; "See what changed" diffs the two scans showing exactly which rules were Fixed, Regressed, or are New failures
 - **Full HTML report** viewer (opens in new tab)
@@ -58,7 +58,7 @@ in Cockpit.
 **Policy Tailoring — rule tree editor with severity indicators, search, and variable editor**
 ![Tailoring Editor](docs/screenshots/tailoring.png)
 
-**Scan Results — compliance score donut, regression detection, failing rules with CCE identifiers and inline description**
+**Scan Results — compliance score, regression detection, failing rules with CCE identifiers and inline description**
 ![Scan Results](docs/screenshots/scan-results.png)
 
 **Selective Remediation Builder — cherry-pick failing rules before downloading targeted bash or Ansible scripts**
@@ -194,4 +194,4 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 | **v2** | Multi-version SDS content management — RHEL 6–9 SDS staging, CPE OS detection, Content tab |
 | **v3** | Container image scanning — `oscap-podman`, root Podman store, version mismatch detection, per-image history |
 | **v3.3** | Selective Remediation Builder, Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
-| **v3.4** *(current dev)* | Score donut, failing rules summary with CCE + Automated/Manual + inline description, regression/improvement detection, scan diff, View Scan from history, unified scan config card |
+| **v3.4** *(current dev)* | Failing rules summary with CCE + Automated/Manual + inline description, regression/improvement detection, scan diff, View Scan from history, unified scan config card, SDS upload, admin gate, dashboard overhaul |
