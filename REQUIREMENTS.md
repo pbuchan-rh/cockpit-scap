@@ -276,6 +276,33 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 - **REQ-130:** ✅ If the failure count is lower than the most recent previous scan of the same profile and content, a green improvement banner MUST appear with the same format; regression and improvement banners are mutually exclusive
 - **REQ-131:** ✅ Both regression and improvement banners MUST include a "See what changed" button that diffs the two results.xml files and displays Fixed / Regressed / New failures as collapsible groups inline; Fixed and Regressed MUST be expanded by default
 
+### SDS File Upload (v3.4)
+
+- **REQ-132:** ✅ The Content Library tab MUST provide an Upload SDS File button that opens a browser file picker and writes the selected file to `/var/lib/cockpit-scap/content/` via `cockpit.file().replace()`; confirmed working up to 26 MB
+- **REQ-133:** ✅ Before writing an uploaded file, the module MUST stat the destination path; if the file already exists, a confirmation dialog MUST display the existing file's size and modification date alongside the new file size before overwriting
+- **REQ-134:** ✅ The Upload button MUST show "Checking…" during the stat and "Uploading…" during the write; success and failure states MUST be shown inline below the help text; button MUST be re-enabled on completion or error
+- **REQ-135:** ✅ The Uploaded Content table MUST include Size and Modified columns populated via `stat`
+
+### Admin Gate (v3.4)
+
+- **REQ-136:** ✅ All upload and delete buttons MUST be disabled for non-administrative Cockpit sessions; `cockpit.permission({ admin: true })` MUST be used with a typeof guard for older Cockpit versions; buttons MUST carry a tooltip "Administrative access required" when disabled
+- **REQ-137:** ✅ The admin gate MUST apply to: Content Library upload and delete; tailoring file upload and delete; host and container scan history delete; Activity Log Clear; the gate MUST update reactively when the user elevates mid-session
+- **REQ-138:** ✅ The Container Scan tab MUST display "Administrative access required" with actionable guidance when `podman images` fails due to limited Cockpit session, rather than a generic error
+
+### Compliance Dashboard (v3.4)
+
+- **REQ-139:** ✅ The Dashboard MUST show one card per unique profile+SDS combination for host scans, and one card per unique container image for container scans
+- **REQ-140:** ✅ Each dashboard card MUST include a score sparkline — plain SVG polyline showing compliance score trend over all scans in that group; green if trending up, red if trending down; omitted for single-scan groups
+- **REQ-141:** ✅ Dashboard score delta MUST compare the two most recent scans of the same profile and content, not the two most recent scans overall
+- **REQ-142:** ✅ Each dashboard card MUST include a Quick Scan button that navigates to the appropriate tab and auto-starts a scan using the most recent scan's exact configuration (content, profile, tailoring file)
+- **REQ-143:** ✅ View Last Scan MUST navigate to the appropriate tab AND load the results card, not just switch tabs
+- **REQ-144:** ✅ Cards where the last scan is 7+ days old MUST show a yellow Stale badge; 14+ days MUST show a red Stale badge
+- **REQ-145:** ✅ A Needs Attention banner MUST appear at the top of the dashboard listing profiles with regressions and stale scans; when all profiles are current a green confirmation message MUST be shown
+
+### Policy Tailoring Layout (v3.4)
+
+- **REQ-146:** ✅ The Policy Tailoring tab configuration section MUST use the same unified single-card two-column grid layout as the Host Scan and Container Scan tabs
+
 ---
 
 ## Out of Scope — v1

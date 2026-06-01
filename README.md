@@ -41,12 +41,17 @@ in Cockpit.
 - **View Guide** — generate and view the full oscap security guide for any profile, on all three scan tabs
 - **Run Again** — re-run any historical scan with one click; pre-fills content, profile, and tailoring file
 - **Export CSV** — download the full scan history as a CSV file with all metadata fields
-- **Content Library tab** — manage user-staged SDS files with per-entry delete and validation
+- **Content Library tab** — upload SDS files directly via browser (up to 30+ MB confirmed); overwrite
+  confirmation shows existing file size and date; per-entry size, modified date, validate, and delete;
+  SCP staging also supported
 - **Content validation** — validate uploaded SDS files with `oscap ds sds-validate` before scanning
 - **Activity log** — real-time log of all user actions with semantic color coding; filterable by type;
   exportable as CSV; capped at 1000 entries
-- **Compliance Dashboard** *(preview)* — status board showing latest scan per host and container
-  image with compliance score, score delta vs previous scan, and navigation shortcuts
+- **Compliance Dashboard** *(preview)* — per-profile compliance cards with score sparkline (trend over
+  time), staleness badges, regression/attention banner, Quick Scan (one-click re-run from dashboard),
+  and View Last Scan navigation
+- **Admin gate** — upload and delete operations disabled for non-admin Cockpit sessions; clear visual
+  feedback via disabled state and tooltip; scan execution remains the natural privilege boundary
 
 ## Screenshots
 
