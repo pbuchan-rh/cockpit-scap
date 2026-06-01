@@ -761,7 +761,7 @@ function onCsViewGuideClick() {
         });
 }
 
-function csRerunScan(manifest) {
+function csRerunScan(manifest, autoStart = false) {
     if (csProc) return;
     csShowSetup();
     document.getElementById('tab-btn-container-scan').click();
@@ -807,6 +807,7 @@ function csRerunScan(manifest) {
             if (profileSelect.value) profileSelect.dispatchEvent(new Event('change'));
         }
         csUpdateScanBtn();
+        if (autoStart) document.getElementById('cs-scan-btn').click();
     });
 }
 

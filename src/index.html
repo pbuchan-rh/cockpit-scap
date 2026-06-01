@@ -745,15 +745,15 @@
     <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-tailoring"
              role="tabpanel" aria-labelledby="tab-btn-tailoring">
 
-      <!-- Setup row: form card + description card side by side -->
-      <div class="ct-scan-row">
+      <!-- Setup card: unified form + description -->
+      <div class="pf-v6-c-card">
+        <div class="pf-v6-c-card__title">
+          <h2 class="pf-v6-c-card__title-text">Create Tailoring Profile</h2>
+        </div>
+        <div class="pf-v6-c-card__body ct-scan-body-grid">
 
-        <!-- Left: Create Tailoring Profile form -->
-        <div class="pf-v6-c-card ct-scan-setup-card">
-          <div class="pf-v6-c-card__title">
-            <h2 class="pf-v6-c-card__title-text">Create Tailoring Profile</h2>
-          </div>
-          <div class="pf-v6-c-card__body">
+          <!-- Left: form fields -->
+          <div class="ct-scan-form-col">
             <div class="pf-v6-c-form ct-scan-form">
 
               <!-- Content selection -->
@@ -806,27 +806,23 @@
 
             </div>
           </div>
-          <div class="pf-v6-c-card__footer ct-scan-actions">
-            <button class="pf-v6-c-button pf-m-primary" type="button"
-                    id="ct-tailor-load-btn" disabled>Load Profile</button>
-            <button class="pf-v6-c-button pf-m-link" type="button"
-                    id="ct-tailor-guide-btn" disabled>View Guide</button>
-          </div>
-        </div>
 
-        <!-- Right: Base profile description -->
-        <div class="pf-v6-c-card ct-profile-desc-card">
-          <div class="pf-v6-c-card__title">
-            <h2 class="pf-v6-c-card__title-text" id="ct-tailor-desc-title">Base Profile</h2>
-          </div>
-          <div class="pf-v6-c-card__body">
+          <!-- Right: base profile description -->
+          <div class="ct-profile-desc-col" id="ct-tailor-desc-card">
+            <p class="ct-profile-desc-heading" id="ct-tailor-desc-title">Base Profile</p>
             <p class="ct-profile-desc-placeholder" id="ct-tailor-desc-placeholder">
               Select a base profile to see its description.
             </p>
             <p class="hidden" id="ct-tailor-desc-text"></p>
           </div>
-        </div>
 
+        </div>
+        <div class="pf-v6-c-card__footer ct-scan-actions">
+          <button class="pf-v6-c-button pf-m-primary" type="button"
+                  id="ct-tailor-load-btn" disabled>Load Profile</button>
+          <button class="pf-v6-c-button pf-m-link" type="button"
+                  id="ct-tailor-guide-btn" disabled>View Guide</button>
+        </div>
       </div>
 
       <!-- Loading indicator -->

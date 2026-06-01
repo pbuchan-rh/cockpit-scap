@@ -7,8 +7,9 @@
 
 const DB_RESULTS_BASE = '/var/lib/cockpit-scap/results/';
 
-let dbLoaded   = false;
-let dbHostname = null;
+let dbLoaded    = false;
+let dbHostname  = null;
+let dbManifests = [];
 
 function dbInvalidate() { dbLoaded = false; }
 
@@ -54,11 +55,11 @@ function loadDashboard() {
                         .catch(() => null)
                 )
             ).then(manifests => {
-                const valid = manifests.filter(Boolean);
-                valid.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+                dbManifests = manifests.filter(Boolean);
+                dbManifests.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
-                const hostMans = valid.filter(m => m.scan_type !== 'container');
-                const csMans   = valid.filter(m => m.scan_type === 'container');
+                const hostMans = dbManifests.filter(m => m.scan_type !== 'container');
+                const csMans   = dbManifests.filter(m => m.scan_type === 'container');
 
                 renderDashboard(el, hostMans, csMans);
                 dbLoaded = true;
@@ -83,51 +84,56 @@ function renderEmpty(el) {
         .addEventListener('click', () => document.getElementById('tab-btn-scan').click());
 }
 
-function renderDashboard(el, hostManifests, containerManifests) {
-    const sections = [];
+const STALE_WARN_DAYS = 7;
+const STALE_ERR_DAYS  = 14;
 
-    if (hostManifests.length > 0) {
-        const latest = hostManifests[0];
-        const prev   = hostManifests[1] || null;
+function renderDashboard(el, hostManifests, containerManifests) {
+    if (!hostManifests.length && !containerManifests.length) {
+        renderEmpty(el);
+        return;
+    }
+
+    const hostGroups = hostManifests.length
+        ? groupManifests(hostManifests, m => (m.profile_id || '') + '|' + (m.sds_file || ''))
+        : [];
+    const csGroups = containerManifests.length
+        ? groupManifests(containerManifests, m => m.image_id || m.image_name || 'unknown')
+        : [];
+
+    const allGroups  = [...hostGroups, ...csGroups];
+    const bannerHtml = buildAttentionBanner(allGroups);
+    const sections   = [];
+
+    if (hostGroups.length) {
+        const cards = hostGroups.map(group =>
+            buildStatusCard({
+                title:    group[0].profile_title || group[0].profile_id || 'Unknown Profile',
+                subtitle: dbHostname || 'This Host',
+                group,
+                goTabId:  'tab-btn-scan',
+                goLabel:  'Go to Host Scan',
+                scanType: 'host',
+            })
+        ).join('');
         sections.push(
             '<div class="db-section">' +
-                '<h3 class="db-section-title">Host</h3>' +
-                '<div class="db-cards">' +
-                    buildStatusCard({
-                        title:   dbHostname || 'This Host',
-                        manifest: latest,
-                        prev:    prev,
-                        goTabId: 'tab-btn-scan',
-                        goLabel: 'Go to Host Scan',
-                    }) +
-                '</div>' +
+                '<h3 class="db-section-title">Host — ' + escHtml(dbHostname || 'This Host') + '</h3>' +
+                '<div class="db-cards">' + cards + '</div>' +
             '</div>'
         );
     }
 
-    if (containerManifests.length > 0) {
-        const byImage = {};
-        const prevByImage = {};
-        containerManifests.forEach(m => {
-            const key = m.image_id || m.image_name || 'unknown';
-            if (!byImage[key]) {
-                byImage[key] = m;
-            } else if (!prevByImage[key]) {
-                prevByImage[key] = m;
-            }
-        });
-
-        const cards = Object.values(byImage).map(m => {
-            const key = m.image_id || m.image_name || 'unknown';
-            return buildStatusCard({
-                title:    m.image_name || m.image_id || 'Container',
-                manifest: m,
-                prev:     prevByImage[key] || null,
+    if (csGroups.length) {
+        const cards = csGroups.map(group =>
+            buildStatusCard({
+                title:    group[0].image_name || group[0].image_id || 'Container',
+                subtitle: group[0].profile_title || group[0].profile_id || '',
+                group,
                 goTabId:  'tab-btn-container-scan',
                 goLabel:  'Go to Container Scan',
-            });
-        }).join('');
-
+                scanType: 'container',
+            })
+        ).join('');
         sections.push(
             '<div class="db-section">' +
                 '<h3 class="db-section-title">Container Images</h3>' +
@@ -136,27 +142,96 @@ function renderDashboard(el, hostManifests, containerManifests) {
         );
     }
 
-    if (!sections.length) {
-        renderEmpty(el);
-        return;
-    }
-
-    el.innerHTML = sections.join('');
+    el.innerHTML = bannerHtml + sections.join('');
 
     el.querySelectorAll('[data-go-tab]').forEach(btn => {
+        btn.addEventListener('click', () =>
+            document.getElementById(btn.dataset.goTab).click());
+    });
+
+    el.querySelectorAll('[data-view-ts]').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.getElementById(btn.dataset.goTab).click();
+            const m = dbManifests.find(x => x.timestamp === btn.dataset.viewTs);
+            if (!m) return;
+            if (m.scan_type === 'container') {
+                document.getElementById('tab-btn-container-scan').click();
+                csLoadScanFromHistory(m);
+            } else {
+                document.getElementById('tab-btn-scan').click();
+                loadScanFromHistory(m);
+            }
+        });
+    });
+
+    el.querySelectorAll('[data-quick-ts]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const m = dbManifests.find(x => x.timestamp === btn.dataset.quickTs);
+            if (!m) return;
+            if (m.scan_type === 'container') {
+                csRerunScan(m, true);
+            } else {
+                rerunHostScan(m, true);
+            }
         });
     });
 }
 
-function buildStatusCard({ title, manifest, prev, goTabId, goLabel }) {
-    const score    = parseFloat(manifest.score);
-    const hasScore = !isNaN(score);
+function buildAttentionBanner(groups) {
+    const regressed = [];
+    const stale     = [];
+
+    groups.forEach(group => {
+        const m     = group[0];
+        const prev  = group[1];
+        const label = m.profile_title || m.profile_id || m.image_name || 'Unknown';
+        const ageDays = dbAgeDays(m.timestamp);
+
+        if (prev && prev.fail != null && m.counts && m.counts.fail != null) {
+            if (m.counts.fail > prev.counts.fail) regressed.push(label);
+        }
+        if (ageDays !== null && ageDays >= STALE_WARN_DAYS) stale.push(label);
+    });
+
+    if (!regressed.length && !stale.length) {
+        return '<div class="db-attention-banner db-attention-ok">' +
+            '&#10003; All profiles current — no regressions detected.' +
+        '</div>';
+    }
+
+    const items = [];
+    if (regressed.length) {
+        items.push(regressed.length + ' profile' + (regressed.length > 1 ? 's have' : ' has') +
+            ' regressed since the previous scan');
+    }
+    if (stale.length) {
+        items.push(stale.length + ' profile' + (stale.length > 1 ? 's have' : ' has') +
+            ' not been scanned in ' + STALE_WARN_DAYS + '+ days');
+    }
+
+    return '<div class="db-attention-banner db-attention-warn">' +
+        '&#9888; Needs attention: ' + items.join(' &nbsp;&middot;&nbsp; ') +
+    '</div>';
+}
+
+function groupManifests(manifests, keyFn) {
+    const map = {};
+    manifests.forEach(m => {
+        const k = keyFn(m);
+        if (!map[k]) map[k] = [];
+        map[k].push(m);
+    });
+    return Object.values(map);
+}
+
+function buildStatusCard({ title, subtitle, group, goTabId, goLabel, scanType }) {
+    const manifest  = group[0];
+    const prev      = group[1] || null;
+    const score     = parseFloat(manifest.score);
+    const hasScore  = !isNaN(score);
+
     const scoreClass = hasScore
         ? (score >= 80 ? 'db-score-green' : score >= 50 ? 'db-score-yellow' : 'db-score-red')
         : 'db-score-grey';
-
     const scoreDisplay = hasScore ? score.toFixed(1) + '%' : '—';
 
     let deltaHtml = '';
@@ -173,19 +248,40 @@ function buildStatusCard({ title, manifest, prev, goTabId, goLabel }) {
         }
     }
 
+    const scores = group
+        .map(m => parseFloat(m.score))
+        .filter(s => !isNaN(s))
+        .reverse();
+
     const counts       = manifest.counts || {};
-    const pass         = counts.pass  != null ? counts.pass  : '—';
-    const fail         = counts.fail  != null ? counts.fail  : '—';
-    const profileLabel = manifest.profile_title || manifest.profile_id || '—';
+    const pass         = counts.pass != null ? counts.pass : '—';
+    const fail         = counts.fail != null ? counts.fail : '—';
     const sdsBase      = manifest.sds_file ? manifest.sds_file.split('/').pop() : '';
-    const contentLabel = sdsBase || '—';
     const age          = manifest.timestamp ? dbRelativeTime(manifest.timestamp) : '—';
+    const ageDays      = dbAgeDays(manifest.timestamp);
+
+    const staleClass = ageDays !== null && ageDays >= STALE_ERR_DAYS ? 'db-stale-err'
+                     : ageDays !== null && ageDays >= STALE_WARN_DAYS ? 'db-stale-warn'
+                     : '';
+    const staleBadge = staleClass
+        ? '<span class="db-stale-badge ' + staleClass + '">Stale</span>'
+        : '';
+
+    const trendHtml = buildSparkline(scores);
+
+    const subtitleHtml = subtitle
+        ? '<p class="db-card-subtitle">' + escHtml(subtitle) + '</p>'
+        : '';
 
     return (
         '<div class="pf-v6-c-card db-status-card">' +
             '<div class="pf-v6-c-card__header">' +
-                '<div class="pf-v6-c-card__title">' +
-                    '<h4 class="pf-v6-title pf-m-md db-card-title">' + escHtml(title) + '</h4>' +
+                '<div class="pf-v6-c-card__title db-card-title-row">' +
+                    '<div>' +
+                        '<h4 class="pf-v6-title pf-m-md db-card-title">' + escHtml(title) + '</h4>' +
+                        subtitleHtml +
+                    '</div>' +
+                    staleBadge +
                 '</div>' +
             '</div>' +
             '<div class="pf-v6-c-card__body db-card-body">' +
@@ -196,12 +292,8 @@ function buildStatusCard({ title, manifest, prev, goTabId, goLabel }) {
                 '</div>' +
                 '<div class="db-meta">' +
                     '<div class="db-meta-row">' +
-                        '<span class="db-meta-label">Profile</span>' +
-                        '<span class="db-meta-value">' + escHtml(profileLabel) + '</span>' +
-                    '</div>' +
-                    '<div class="db-meta-row">' +
                         '<span class="db-meta-label">Content</span>' +
-                        '<span class="db-meta-value">' + escHtml(contentLabel) + '</span>' +
+                        '<span class="db-meta-value">' + escHtml(sdsBase || '—') + '</span>' +
                     '</div>' +
                     '<div class="db-meta-row">' +
                         '<span class="db-meta-label">Pass / Fail</span>' +
@@ -215,18 +307,54 @@ function buildStatusCard({ title, manifest, prev, goTabId, goLabel }) {
                         '<span class="db-meta-label">Last scan</span>' +
                         '<span class="db-meta-value">' + escHtml(age) + '</span>' +
                     '</div>' +
+                    '<div class="db-meta-row">' +
+                        '<span class="db-meta-label">Scans tracked</span>' +
+                        '<span class="db-meta-value">' + group.length + '</span>' +
+                    '</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="pf-v6-c-card__footer">' +
-                '<button class="pf-v6-c-button pf-m-link" type="button" data-go-tab="' + goTabId + '">' +
-                    goLabel +
-                '</button>' +
+            (trendHtml ? '<div class="db-trend">' + trendHtml + '</div>' : '') +
+            '<div class="pf-v6-c-card__footer db-card-footer">' +
+                '<button class="pf-v6-c-button pf-m-primary pf-m-small" type="button" ' +
+                        'data-quick-ts="' + escHtml(manifest.timestamp) + '">Quick Scan</button>' +
+                '<button class="pf-v6-c-button pf-m-link" type="button" ' +
+                        'data-view-ts="' + escHtml(manifest.timestamp) + '" ' +
+                        'data-scan-type="' + scanType + '">View Last Scan</button>' +
+                '<button class="pf-v6-c-button pf-m-link" type="button" ' +
+                        'data-go-tab="' + goTabId + '">' + goLabel + '</button>' +
             '</div>' +
         '</div>'
     );
 }
 
+function buildSparkline(scores) {
+    if (scores.length < 2) return '';
+    const W = 200, H = 28, pad = 2;
+    const pts = scores.map((s, i) => {
+        const x = pad + (i / (scores.length - 1)) * (W - pad * 2);
+        const y = pad + ((100 - s) / 100) * (H - pad * 2);
+        return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    const trending = scores[scores.length - 1] >= scores[0];
+    const color = trending ? 'var(--ct-color-success)' : 'var(--ct-color-danger)';
+    return (
+        '<svg class="db-sparkline" viewBox="0 0 ' + W + ' ' + H + '" ' +
+              'preserveAspectRatio="none" aria-hidden="true">' +
+            '<polyline points="' + pts + '" fill="none" stroke="' + color + '" ' +
+                      'stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '</svg>'
+    );
+}
+
 /* ---- Utilities --------------------------------------------- */
+
+function dbAgeDays(timestamp) {
+    if (!timestamp) return null;
+    const iso  = timestamp.replace(/T(\d{2})-(\d{2})-(\d{2})$/, 'T$1:$2:$3');
+    const then = new Date(iso);
+    if (isNaN(then)) return null;
+    return Math.floor((Date.now() - then.getTime()) / 86400000);
+}
 
 function dbRelativeTime(timestamp) {
     const iso  = timestamp.replace(/T(\d{2})-(\d{2})-(\d{2})$/, 'T$1:$2:$3');

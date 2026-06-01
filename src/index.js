@@ -1829,7 +1829,7 @@ function onDeleteHistoryEntry(manifest) {
     );
 }
 
-function rerunHostScan(manifest) {
+function rerunHostScan(manifest, autoStart = false) {
     if (currentScanProc) return;
     showScanSetup();
     document.getElementById('tab-btn-scan').click();
@@ -1862,6 +1862,7 @@ function rerunHostScan(manifest) {
             profileSelect.value = manifest.profile_id;
             if (profileSelect.value) profileSelect.dispatchEvent(new Event('change'));
         }
+        if (autoStart) document.getElementById('ct-scan-btn').click();
     });
 }
 
@@ -2714,50 +2715,65 @@ function renderUserContentList() {
                 xmlPath:  CONTENT_BASE + f,
                 jsonPath: CONTENT_BASE + f.replace(/\.xml$/, '.json'),
             }));
-            const table = document.createElement('table');
-            table.className = 'pf-v6-c-table pf-m-compact';
-            table.setAttribute('aria-label', 'Uploaded SCAP content');
-            const thead = table.createTHead();
-            const hr = thead.insertRow();
-            ['Name', 'File', 'Actions'].forEach(h => {
-                const th = document.createElement('th');
-                th.scope = 'col';
-                th.textContent = h;
-                hr.appendChild(th);
-            });
-            const tbody = table.createTBody();
-            entries.forEach(e => {
-                const tr     = tbody.insertRow();
-                const tdN    = tr.insertCell();
-                tdN.textContent = e.name;
-                const tdF    = tr.insertCell();
-                const code   = document.createElement('code');
-                code.textContent = e.filename;
-                tdF.appendChild(code);
-                const tdA    = tr.insertCell();
-                const valBtn = document.createElement('button');
-                valBtn.className   = 'pf-v6-c-button pf-m-link';
-                valBtn.type        = 'button';
-                valBtn.textContent = 'Validate';
-                valBtn.addEventListener('click', () => validateContent(e, valBtn));
-                tdA.appendChild(valBtn);
 
-                const btn    = document.createElement('button');
-                btn.className = 'pf-v6-c-button pf-m-link ct-danger-link ct-requires-admin';
-                btn.type      = 'button';
-                btn.textContent = 'Delete';
-                btn.addEventListener('click', () => {
-                    showConfirmModal(
-                        'Delete content file',
-                        'Delete "' + e.name + '"? This cannot be undone.',
-                        () => deleteUserContent(e.xmlPath, e.jsonPath)
-                    );
+            return Promise.all(
+                entries.map(e =>
+                    cockpit.spawn(['stat', '--format=%s %Y', e.xmlPath], { err: 'ignore' })
+                        .then(out => {
+                            const parts = out.trim().split(' ');
+                            e.sizeMB  = (parseInt(parts[0], 10) / 1024 / 1024).toFixed(1) + ' MB';
+                            e.mtime   = new Date(parseInt(parts[1], 10) * 1000).toLocaleDateString();
+                        })
+                        .catch(() => { e.sizeMB = '—'; e.mtime = '—'; })
+                )
+            ).then(() => {
+                const table = document.createElement('table');
+                table.className = 'pf-v6-c-table pf-m-compact';
+                table.setAttribute('aria-label', 'Uploaded SCAP content');
+                const thead = table.createTHead();
+                const hr = thead.insertRow();
+                ['Name', 'File', 'Size', 'Modified', 'Actions'].forEach(h => {
+                    const th = document.createElement('th');
+                    th.scope = 'col';
+                    th.textContent = h;
+                    hr.appendChild(th);
                 });
-                tdA.appendChild(btn);
+                const tbody = table.createTBody();
+                entries.forEach(e => {
+                    const tr  = tbody.insertRow();
+                    tr.insertCell().textContent = e.name;
+                    const tdF = tr.insertCell();
+                    const code = document.createElement('code');
+                    code.textContent = e.filename;
+                    tdF.appendChild(code);
+                    tr.insertCell().textContent = e.sizeMB;
+                    tr.insertCell().textContent = e.mtime;
+
+                    const tdA    = tr.insertCell();
+                    const valBtn = document.createElement('button');
+                    valBtn.className   = 'pf-v6-c-button pf-m-link';
+                    valBtn.type        = 'button';
+                    valBtn.textContent = 'Validate';
+                    valBtn.addEventListener('click', () => validateContent(e, valBtn));
+                    tdA.appendChild(valBtn);
+
+                    const btn    = document.createElement('button');
+                    btn.className = 'pf-v6-c-button pf-m-link ct-danger-link ct-requires-admin';
+                    btn.type      = 'button';
+                    btn.textContent = 'Delete';
+                    btn.addEventListener('click', () => {
+                        showConfirmModal(
+                            'Delete content file',
+                            'Delete "' + e.name + '"? This cannot be undone.',
+                            () => deleteUserContent(e.xmlPath, e.jsonPath)
+                        );
+                    });
+                    tdA.appendChild(btn);
+                });
+                container.innerHTML = '';
+                container.appendChild(table);
+                updateAdminControls();
             });
-            container.innerHTML = '';
-            container.appendChild(table);
-            updateAdminControls();
         })
         .catch(() => {
             container.innerHTML = '<p class="ct-content-empty">Could not read content directory.</p>';
