@@ -1000,7 +1000,7 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
   background: rgba(0,0,0,0.03);
 }
 .ct-tailor-editor-name-input:focus {
-  border-bottom-color: #0066cc;
+  border-bottom-color: var(--ct-color-primary);
   background: rgba(0,102,204,0.04);
 }
 
@@ -1014,7 +1014,7 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
 }
 .ct-tailor-editor-name-edit-icon:hover {
   opacity: 1;
-  color: #0066cc;
+  color: var(--ct-color-primary);
 }
 
 .ct-tailor-section-title {
@@ -1213,13 +1213,20 @@ details.ct-tailor-group .ct-tailor-rule {
   margin: 0;
 }
 
-.ct-btn-danger-link {
+.ct-btn-danger-link,
+.ct-danger-link {
   color: var(--ct-color-danger);
 }
 
-.ct-btn-danger-link:hover:not(:disabled) {
+.ct-btn-danger-link:hover:not(:disabled),
+.ct-danger-link:hover:not(:disabled) {
   color: var(--ct-color-danger);
   text-decoration: underline;
+}
+
+.ct-col-actions {
+  width: 1px;
+  white-space: nowrap;
 }
 
 .ct-validate-ok {
@@ -1506,9 +1513,9 @@ html.pf-v6-theme-dark .ct-badge-error {
 }
 
 .ct-activity-chip.pf-m-active {
-  background: #0066cc;
+  background: var(--ct-color-primary);
   color: #fff;
-  border-color: #0066cc;
+  border-color: var(--ct-color-primary);
 }
 
 /* Action type badges */
@@ -1527,6 +1534,8 @@ html.pf-v6-theme-dark .ct-badge-error {
 .ct-activity-tailor    { background: #009596; color: #fff; }
 .ct-activity-danger    { background: #c9190b; color: #fff; }
 .ct-activity-remediate { background: #f4860a; color: #fff; }
+
+.ct-activity-scan-cancel { color: var(--ct-color-warning); }
 
 .ct-activity-details {
   max-width: 380px;
@@ -1555,8 +1564,8 @@ html.pf-v6-theme-dark .ct-badge-error {
   font-weight: 600;
   padding: 1px 5px;
   border-radius: 3px;
-  background: #f0ab00;
-  color: #1a1a1a;
+  background: var(--ct-color-warning);
+  color: var(--ct-color-text);
   vertical-align: middle;
   margin-left: 4px;
   letter-spacing: 0.02em;
@@ -1565,10 +1574,6 @@ html.pf-v6-theme-dark .ct-badge-error {
 .db-preview-banner {
   flex: 1;
   margin-right: 12px;
-}
-
-.db-toolbar {
-  align-items: center;
 }
 
 .db-loading {
@@ -1849,7 +1854,7 @@ html.pf-v6-theme-dark .ct-badge-error {
 }
 
 .ct-rem-rule-row:hover {
-  background: var(--ct-color-bg-hover);
+  background: var(--ct-color-bg-page);
 }
 
 .ct-rem-checkbox {

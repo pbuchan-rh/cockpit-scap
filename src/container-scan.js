@@ -485,8 +485,7 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 content: manifest.sds_file.split('/').pop(), profile: manifest.profile_title,
                 image: manifest.image_name, score: manifest.score.toFixed(1),
                 pass: manifest.counts.pass, fail: manifest.counts.fail });
-            pruneHistoryByType('container');
-            csShowResults(manifest);
+            pruneHistoryByType('container').then(() => csShowResults(manifest));
         })
         .catch(err => csScanError('Failed to process results: ' + (err.message || String(err))));
 }
@@ -559,8 +558,8 @@ function csShowResults(manifest) {
         csImprovementAlert.classList.remove('hidden');
         csRegressionAlert.classList.add('hidden');
         const prevXml = RESULTS_BASE + csPrev.timestamp + '/results.xml';
-        document.getElementById('cs-diff-btn').onclick =
-            () => loadScanDiff(csResultsDir + 'results.xml', prevXml, 'cs-scan-diff');
+        document.getElementById('cs-diff-btn').addEventListener('click',
+            () => loadScanDiff(csResultsDir + 'results.xml', prevXml, 'cs-scan-diff'));
     } else if (csPrev && counts.fail > csPrev.counts.fail) {
         const delta    = counts.fail - csPrev.counts.fail;
         const prevDate = csPrev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
@@ -571,8 +570,8 @@ function csShowResults(manifest) {
         csRegressionAlert.classList.remove('hidden');
         csImprovementAlert.classList.add('hidden');
         const prevXml = RESULTS_BASE + csPrev.timestamp + '/results.xml';
-        document.getElementById('cs-diff-btn-reg').onclick =
-            () => loadScanDiff(csResultsDir + 'results.xml', prevXml, 'cs-scan-diff');
+        document.getElementById('cs-diff-btn-reg').addEventListener('click',
+            () => loadScanDiff(csResultsDir + 'results.xml', prevXml, 'cs-scan-diff'));
     } else {
         csImprovementAlert.classList.add('hidden');
         csRegressionAlert.classList.add('hidden');
@@ -716,7 +715,7 @@ function csBuildHistoryRow(manifest) {
             'Delete the scan from ' + date + '? All artifacts will be permanently removed.',
             () => cockpit.spawn(['rm', '-rf', RESULTS_BASE + manifest.timestamp], { superuser: 'require' })
                 .then(() => {
-                    appendActivityLog({ type: 'scan_delete', tab: 'container', content: manifest.content_file, profile: manifest.profile_id, image: manifest.image_name });
+                    appendActivityLog({ type: 'scan_delete', tab: 'container', content: manifest.sds_file, profile: manifest.profile_id, image: manifest.image_name });
                     csLoadHistory();
                 })
                 .catch(err => console.error('Failed to delete scan:', err.message || err))
@@ -745,6 +744,12 @@ function onCsViewGuideClick() {
     btn.textContent = 'Generating…';
 
     const win = window.open('about:blank', '_blank');
+    if (!win) {
+        btn.disabled    = false;
+        btn.textContent = 'View Guide';
+        console.error('Popup blocked — cannot open guide');
+        return;
+    }
     cockpit.spawn(args, { err: 'message' })
         .then(html => storeReportInDB(html))
         .then(() => {

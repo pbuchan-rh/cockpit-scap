@@ -993,11 +993,6 @@ function renderRemediationRules(rules) {
         btn.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
-            const sev = btn.dataset.sev;
-            const checks = container.querySelectorAll('.ct-rem-checkbox[data-sev]');
-            const sevChecks = container.querySelectorAll(
-                '.ct-rem-checkbox[data-id]'
-            );
             /* find checkboxes within this group */
             const group = btn.closest('details');
             const groupChecks = group.querySelectorAll('.ct-rem-checkbox');
@@ -1131,39 +1126,6 @@ function hideScanError() {
 }
 
 /* ---- Results XML parsing ----------------------------------- */
-
-function parseResultsXml(content) {
-    const NS  = 'http://checklists.nist.gov/xccdf/1.2';
-    const doc = new DOMParser().parseFromString(content, 'application/xml');
-
-    const byTag = (parent, tag) => {
-        const ns = parent.getElementsByTagNameNS(NS, tag);
-        return ns.length ? ns[0] : (parent.getElementsByTagName(tag)[0] || null);
-    };
-
-    const testResult = (() => {
-        const ns = doc.getElementsByTagNameNS(NS, 'TestResult');
-        return ns.length ? ns[0] : (doc.getElementsByTagName('TestResult')[0] || null);
-    })();
-
-    const resultId = testResult ? (testResult.getAttribute('id') || '') : '';
-    const scoreEl  = testResult ? byTag(testResult, 'score') : null;
-    const rawScore = scoreEl ? parseFloat(scoreEl.textContent) : 0;
-    const score    = isNaN(rawScore) ? 0 : rawScore;
-
-    const counts = { pass: 0, fail: 0, error: 0, notchecked: 0, notapplicable: 0, notselected: 0 };
-    if (testResult) {
-        let rr = testResult.getElementsByTagNameNS(NS, 'rule-result');
-        if (!rr.length) rr = testResult.getElementsByTagName('rule-result');
-        Array.from(rr).forEach(r => {
-            const el  = byTag(r, 'result');
-            const val = el ? el.textContent.trim() : '';
-            if (Object.prototype.hasOwnProperty.call(counts, val)) counts[val]++;
-        });
-    }
-
-    return { resultId, score, counts };
-}
 
 /* ---- Results display --------------------------------------- */
 
@@ -1433,8 +1395,8 @@ function showResults(manifest) {
         improvementAlert.classList.remove('hidden');
         regressionAlert.classList.add('hidden');
         const prevXml = RESULTS_BASE + prev.timestamp + '/results.xml';
-        document.getElementById('ct-diff-btn').onclick =
-            () => loadScanDiff(currentResultsDir + 'results.xml', prevXml, 'ct-scan-diff');
+        document.getElementById('ct-diff-btn').addEventListener('click',
+            () => loadScanDiff(currentResultsDir + 'results.xml', prevXml, 'ct-scan-diff'));
     } else if (prev && counts.fail > prev.counts.fail) {
         const delta    = counts.fail - prev.counts.fail;
         const prevDate = prev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
@@ -1445,8 +1407,8 @@ function showResults(manifest) {
         regressionAlert.classList.remove('hidden');
         improvementAlert.classList.add('hidden');
         const prevXml = RESULTS_BASE + prev.timestamp + '/results.xml';
-        document.getElementById('ct-diff-btn-reg').onclick =
-            () => loadScanDiff(currentResultsDir + 'results.xml', prevXml, 'ct-scan-diff');
+        document.getElementById('ct-diff-btn-reg').addEventListener('click',
+            () => loadScanDiff(currentResultsDir + 'results.xml', prevXml, 'ct-scan-diff'));
     } else {
         improvementAlert.classList.add('hidden');
         regressionAlert.classList.add('hidden');
@@ -1489,6 +1451,7 @@ function storeReportInDB(html) {
 
 function viewReportFromPath(reportPath) {
     const win = window.open('about:blank', '_blank');
+    if (!win) { console.error('Popup blocked — cannot open report'); return; }
     cockpit.file(reportPath).read()
         .then(content => storeReportInDB(content))
         .then(() => { win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html'; })
@@ -1604,6 +1567,12 @@ function onViewGuideClick() {
     btn.textContent = 'Generating…';
 
     const win = window.open('about:blank', '_blank');
+    if (!win) {
+        btn.disabled    = false;
+        btn.textContent = 'View Guide';
+        console.error('Popup blocked — cannot open guide');
+        return;
+    }
     cockpit.spawn(args, { err: 'message' })
         .then(html => storeReportInDB(html))
         .then(() => {
@@ -1628,6 +1597,12 @@ function onTailorViewGuideClick() {
     btn.textContent = 'Generating…';
 
     const win = window.open('about:blank', '_blank');
+    if (!win) {
+        btn.disabled    = false;
+        btn.textContent = 'View Guide';
+        console.error('Popup blocked — cannot open guide');
+        return;
+    }
     cockpit.spawn(['oscap', 'xccdf', 'generate', 'guide', '--profile', profileId, tailorSdsPath],
                   { err: 'message' })
         .then(html => storeReportInDB(html))
@@ -1655,14 +1630,6 @@ function appendOption(select, value, text) {
 function sdsDisplayName(filename) {
     return SDS_DISPLAY_NAMES[filename] ||
         filename.replace(/^ssg-/, '').replace(/-ds\.xml$/, '').replace(/-/g, ' ');
-}
-
-function parseOscapTitle(output) {
-    for (const line of output.split('\n')) {
-        const m = line.match(/^\s*Title:\s+(.+)$/);
-        if (m) return m[1].trim();
-    }
-    return null;
 }
 
 /* ---- Scan history ------------------------------------------ */
@@ -1715,37 +1682,6 @@ function renderHistory(manifests) {
     empty.classList.add('hidden');
     table.classList.remove('hidden');
     updateAdminControls();
-}
-
-function restoreLastResults() {
-    cockpit.spawn(['ls', RESULTS_BASE], { err: 'message' })
-        .then(output => {
-            const dirs = output.trim().split('\n')
-                .filter(d => /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/.test(d))
-                .sort().reverse();
-            if (!dirs.length) return;
-            return tryRestoreDir(dirs, 0);
-        })
-        .catch(() => {});
-
-    function tryRestoreDir(dirs, idx) {
-        if (idx >= dirs.length) return;
-        const dir = RESULTS_BASE + dirs[idx] + '/';
-        return cockpit.file(dir + 'manifest.json').read()
-            .then(content => {
-                const m = JSON.parse(content);
-                if (!m || m.scan_type === 'container') return tryRestoreDir(dirs, idx + 1);
-                currentTimestamp      = m.timestamp;
-                currentResultsDir     = dir;
-                currentReportPath     = dir + 'report.html';
-                currentRemBashPath    = dir + 'remediation.sh';
-                currentRemAnsiblePath = dir + 'remediation.yml';
-                currentSdsPath        = m.sds_file || null;
-                document.getElementById('ct-scan-row').classList.add('hidden');
-                showResults(m);
-            })
-            .catch(() => tryRestoreDir(dirs, idx + 1));
-    }
 }
 
 function buildHistoryRow(manifest) {
@@ -1821,7 +1757,7 @@ function onDeleteHistoryEntry(manifest) {
         () => {
             cockpit.spawn(['rm', '-rf', RESULTS_BASE + manifest.timestamp], { superuser: 'require' })
                 .then(() => {
-                    appendActivityLog({ type: 'scan_delete', tab: 'host', content: manifest.content_file, profile: manifest.profile_id });
+                    appendActivityLog({ type: 'scan_delete', tab: 'host', content: manifest.sds_file, profile: manifest.profile_id });
                     loadHistory();
                 })
                 .catch(err => console.error('Failed to delete scan:', err.message || err));
@@ -2922,7 +2858,7 @@ const ACTIVITY_BADGE_CLASS = {
 const ACTIVITY_FILTER_MAP = {
     scan:      ['scan_start', 'scan_complete', 'scan_cancel', 'scan_error', 'scan_delete', 'remediate_download'],
     guide:     ['guide'],
-    validate:  ['validate', 'content_delete'],
+    validate:  ['validate', 'content_delete', 'content_upload'],
     tailoring: ['tailor_upload', 'tailor_load', 'tailor_save', 'tailor_delete', 'tailor_download'],
 };
 
@@ -2987,7 +2923,7 @@ function renderActivityTable(entries) {
     entries.forEach(e => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${formatActivityTime(e.ts)}</td>
+            <td>${escHtmlRem(formatActivityTime(e.ts))}</td>
             <td>${escHtmlRem(activityTabLabel(e.tab))}</td>
             <td><span class="ct-activity-badge ${ACTIVITY_BADGE_CLASS[e.type] || 'ct-activity-scan'}">${escHtmlRem(ACTIVITY_TYPE_LABELS[e.type] || e.type)}</span></td>
             <td class="ct-activity-details">${activityDetails(e)}</td>
@@ -3028,7 +2964,7 @@ function activityResult(e) {
     if (e.type === 'scan_complete') return `${escHtmlRem(e.score)}% &nbsp;<span class="ct-pass-count">${escHtmlRem(e.pass)} pass</span> <span class="ct-fail-count">${escHtmlRem(e.fail)} fail</span>`;
     if (e.type === 'validate')      return e.result === 'pass' ? '<span class="ct-validate-ok">✓ Valid</span>' : '<span class="ct-validate-fail">✗ Invalid</span>';
     if (e.type === 'scan_error')    return '<span class="ct-validate-fail">Error</span>';
-    if (e.type === 'scan_cancel')   return '<span style="color: var(--pf-v6-global--warning-color--100)">Cancelled</span>';
+    if (e.type === 'scan_cancel')   return '<span class="ct-activity-scan-cancel">Cancelled</span>';
     return '—';
 }
 

@@ -186,7 +186,7 @@ function buildAttentionBanner(groups) {
         const label = m.profile_title || m.profile_id || m.image_name || 'Unknown';
         const ageDays = dbAgeDays(m.timestamp);
 
-        if (prev && prev.fail != null && m.counts && m.counts.fail != null) {
+        if (prev && prev.counts && prev.counts.fail != null && m.counts && m.counts.fail != null) {
             if (m.counts.fail > prev.counts.fail) regressed.push(label);
         }
         if (ageDays !== null && ageDays >= STALE_WARN_DAYS) stale.push(label);
@@ -315,7 +315,7 @@ function buildStatusCard({ title, subtitle, group, goTabId, goLabel, scanType })
             '</div>' +
             (trendHtml ? '<div class="db-trend">' + trendHtml + '</div>' : '') +
             '<div class="pf-v6-c-card__footer db-card-footer">' +
-                '<button class="pf-v6-c-button pf-m-primary pf-m-small" type="button" ' +
+                '<button class="pf-v6-c-button pf-m-primary pf-m-sm" type="button" ' +
                         'data-quick-ts="' + escHtml(manifest.timestamp) + '">Quick Scan</button>' +
                 '<button class="pf-v6-c-button pf-m-link" type="button" ' +
                         'data-view-ts="' + escHtml(manifest.timestamp) + '" ' +
