@@ -16,21 +16,24 @@ Recommends:     scap-security-guide
 Recommends:     openscap-utils
 
 %description
-cockpit-scap is a native Cockpit module for SCAP compliance scanning, reporting,
-and tailoring on RHEL systems. It replaces the archived SCAP Workbench GUI,
-integrating directly into the Cockpit web console.
+cockpit-scap is a native Cockpit module for SCAP compliance scanning,
+reporting, and tailoring on RHEL systems. It replaces the archived SCAP
+Workbench GUI, integrating directly into the Cockpit web console.
 
 Features:
   - Auto-detects system-installed SCAP Security Guide data stream files
-  - Multi-version content: system and user-staged SDS files with optgroup selector
+  - Multi-version content: system and user-staged SDS files with
+    optgroup selector
   - Cross-version OS compatibility detection with inline warning
-  - Full XCCDF tailoring editor: rule tree, variables, saved profiles, upload/download
+  - Full XCCDF tailoring editor: rule tree, variables, saved profiles,
+    upload/download
   - Container image scanning via oscap-podman with per-image scan history
   - Selective Remediation Builder: cherry-pick failing rules before downloading
     bash or Ansible remediation scripts (host and container)
   - Scan history with CSP-compliant HTML report viewer and results XML download
   - Activity log: real-time log of all actions with semantic badge colors
-  - Compliance Dashboard (preview): latest scan status per host and container image
+  - Compliance Dashboard (preview): latest scan status per host and
+    container image
   - Operates correctly with SELinux in enforcing mode
 
 %prep
@@ -54,7 +57,7 @@ install -d -m 755 %{buildroot}%{_datadir}/%{name}/selinux
 install -m 644 selinux/cockpit-scap.fc \
     %{buildroot}%{_datadir}/%{name}/selinux/
 
-# Runtime directories — created here so %post restorecon has paths to label
+# Runtime directories — created here so %%post restorecon has paths to label
 install -d -m 755 %{buildroot}/var/lib/%{name}
 install -d -m 755 %{buildroot}/var/lib/%{name}/results
 install -d -m 755 %{buildroot}/var/lib/%{name}/tailoring
