@@ -386,7 +386,12 @@ function onCsScanClick() {
 
     cockpit.spawn(['mkdir', '-p', csResultsDir], { superuser: 'require' })
         .then(() => {
-            const args = ['oscap-podman', csImageId || csImageName, 'xccdf', 'eval'];
+            const imageArg = csImageId || csImageName;
+            if (!imageArg || imageArg.startsWith('--')) {
+                csScanError('Invalid image identifier');
+                return;
+            }
+            const args = ['oscap-podman', imageArg, 'xccdf', 'eval'];
             if (tailoringPath) args.push('--tailoring-file', tailoringPath);
             args.push(
                 '--profile', profileId,
@@ -492,8 +497,11 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
 
 /* ---- Results display -------------------------------------- */
 
+const CS_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/;
+
 function csLoadScanFromHistory(manifest) {
     if (csProc) return;
+    if (!CS_TIMESTAMP_RE.test(manifest.timestamp)) return;
     const dir = RESULTS_BASE + manifest.timestamp + '/';
     csTimestamp   = manifest.timestamp;
     csResultsDir  = dir;
@@ -713,12 +721,15 @@ function csBuildHistoryRow(manifest) {
         showConfirmModal(
             'Delete Container Scan',
             'Delete the scan from ' + date + '? All artifacts will be permanently removed.',
-            () => cockpit.spawn(['rm', '-rf', RESULTS_BASE + manifest.timestamp], { superuser: 'require' })
+            () => {
+                if (!CS_TIMESTAMP_RE.test(manifest.timestamp)) return;
+                cockpit.spawn(['rm', '-rf', RESULTS_BASE + manifest.timestamp], { superuser: 'require' })
                 .then(() => {
                     appendActivityLog({ type: 'scan_delete', tab: 'container', content: manifest.sds_file, profile: manifest.profile_id, image: manifest.image_name });
                     csLoadHistory();
                 })
-                .catch(err => console.error('Failed to delete scan:', err.message || err))
+                .catch(err => console.error('Failed to delete scan:', err.message || err));
+            }
         );
     });
     actionsTd.appendChild(delBtn);

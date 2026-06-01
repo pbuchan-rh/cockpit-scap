@@ -1069,6 +1069,19 @@ function escapeAttr(str) {
     return String(str).replace(/"/g, '&quot;');
 }
 
+/* Resolve .. and . in a path string without filesystem access */
+function normalizePath(path) {
+    const parts = path.split('/');
+    const out = [];
+    for (const p of parts) {
+        if (p === '..') out.pop();
+        else if (p !== '.') out.push(p);
+    }
+    return out.join('/');
+}
+
+const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/;
+
 /* ---- End Selective Remediation ----------------------------- */
 
 function pruneHistoryByType(scanType) {
@@ -1332,6 +1345,7 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath) {
 
 function loadScanFromHistory(manifest) {
     if (currentScanProc) return;
+    if (!TIMESTAMP_RE.test(manifest.timestamp)) return;
     const dir = RESULTS_BASE + manifest.timestamp + '/';
     currentTimestamp      = manifest.timestamp;
     currentResultsDir     = dir;
@@ -1755,6 +1769,7 @@ function onDeleteHistoryEntry(manifest) {
         'Delete Scan',
         'Delete the scan from ' + date + '? The report, results, and remediation files will be permanently removed.',
         () => {
+            if (!TIMESTAMP_RE.test(manifest.timestamp)) return;
             cockpit.spawn(['rm', '-rf', RESULTS_BASE + manifest.timestamp], { superuser: 'require' })
                 .then(() => {
                     appendActivityLog({ type: 'scan_delete', tab: 'host', content: manifest.sds_file, profile: manifest.profile_id });
@@ -2164,7 +2179,7 @@ function doUpdateTailoringFile() {
     const newProfileTitle  = document.getElementById('ct-tailor-editor-name').value.trim() || sidecar.name;
     const baseProfileId    = sidecar.base_profile_id;
 
-    if (!sidecar.path.startsWith(TAILORING_BASE)) {
+    if (!normalizePath(sidecar.path).startsWith(TAILORING_BASE)) {
         console.error('doUpdateTailoringFile: sidecar.path outside TAILORING_BASE', sidecar.path);
         return;
     }
@@ -2458,6 +2473,10 @@ function onDeleteTailoringFile(sidecar) {
         'Delete Tailoring File',
         'Delete "' + sidecar.name + '"? This cannot be undone.',
         () => {
+            if (!normalizePath(sidecar.path).startsWith(TAILORING_BASE)) {
+                console.error('onDeleteTailoringFile: sidecar.path outside TAILORING_BASE', sidecar.path);
+                return;
+            }
             const jsonPath = sidecar.path.replace(/\.xml$/, '.json');
             Promise.all([
                 cockpit.spawn(['rm', '-f', sidecar.path], { superuser: 'require' }),
@@ -2730,6 +2749,12 @@ function deleteUserContent(xmlPath, jsonPath) {
 function uploadContent(file) {
     const status   = document.getElementById('ct-content-upload-status');
     const btn      = document.getElementById('ct-content-upload-btn');
+    if (file.name.includes('/') || file.name.includes('..')) {
+        status.className   = 'ct-content-upload-status ct-content-upload-err';
+        status.textContent = 'Invalid filename.';
+        status.classList.remove('hidden');
+        return;
+    }
     const destPath = CONTENT_BASE + file.name;
     const sizeMB   = (file.size / 1024 / 1024).toFixed(1);
 
