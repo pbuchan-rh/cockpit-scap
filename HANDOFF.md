@@ -4,9 +4,9 @@
 
 ## Current State
 
-**Version:** v3.8-dev (in progress, not tagged)
+**Version:** v3.8-dev (feature complete, pending code review + release)
 **Last session:** 2026-06-02
-**Last commit:** 62a9644 (feat: full profile remediation download on all three scan tabs)
+**Last commit:** 544eb90 (ux: action board label + button rename; settings grid responsive stack)
 **Git tag:** v3.6 on both remotes — v3.7 and v3.8 not yet tagged
 **Deployed to:** rhel10cis.beastmode.localdomain — user-space install at `~/.local/share/cockpit/cockpit-scap/`
 **Published:** COPR build 10534383 (v3.6, el10)
@@ -14,7 +14,7 @@
 **GitHub release:** https://github.com/pbuchan-rh/cockpit-scap/releases/tag/v3.6
 **Gitea release:** http://git.beastmode.localdomain:3000/admin/cockpit-scap/releases/tag/v3.6
 
-**Status:** v3.8 implemented and deployed to rhel10cis. Scan results panel layout still needs final polish — user said "super close." Not tagged. MODULE_VERSION still says v3.6 — needs bump before release.
+**Status:** v3.8 feature complete and deployed to rhel10cis. Full UAT pass done, UX report generated. Requires code review before release. MODULE_VERSION still says v3.6 — bump before tagging.
 
 **rhel10cis state:**
 - PCI-DSS partial remediation still applied (sysctl hardening, sudoers fixed)
@@ -92,17 +92,23 @@
 
 ## What Is NOT Done (Next Session Priority)
 
-### 1. Scan Results Panel — Final Polish
+### 1. Code Review
 
-User said "super close but not quite there." The action bar layout (severity left, Quick Fix + Review All right, full-width) is the right approach. The remaining issue is likely the visual relationship between the score row (badges + donut) and the action bar below it. Possibly: the gap/spacing between the two rows, or the donut size/position still feeling off.
-
-**Do NOT redesign from scratch** — the current approach is correct. Fine-tune CSS spacing only.
+Required before tagging v3.8. Volume of changes is significant — two full feature sessions since v3.6. Focus areas:
+- Remediation drawer open/close state management across all three drawers
+- Action board button state (disabled when no results, auto count loading)
+- Export dropdown event handling (close-on-outside-click, menu item wiring)
+- ARF button disabled state for pre-v3.8 scans
+- SSG version extraction error handling (files that don't parse or time out)
+- Accessibility: drawer `aria-hidden` when closed — identified in UX audit, not yet fixed
 
 ### 2. v3.8 Release Sequence
 
+- ⬜ Code review (see above)
+- ⬜ Fix accessibility: `aria-hidden="true"` on all drawers when closed
 - ⬜ Bump `MODULE_VERSION` to v3.8 in `src/index.js`
 - ⬜ Add v3.8 changelog entry to `cockpit-scap.spec`
-- ⬜ Update README roadmap table + version line
+- ⬜ Update README current release line
 - ⬜ Build RPM on rhel10cis → COPR → test on 10.0.0.214
 - ⬜ Tag v3.8 on both remotes + GitHub release
 
@@ -110,16 +116,15 @@ User said "super close but not quite there." The action bar layout (severity lef
 
 | Item | Notes |
 |---|---|
-| **Scan results panel final polish** | CSS spacing/proportions; close to done |
+| **Scan history table narrow-viewport** | Profile name truncates from left at 900px; needs ellipsis from right |
 | **CIS Level 1/2 weighting** | Group hierarchy traversal in XCCDF; more intelligent than weight alone |
 | **Compliance Debt** | Rules failing N+ consecutive scans; needs cross-scan XML analysis; non-trivial |
-| **Dashboard wow** | Remove Preview badge once user is genuinely impressed; depends on polish |
+| **Dashboard Preview badge** | Remove once user is genuinely impressed; don't remove without discussion |
 | **Cockpit applications page** | Pre-requisites: EPEL 10 listed, Dashboard Preview removed, no rough edges |
 | **EPEL 10 submission** | rpmlint clean; file Bugzilla review request, find sponsor |
 | **Scheduled scanning** | Deliberately deferred; systemd units + helper script; changes operating model |
 | **Ansible Apply Now** | Deferred; requires ansible-playbook dependency |
 | **ScanID surfacing** | ID generated and stored; not yet shown in history table or activity log |
-| **Playwright test updates** | Drawer tests, action bar, score chart, rule detail drawer, ETA display |
 
 ### 4. Architecture Notes Added This Session
 
@@ -150,6 +155,7 @@ User said "super close but not quite there." The action bar layout (severity lef
 | 2026-06-02 | v3.6 | UX + Release | Clear All Data, Gate 2 rule list, groups collapsed, scan timer, contextual activity, View Guide; COPR build 10534383 |
 | 2026-06-02 | v3.7-dev | Feature | Action Board, weight field, shared renderer, history score delta, Content Library → Settings, Manual Scheduling, dry-run preview, better scan errors |
 | 2026-06-02 | v3.8-dev | UX + Feature | Drawer remediation, action bar, donut animation, keyboard shortcuts, failing rules search, scan duration+ScanID, dashboard score chart, rule detail drawer, scan ETA, settings 2-card layout, full profile remediation on all tabs |
+| 2026-06-02 | v3.8-dev cont. | UAT + UX | Full UAT pass, UX audit, Playwright test suite updated; ARF export, Not applicable badge, SSG version in Content Library, export split button, action board label + button rename (Critical Rules / All Failures), Profile Remediation button rename, settings responsive stack, container+dashboard off by default |
 
 ---
 

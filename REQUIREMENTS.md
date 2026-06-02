@@ -383,6 +383,22 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 - **REQ-186:** ✅ All v3.7 UI additions MUST use PatternFly v6 tokens exclusively — no hardcoded hex values, no custom colors outside `--ct-` custom property definitions; Cockpit native aesthetic is a hard requirement; dark mode MUST work on all new elements without additional effort (token-only colors guarantee this automatically)
 
+- **REQ-187:** ✅ Every scan MUST generate an ARF (Asset Reporting Format) file via `--results-arf` and expose a "Download ARF" option in the export dropdown; the button MUST be disabled with a descriptive tooltip for pre-v3.8 scans that have no ARF file
+
+- **REQ-188:** ✅ The result badges MUST distinguish `notapplicable` from `notchecked` — Not applicable MUST be shown as a visually distinct outlined badge and appear only when count > 0; both host and container scan results apply
+
+- **REQ-189:** ✅ The Content Library in Settings MUST show the SSG benchmark version extracted from the SDS file (`xccdf:version`) rather than the file modification date; system and uploaded content both show version; extraction uses iterparse with early break for performance on large files
+
+- **REQ-190:** ✅ The results card export controls MUST be a split button — default action downloads the HTML report; a dropdown toggle reveals "Download HTML (default)", "Download Results XML", and "Download ARF"; applies to both host and container scan
+
+- **REQ-191:** ✅ The action board MUST include a "Open Remediation Builder:" label before the buttons to disambiguate from immediate-apply actions; buttons MUST be labelled "Critical Rules (N)" and "All Failures (N)" where N is the respective count — no immediate changes are made until the user confirms inside the drawer
+
+- **REQ-192:** ✅ Profile remediation buttons MUST be labelled "Profile Remediation (Bash)" and "Profile Remediation (Ansible)" on all three tabs to communicate that the action is a download, not an immediate apply
+
+- **REQ-193:** ✅ Container Scan and Dashboard tabs MUST default to disabled on a fresh install (no settings.json); users opt in via Settings; existing installs that already have settings.json are unaffected
+
+- **REQ-194:** ✅ The Settings page two-column grid MUST collapse to a single column below 900px viewport width via CSS media query
+
 ---
 
 ## Out of Scope — v1

@@ -17,6 +17,9 @@ no context switching.
 - **Scan history** — configurable retention per scan type; **View Scan** loads any historical result; **Remediate** from history loads the scan and opens the drawer; score delta shown inline; Export CSV
 - **Scan timing** — elapsed time shown during active scans; estimated time remaining computed from the most recent matching scan; scan duration and stable scan ID stored in each result manifest
 - **Full profile remediation** — generate a bash or Ansible remediation script for the entire selected profile without running a scan first; available on Host Scan, Container Scan, and Policy Tailoring tabs; buttons are disabled until content and profile are selected; on the Tailoring tab the active tailoring file is included if one is loaded in the editor
+- **ARF export** — every scan generates an Asset Reporting Format bundle (XCCDF results + OVAL data + asset identity); available alongside HTML and Results XML in the export dropdown
+- **Result state breakdown** — five distinct result badges: Pass, Fail, Error, Not applicable (outlined, only shown when > 0), Not checked; separates rules that don't apply to this platform from rules that couldn't be evaluated
+- **Content Library versioning** — Settings Content Library shows the SSG benchmark version extracted from each SDS file rather than the file modification date; meaningful across RHEL 6–10 content
 - **Dry-run command preview** — the full `oscap xccdf eval` command for the current selection is shown before scanning; Copy to clipboard
 - **Content Library** — upload SDS files directly via browser; RHEL 6–10 SDS supported; auto-filters to version-compatible content; validate with `oscap ds sds-validate`
 - **Report and results export** — full oscap HTML report opens in a new tab; raw XCCDF results.xml download for auditor archives
@@ -180,4 +183,4 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 | **v3.5** | Apply Now with two-gate confirmation and audit trail; Settings tab; container scan parity |
 | **v3.6** *(current release)* | UX refinements — scan timer, download feedback, Clear All Data, improved remediation gate |
 | **v3.7** | Action Board, score delta in history, dry-run command preview, Content Library in Settings |
-| **v3.8** | Drawer remediation, dashboard score trend chart and rule detail, scan ETA, keyboard shortcuts, failing rules search, full profile remediation export |
+| **v3.8** | Drawer remediation, dashboard score trend chart and rule detail, scan ETA, keyboard shortcuts, failing rules search, full profile remediation export, ARF export, Not applicable badge, SSG version in Content Library, export split button, action board UX overhaul |
