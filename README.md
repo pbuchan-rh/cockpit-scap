@@ -38,8 +38,8 @@ in Cockpit.
 **Scan Results — compliance score, regression detection, failing rules with CCE identifiers and inline description**
 ![Scan Results](docs/screenshots/scan-results.png)
 
-**Selective Remediation Builder — cherry-pick failing rules before downloading targeted bash or Ansible scripts**
-![Selective Remediation](docs/screenshots/selective-remediations.png)
+**Apply Now — select failing rules, review the script, apply directly on the host with live streaming output**
+![Apply Now](docs/screenshots/selective-remediations.png)
 
 **Host Scan — unified configuration card with profile description and scan history**
 ![Host Scan](docs/screenshots/host-scan.png)
