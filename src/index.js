@@ -152,6 +152,24 @@ const PY_EXTRACT_FAILING_RULES = [
 /* Python script: diff two results.xml files.
  * Args: sys.argv[1]=newer results.xml  sys.argv[2]=older results.xml
  * Output: JSON {fixed:[...], regressed:[...], new_failures:[...]} */
+/* Python script: extract XCCDF benchmark version + file size from an SDS file.
+ * Uses iterparse with early break — stops reading as soon as xccdf:version found.
+ * Output: "<bytes> <version_string>"  e.g.  "35123456 0.1.73" */
+const PY_SDS_VERSION = [
+    'import xml.etree.ElementTree as ET, os, sys',
+    'path = sys.argv[1]',
+    'size = os.path.getsize(path)',
+    'version = "?"',
+    'for _, el in ET.iterparse(path, events=("end",)):',
+    '    tag = el.tag.split("}")[-1] if "}" in el.tag else el.tag',
+    '    ns  = el.tag.split("}")[0][1:] if "}" in el.tag else ""',
+    '    if tag == "version" and "xccdf" in ns:',
+    '        version = (el.text or "?").strip()',
+    '        break',
+    '    el.clear()',
+    'print(str(size) + " " + version)',
+].join('\n');
+
 const PY_SCAN_DIFF = [
     'import sys, json, xml.etree.ElementTree as ET',
     'NS = "http://checklists.nist.gov/xccdf/1.2"',
@@ -3390,24 +3408,30 @@ function renderSystemContentList() {
             table.setAttribute('aria-label', 'System SCAP content');
             const thead = table.createTHead();
             const hr = thead.insertRow();
-            ['Name', 'Path'].forEach(h => {
+            ['Name', 'File', 'Version'].forEach(h => {
                 const th = document.createElement('th');
                 th.scope = 'col';
                 th.textContent = h;
                 hr.appendChild(th);
             });
             const tbody = table.createTBody();
-            files.forEach(f => {
-                const tr   = tbody.insertRow();
-                const tdN  = tr.insertCell();
-                tdN.textContent = sdsDisplayName(f);
-                const tdP  = tr.insertCell();
-                const code = document.createElement('code');
-                code.textContent = SSG_CONTENT_DIR + f;
-                tdP.appendChild(code);
-            });
+            const entries = files.map(f => ({ f, name: sdsDisplayName(f), path: SSG_CONTENT_DIR + f, version: '…' }));
             container.innerHTML = '';
             container.appendChild(table);
+            // Render rows immediately with placeholder versions, then fill async
+            entries.forEach(e => {
+                const tr  = tbody.insertRow();
+                tr.insertCell().textContent = e.name;
+                const tdF = tr.insertCell();
+                const code = document.createElement('code');
+                code.textContent = e.f;
+                tdF.appendChild(code);
+                const tdV = tr.insertCell();
+                tdV.textContent = '…';
+                cockpit.spawn(['python3', '-c', PY_SDS_VERSION, e.path], { err: 'ignore' })
+                    .then(out => { tdV.textContent = (out.trim().split(' ')[1]) || '?'; })
+                    .catch(() => { tdV.textContent = '?'; });
+            });
         })
         .catch(() => {
             container.innerHTML = '<p class="ct-content-empty">System content directory not found.</p>';
@@ -3432,13 +3456,13 @@ function renderUserContentList() {
 
             return Promise.all(
                 entries.map(e =>
-                    cockpit.spawn(['stat', '--format=%s %Y', e.xmlPath], { err: 'ignore' })
+                    cockpit.spawn(['python3', '-c', PY_SDS_VERSION, e.xmlPath], { err: 'ignore' })
                         .then(out => {
                             const parts = out.trim().split(' ');
                             e.sizeMB  = (parseInt(parts[0], 10) / 1024 / 1024).toFixed(1) + ' MB';
-                            e.mtime   = new Date(parseInt(parts[1], 10) * 1000).toLocaleDateString();
+                            e.version = parts[1] || '?';
                         })
-                        .catch(() => { e.sizeMB = '—'; e.mtime = '—'; })
+                        .catch(() => { e.sizeMB = '—'; e.version = '?'; })
                 )
             ).then(() => {
                 const table = document.createElement('table');
@@ -3446,7 +3470,7 @@ function renderUserContentList() {
                 table.setAttribute('aria-label', 'Uploaded SCAP content');
                 const thead = table.createTHead();
                 const hr = thead.insertRow();
-                ['Name', 'File', 'Size', 'Modified', 'Actions'].forEach(h => {
+                ['Name', 'File', 'Size', 'Version', 'Actions'].forEach(h => {
                     const th = document.createElement('th');
                     th.scope = 'col';
                     th.textContent = h;
@@ -3461,7 +3485,7 @@ function renderUserContentList() {
                     code.textContent = e.filename;
                     tdF.appendChild(code);
                     tr.insertCell().textContent = e.sizeMB;
-                    tr.insertCell().textContent = e.mtime;
+                    tr.insertCell().textContent = e.version;
 
                     const tdA    = tr.insertCell();
                     const valBtn = document.createElement('button');
