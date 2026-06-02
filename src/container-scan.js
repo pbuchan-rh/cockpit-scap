@@ -74,6 +74,13 @@ function initContainerScan() {
             'application/xml',
             e.currentTarget
         ));
+    document.getElementById('cs-download-arf-btn')
+        .addEventListener('click', e => downloadArtifact(
+            csResultsDir + 'results.arf',
+            'container-results-arf-' + csTimestamp + '.xml',
+            'application/xml',
+            e.currentTarget
+        ));
     document.getElementById('cs-selective-rem-btn')
         .addEventListener('click', () => openCsRemPanel(csResultsDir));
     document.getElementById('cs-quick-fix-btn')
@@ -525,9 +532,10 @@ function onCsScanClick() {
             const args = ['oscap-podman', imageArg, 'xccdf', 'eval'];
             if (tailoringPath) args.push('--tailoring-file', tailoringPath);
             args.push(
-                '--profile', profileId,
-                '--report',  csReportPath,
-                '--results', resultsXmlPath,
+                '--profile',      profileId,
+                '--report',       csReportPath,
+                '--results',      resultsXmlPath,
+                '--results-arf',  csResultsDir + 'results.arf',
                 csSdsPath
             );
 
@@ -584,6 +592,7 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 score:            parsed.score,
                 scan_duration_s:  Math.round((Date.now() - csScanStart) / 1000),
                 scan_id:          generateScanId(),
+                has_arf:          true,
             };
             return cockpit.file(csResultsDir + 'manifest.json', { superuser: 'require' })
                 .replace(JSON.stringify(manifest, null, 2))
@@ -715,18 +724,25 @@ function csShowResults(manifest) {
 
     const badges = document.getElementById('cs-result-badges');
     badges.innerHTML = '';
-    [
-        ['Pass',           counts.pass,           'ct-badge-pass'],
-        ['Fail',           counts.fail,           'ct-badge-fail'],
-        ['Error',          counts.error,          'ct-badge-error'],
-        ['Not checked',    counts.notchecked,     'ct-badge-neutral'],
-        ['Not applicable', counts.notapplicable,  'ct-badge-neutral'],
-    ].forEach(([label, count, cls]) => {
+    const csBadgeDefs = [
+        ['Pass',        counts.pass,       'ct-badge-pass'],
+        ['Fail',        counts.fail,       'ct-badge-fail'],
+        ['Error',       counts.error,      'ct-badge-error'],
+        ['Not checked', counts.notchecked, 'ct-badge-neutral'],
+    ];
+    if ((counts.notapplicable || 0) > 0) {
+        csBadgeDefs.splice(3, 0, ['Not applicable', counts.notapplicable, 'ct-badge-na']);
+    }
+    csBadgeDefs.forEach(([label, count, cls]) => {
         const span       = document.createElement('span');
         span.className   = 'ct-result-badge ' + cls;
         span.textContent = label + ': ' + count;
         badges.appendChild(span);
     });
+
+    const csArfBtn = document.getElementById('cs-download-arf-btn');
+    csArfBtn.disabled = !manifest.has_arf;
+    if (!manifest.has_arf) csArfBtn.title = 'ARF not available — rescan to generate';
 
     const scoreEl = document.getElementById('cs-result-score');
     scoreEl.innerHTML = '';

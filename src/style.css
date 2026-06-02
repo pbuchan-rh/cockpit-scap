@@ -762,6 +762,7 @@ code {
 .ct-badge-fail    { background-color: var(--ct-color-danger);  color: var(--ct-color-bg-card); }
 .ct-badge-error   { background-color: var(--ct-color-warning); color: var(--ct-color-text); }
 .ct-badge-neutral { background-color: var(--ct-color-border);  color: var(--ct-color-text); }
+.ct-badge-na      { background-color: transparent; border: 1px solid var(--ct-color-border); color: var(--ct-color-text-secondary); }
 
 .ct-action-board {
   display: flex;

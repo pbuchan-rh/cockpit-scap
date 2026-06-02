@@ -322,6 +322,13 @@ document.addEventListener('DOMContentLoaded', () => {
             'application/xml',
             e.currentTarget
         ));
+    document.getElementById('ct-download-arf-btn')
+        .addEventListener('click', e => downloadArtifact(
+            currentResultsDir + 'results.arf',
+            'scap-results-arf-' + currentTimestamp + '.xml',
+            'application/xml',
+            e.currentTarget
+        ));
     document.getElementById('ct-new-scan-btn')
         .addEventListener('click', () => {
             if (currentManifest) rerunHostScan(currentManifest);
@@ -917,9 +924,10 @@ function runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath) {
         args.push('--tailoring-file', tailoringPath);
     }
     args.push(
-        '--profile', profileId,
-        '--report',  currentReportPath,
-        '--results', resultsXmlPath,
+        '--profile',      profileId,
+        '--report',       currentReportPath,
+        '--results',      resultsXmlPath,
+        '--results-arf',  currentResultsDir + 'results.arf',
         currentSdsPath
     );
 
@@ -974,6 +982,7 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 score:            parsed.score,
                 scan_duration_s:  Math.round((Date.now() - hostScanStart) / 1000),
                 scan_id:          generateScanId(),
+                has_arf:          true,
             };
             return cockpit.file(currentResultsDir + 'manifest.json', { superuser: 'require' })
                 .replace(JSON.stringify(manifest, null, 2))
@@ -1855,17 +1864,25 @@ function showResults(manifest) {
 
     const badges = document.getElementById('ct-result-badges');
     badges.innerHTML = '';
-    [
-        ['Pass',        counts.pass,       'ct-badge-pass'],
-        ['Fail',        counts.fail,       'ct-badge-fail'],
-        ['Error',       counts.error,      'ct-badge-error'],
-        ['Not checked', counts.notchecked, 'ct-badge-neutral'],
-    ].forEach(([label, count, cls]) => {
+    const badgeDefs = [
+        ['Pass',          counts.pass,          'ct-badge-pass'],
+        ['Fail',          counts.fail,          'ct-badge-fail'],
+        ['Error',         counts.error,         'ct-badge-error'],
+        ['Not checked',   counts.notchecked,    'ct-badge-neutral'],
+    ];
+    if ((counts.notapplicable || 0) > 0) {
+        badgeDefs.splice(3, 0, ['Not applicable', counts.notapplicable, 'ct-badge-na']);
+    }
+    badgeDefs.forEach(([label, count, cls]) => {
         const span = document.createElement('span');
         span.className   = 'ct-result-badge ' + cls;
         span.textContent = label + ': ' + count;
         badges.appendChild(span);
     });
+
+    const arfBtn = document.getElementById('ct-download-arf-btn');
+    arfBtn.disabled = !manifest.has_arf;
+    if (!manifest.has_arf) arfBtn.title = 'ARF not available — rescan to generate';
 
     const scoreEl = document.getElementById('ct-result-score');
     scoreEl.innerHTML = '';
