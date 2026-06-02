@@ -215,20 +215,27 @@
       <!-- Results (hidden until scan complete) -->
       <div class="hidden" id="ct-results">
         <div class="pf-v6-c-card">
-          <div class="pf-v6-c-card__title">
-            <h2 class="pf-v6-c-card__title-text">Scan Results</h2>
-            <p class="ct-results-profile" id="ct-results-profile-title"></p>
-            <p class="ct-results-timestamp" id="ct-results-timestamp"></p>
+          <div class="pf-v6-c-card__title ct-results-title-row">
+            <div>
+              <h2 class="pf-v6-c-card__title-text">Scan Results</h2>
+              <p class="ct-results-profile" id="ct-results-profile-title"></p>
+              <p class="ct-results-timestamp" id="ct-results-timestamp"></p>
+            </div>
+            <div class="ct-results-meta">
+              <span class="ct-results-duration hidden" id="ct-results-duration"></span>
+              <span class="ct-results-scan-id hidden" id="ct-results-scan-id"></span>
+            </div>
           </div>
           <div class="pf-v6-c-card__body">
             <div class="ct-result-summary-row">
               <div class="ct-result-badges" id="ct-result-badges"></div>
               <div class="ct-result-score" id="ct-result-score"></div>
             </div>
-            <!-- Action Board — severity breakdown + quick action buttons -->
             <div class="ct-action-board hidden" id="ct-action-board">
-              <div class="ct-action-board-sev" id="ct-action-board-sev"></div>
-              <div class="ct-action-board-auto" id="ct-action-board-auto"></div>
+              <div class="ct-action-board-left">
+                <div class="ct-action-board-sev" id="ct-action-board-sev"></div>
+                <div class="ct-action-board-auto" id="ct-action-board-auto"></div>
+              </div>
               <div class="ct-action-board-actions">
                 <button class="pf-v6-c-button pf-m-primary" type="button"
                         id="ct-quick-fix-btn" disabled>Quick Fix</button>
@@ -283,6 +290,8 @@
                 </span>
                 <span>Analyzing failing rules…</span>
               </div>
+              <input class="ct-failing-search hidden" id="ct-failing-search"
+                     type="text" placeholder="Search failing rules…" autocomplete="off">
               <div id="ct-failing-summary-groups"></div>
             </div>
           </div>
@@ -305,8 +314,8 @@
         </div>
       </div>
 
-      <!-- Selective Remediation panel -->
-      <div class="hidden" id="ct-remediation-panel">
+      <!-- Selective Remediation panel (drawer) -->
+      <div class="ct-rem-drawer" id="ct-remediation-panel">
         <div class="pf-v6-c-card">
           <div class="pf-v6-c-card__title ct-history-title-row">
             <h2 class="pf-v6-c-card__title-text">Selective Remediation</h2>
@@ -606,15 +615,33 @@
         <!-- Results -->
         <div class="hidden" id="cs-results">
           <div class="pf-v6-c-card">
-            <div class="pf-v6-c-card__title">
-              <h2 class="pf-v6-c-card__title-text">Container Scan Results</h2>
-              <p class="ct-results-profile" id="cs-results-profile-title"></p>
-              <p class="ct-results-timestamp" id="cs-results-timestamp"></p>
+            <div class="pf-v6-c-card__title ct-results-title-row">
+              <div>
+                <h2 class="pf-v6-c-card__title-text">Container Scan Results</h2>
+                <p class="ct-results-profile" id="cs-results-profile-title"></p>
+                <p class="ct-results-timestamp" id="cs-results-timestamp"></p>
+              </div>
+              <div class="ct-results-meta">
+                <span class="ct-results-duration hidden" id="cs-results-duration"></span>
+                <span class="ct-results-scan-id hidden" id="cs-results-scan-id"></span>
+              </div>
             </div>
             <div class="pf-v6-c-card__body">
               <div class="ct-result-summary-row">
                 <div class="ct-result-badges" id="cs-result-badges"></div>
                 <div class="ct-result-score" id="cs-result-score"></div>
+              </div>
+              <div class="ct-action-board hidden" id="cs-action-board">
+                <div class="ct-action-board-left">
+                  <div class="ct-action-board-sev" id="cs-action-board-sev"></div>
+                  <div class="ct-action-board-auto" id="cs-action-board-auto"></div>
+                </div>
+                <div class="ct-action-board-actions">
+                  <button class="pf-v6-c-button pf-m-primary" type="button"
+                          id="cs-quick-fix-btn" disabled>Quick Fix</button>
+                  <button class="pf-v6-c-button pf-m-secondary" type="button"
+                          id="cs-review-all-btn">Review all failures</button>
+                </div>
               </div>
               <!-- notapplicable context note — always shown for container scans -->
               <div class="pf-v6-c-alert pf-m-info cs-notapplicable-note"
@@ -663,6 +690,8 @@
                 </span>
                 <span>Analyzing failing rules…</span>
               </div>
+              <input class="ct-failing-search hidden" id="cs-failing-search"
+                     type="text" placeholder="Search failing rules…" autocomplete="off">
               <div id="cs-failing-summary-groups"></div>
             </div>
           </div>
@@ -685,8 +714,8 @@
           </div>
         </div>
 
-        <!-- Container selective remediation panel -->
-        <div class="hidden" id="cs-remediation-panel">
+        <!-- Container selective remediation panel (drawer) -->
+        <div class="ct-rem-drawer" id="cs-remediation-panel">
           <div class="pf-v6-c-card">
             <div class="pf-v6-c-card__title ct-history-title-row">
               <h2 class="pf-v6-c-card__title-text">Selective Remediation</h2>
@@ -1027,8 +1056,8 @@
       <div class="db-toolbar">
         <div class="pf-v6-c-alert pf-m-info db-preview-banner" aria-label="Preview feature">
           <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9432;</div>
-          <div><span class="pf-v6-c-alert__title">Dashboard is a work in progress.</span>
-          Score trending and additional views are planned for a future release.</div>
+          <div><span class="pf-v6-c-alert__title">Dashboard — Preview.</span>
+          Score trends and priority fixes now shown. Compliance Debt and multi-scan analysis planned for a future release.</div>
         </div>
         <button class="pf-v6-c-button pf-m-link" type="button" id="db-refresh-btn">Refresh</button>
       </div>
@@ -1041,136 +1070,144 @@
     <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-settings"
              role="tabpanel" aria-labelledby="tab-btn-settings">
 
-      <div class="pf-v6-c-card">
-        <div class="pf-v6-c-card__title">
-          <h2 class="pf-v6-c-card__title-text">Settings</h2>
-        </div>
-        <div class="pf-v6-c-card__body ct-settings-body">
+      <div class="ct-settings-page-grid">
 
-          <div class="pf-v6-c-alert pf-m-warning hidden" id="ct-settings-admin-alert"
-               aria-label="Limited access warning">
-            <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
-            <div><span class="pf-v6-c-alert__title">Administrative access required.</span>
-            Click "Limited access" in the page header to elevate privileges before changing settings.</div>
+        <!-- Left card: Settings + Manual Scheduling -->
+        <div class="pf-v6-c-card">
+          <div class="pf-v6-c-card__title">
+            <h2 class="pf-v6-c-card__title-text">Settings</h2>
           </div>
+          <div class="pf-v6-c-card__body ct-settings-body">
 
-          <h3 class="ct-settings-section-title">Module Features</h3>
-          <p class="ct-settings-desc">Disable tabs that are not relevant to this environment. These settings apply to all users of this host.</p>
-          <div class="ct-settings-form ct-settings-checks">
-            <div class="ct-settings-check-row">
-              <input type="checkbox" class="ct-requires-admin"
-                     id="ct-setting-container-enabled" checked>
-              <label for="ct-setting-container-enabled">Enable Container Scanning</label>
+            <div class="pf-v6-c-alert pf-m-warning hidden" id="ct-settings-admin-alert"
+                 aria-label="Limited access warning">
+              <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+              <div><span class="pf-v6-c-alert__title">Administrative access required.</span>
+              Click "Limited access" in the page header to elevate privileges before changing settings.</div>
             </div>
-            <div class="ct-settings-check-row">
-              <input type="checkbox" class="ct-requires-admin"
-                     id="ct-setting-dashboard-enabled">
-              <label for="ct-setting-dashboard-enabled">Enable Dashboard</label>
+
+            <div class="ct-settings-cols">
+
+              <div>
+                <h3 class="ct-settings-section-title">Module Features</h3>
+                <p class="ct-settings-desc">Disable tabs that are not relevant to this environment. These settings apply to all users of this host.</p>
+                <div class="ct-settings-form ct-settings-checks">
+                  <div class="ct-settings-check-row">
+                    <input type="checkbox" class="ct-requires-admin"
+                           id="ct-setting-container-enabled" checked>
+                    <label for="ct-setting-container-enabled">Enable Container Scanning</label>
+                  </div>
+                  <div class="ct-settings-check-row">
+                    <input type="checkbox" class="ct-requires-admin"
+                           id="ct-setting-dashboard-enabled">
+                    <label for="ct-setting-dashboard-enabled">Enable Dashboard</label>
+                  </div>
+                </div>
+
+                <h3 class="ct-settings-section-title">Scan Result Retention</h3>
+                <p class="ct-settings-desc">
+                  Controls how many completed scan results are stored per scan type.
+                  Older results are removed automatically after each scan when the limit is reached.
+                </p>
+                <div class="ct-settings-form">
+                  <div class="ct-settings-row">
+                    <label class="ct-settings-label" for="ct-setting-host-retention">Host scans</label>
+                    <input class="pf-v6-c-form-control ct-settings-input ct-requires-admin" type="number"
+                           id="ct-setting-host-retention" min="1" max="50" value="10">
+                    <span class="ct-settings-unit">most recent scans retained</span>
+                  </div>
+                  <div class="ct-settings-row">
+                    <label class="ct-settings-label" for="ct-setting-container-retention">Container scans</label>
+                    <input class="pf-v6-c-form-control ct-settings-input ct-requires-admin" type="number"
+                           id="ct-setting-container-retention" min="1" max="50" value="10">
+                    <span class="ct-settings-unit">most recent scans retained</span>
+                  </div>
+                </div>
+
+                <div class="pf-v6-c-alert pf-m-warning ct-settings-warn hidden" id="ct-settings-warn"
+                     aria-label="Retention reduction warning">
+                  <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+                  <div><span class="pf-v6-c-alert__title">Reducing retention will permanently delete older scan results.</span></div>
+                </div>
+
+                <div class="ct-settings-footer">
+                  <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
+                          id="ct-settings-save-btn">Save</button>
+                  <span class="ct-settings-saved hidden" id="ct-settings-saved">&#10003; Settings saved</span>
+                </div>
+              </div>
+
+              <div class="ct-settings-col-right">
+                <h3 class="ct-settings-section-title">Data Management</h3>
+                <div class="ct-settings-disk-row">
+                  <span class="ct-settings-disk-label">Storage used</span>
+                  <span class="ct-settings-disk-value" id="ct-settings-disk-usage">—</span>
+                </div>
+                <p class="ct-settings-desc">Permanently delete all scan results, tailoring files, uploaded SCAP content,
+                  remediation audit logs, and activity history from this host. Module settings are preserved.</p>
+                <div class="ct-settings-footer">
+                  <button class="pf-v6-c-button pf-m-danger ct-requires-admin" type="button"
+                          id="ct-clear-all-btn" disabled
+                          title="Administrative access required">Clear All Data</button>
+                </div>
+              </div>
+
             </div>
-          </div>
 
-          <h3 class="ct-settings-section-title">Scan Result Retention</h3>
-          <p class="ct-settings-desc">
-            Controls how many completed scan results are stored per scan type.
-            Older results are removed automatically after each scan when the limit is reached.
-          </p>
-
-          <div class="ct-settings-form">
-            <div class="ct-settings-row">
-              <label class="ct-settings-label" for="ct-setting-host-retention">Host scans</label>
-              <input class="pf-v6-c-form-control ct-settings-input ct-requires-admin" type="number"
-                     id="ct-setting-host-retention" min="1" max="50" value="10">
-              <span class="ct-settings-unit">most recent scans retained</span>
+            <!-- Manual Scheduling — full width below the 2-col -->
+            <div class="ct-settings-scheduling">
+              <h3 class="ct-settings-section-title">Manual Scheduling</h3>
+              <p class="ct-settings-desc">To run scans on a schedule, add a cron job using the command below.
+                The command is built from your most recent scan. Replace the output paths as needed.</p>
+              <div class="ct-cron-hint hidden" id="ct-cron-hint">
+                <code class="ct-cron-cmd" id="ct-cron-cmd"></code>
+                <button class="pf-v6-c-button pf-m-link" type="button"
+                        id="ct-cron-copy-btn">Copy</button>
+              </div>
+              <p class="ct-settings-desc hidden" id="ct-cron-no-scan">
+                No scan history found. Run a scan first to generate the command.
+              </p>
             </div>
-            <div class="ct-settings-row">
-              <label class="ct-settings-label" for="ct-setting-container-retention">Container scans</label>
-              <input class="pf-v6-c-form-control ct-settings-input ct-requires-admin" type="number"
-                     id="ct-setting-container-retention" min="1" max="50" value="10">
-              <span class="ct-settings-unit">most recent scans retained</span>
+
+          </div>
+        </div>
+
+        <!-- Right card: Content Library -->
+        <div class="pf-v6-c-card">
+          <div class="pf-v6-c-card__title">
+            <h2 class="pf-v6-c-card__title-text">Content Library</h2>
+          </div>
+          <div class="pf-v6-c-card__body">
+
+            <h3 class="ct-settings-section-title">System Content</h3>
+            <p class="ct-content-help">SCAP content installed by packages. Managed via <code>dnf install scap-security-guide</code>. Read-only.</p>
+            <div id="ct-system-content-list"></div>
+
+            <div class="ct-content-section-sep"></div>
+
+            <div class="ct-content-section-header">
+              <h3 class="ct-settings-section-title">Uploaded Content</h3>
+              <div>
+                <input type="file" id="ct-content-upload-input" accept=".xml" class="hidden">
+                <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
+                        id="ct-content-upload-btn">Upload SDS File</button>
+                <button class="pf-v6-c-button pf-m-secondary" type="button"
+                        id="ct-content-refresh-btn">Refresh</button>
+              </div>
             </div>
-          </div>
+            <p class="ct-content-help">
+              Upload SDS files for other RHEL versions directly, or copy them to
+              <code>/var/lib/cockpit-scap/content/</code> via SCP.
+              Tailoring works for any version;
+              scanning is blocked for content that does not match this host.
+            </p>
+            <div id="ct-content-upload-status" class="hidden"></div>
+            <div id="ct-user-content-list"></div>
 
-          <div class="pf-v6-c-alert pf-m-warning ct-settings-warn hidden" id="ct-settings-warn"
-               aria-label="Retention reduction warning">
-            <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
-            <div><span class="pf-v6-c-alert__title">Reducing retention will permanently delete older scan results.</span></div>
           </div>
+        </div>
 
-          <div class="ct-settings-footer">
-            <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
-                    id="ct-settings-save-btn">Save</button>
-            <span class="ct-settings-saved hidden" id="ct-settings-saved">&#10003; Settings saved</span>
-          </div>
-
-          <h3 class="ct-settings-section-title ct-settings-danger-title">Data Management</h3>
-          <div class="ct-settings-disk-row">
-            <span class="ct-settings-disk-label">Storage used</span>
-            <span class="ct-settings-disk-value" id="ct-settings-disk-usage">—</span>
-          </div>
-          <p class="ct-settings-desc">Permanently delete all scan results, tailoring files, uploaded SCAP content,
-            remediation audit logs, and activity history from this host. Module settings are preserved.</p>
-          <div class="ct-settings-footer">
-            <button class="pf-v6-c-button pf-m-danger ct-requires-admin" type="button"
-                    id="ct-clear-all-btn" disabled
-                    title="Administrative access required">Clear All Data</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- System content -->
-      <div class="pf-v6-c-card">
-        <div class="pf-v6-c-card__title">
-          <h2 class="pf-v6-c-card__title-text">System Content</h2>
-        </div>
-        <div class="pf-v6-c-card__body">
-          <p class="ct-content-help">SCAP content installed by packages. Managed via <code>dnf install scap-security-guide</code>. Read-only.</p>
-          <div id="ct-system-content-list"></div>
-        </div>
-      </div>
-
-      <!-- User-staged content -->
-      <div class="pf-v6-c-card">
-        <div class="pf-v6-c-card__title">
-          <div class="ct-tailor-rules-header">
-            <h2 class="pf-v6-c-card__title-text">Uploaded Content</h2>
-            <div>
-              <input type="file" id="ct-content-upload-input" accept=".xml" class="hidden">
-              <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
-                      id="ct-content-upload-btn">Upload SDS File</button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="ct-content-refresh-btn">Refresh</button>
-            </div>
-          </div>
-        </div>
-        <div class="pf-v6-c-card__body">
-          <p class="ct-content-help">
-            Upload SDS files for other RHEL versions directly, or copy them to
-            <code>/var/lib/cockpit-scap/content/</code> via SCP.
-            Tailoring works for any version;
-            scanning is blocked for content that does not match this host.
-          </p>
-          <div id="ct-content-upload-status" class="hidden"></div>
-          <div id="ct-user-content-list"></div>
-        </div>
-      </div>
-
-      <div class="pf-v6-c-card">
-        <div class="pf-v6-c-card__title">
-          <h2 class="pf-v6-c-card__title-text">Manual Scheduling</h2>
-        </div>
-        <div class="pf-v6-c-card__body">
-          <p class="ct-settings-desc">To run scans on a schedule, add a cron job using the command below.
-            The command is built from your most recent scan. Replace the output paths as needed.</p>
-          <div class="ct-cron-hint hidden" id="ct-cron-hint">
-            <code class="ct-cron-cmd" id="ct-cron-cmd"></code>
-            <button class="pf-v6-c-button pf-m-link" type="button"
-                    id="ct-cron-copy-btn">Copy</button>
-          </div>
-          <p class="ct-settings-desc hidden" id="ct-cron-no-scan">
-            No scan history found. Run a scan first to generate the command.
-          </p>
-        </div>
-      </div>
+      </div><!-- end ct-settings-page-grid -->
 
     </section>
     <!-- END SETTINGS TAB PANEL -->
@@ -1236,6 +1273,23 @@
   </main>
 </div>
 
+
+<!-- Drawer backdrop (shared by all drawers) -->
+<div class="ct-drawer-backdrop" id="ct-drawer-backdrop"></div>
+
+<!-- Rule detail drawer (opened from Dashboard critical findings) -->
+<div class="ct-rem-drawer" id="ct-rule-detail-drawer">
+  <div class="pf-v6-c-card" style="height:100%;display:flex;flex-direction:column;border-radius:0;border:none;border-left:1px solid var(--pf-v6-global--BorderColor--100,rgba(0,0,0,.12));overflow:hidden;">
+    <div class="pf-v6-c-card__title ct-history-title-row">
+      <h2 class="pf-v6-c-card__title-text" id="ct-rdd-title">Rule Details</h2>
+      <button class="pf-v6-c-button pf-m-secondary" type="button" id="ct-rdd-close-btn">Close</button>
+    </div>
+    <div class="pf-v6-c-card__body ct-rdd-body" id="ct-rdd-body" style="flex:1;overflow-y:auto;"></div>
+    <div class="pf-v6-c-card__footer hidden" id="ct-rdd-footer">
+      <button class="pf-v6-c-button pf-m-secondary" type="button" id="ct-rdd-view-btn">View in Scan</button>
+    </div>
+  </div>
+</div>
 
 <!-- Apply Gate 1: danger warning -->
 <div class="ct-confirm-backdrop hidden" id="ct-apply-gate1"

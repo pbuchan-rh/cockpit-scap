@@ -363,6 +363,8 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', () => generateSelectiveFix('ansible'));
     document.getElementById('ct-rem-search')
         .addEventListener('input', onRemediationSearch);
+    document.getElementById('ct-failing-search')
+        .addEventListener('input', () => onFailingSummarySearch('ct-failing-summary-groups', 'ct-failing-search'));
     document.getElementById('ct-rem-select-all-btn')
         .addEventListener('click', () => {
             document.querySelectorAll('#ct-remediation-rules .ct-rem-rule-item:not([style*="none"]) .ct-rem-checkbox')
@@ -376,9 +378,42 @@ document.addEventListener('DOMContentLoaded', () => {
             updateRemediationCount();
         });
     document.getElementById('ct-rem-close-btn')
-        .addEventListener('click', () => {
-            document.getElementById('ct-remediation-panel').classList.add('hidden');
-        });
+        .addEventListener('click', closeRemDrawer);
+    document.getElementById('ct-rdd-close-btn')
+        .addEventListener('click', closeRuleDetailDrawer);
+    document.getElementById('ct-drawer-backdrop')
+        .addEventListener('click', () => { closeRemDrawer(); closeCsRemDrawer(); });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeRemDrawer(); closeCsRemDrawer(); closeRuleDetailDrawer();
+            return;
+        }
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
+            e.target.isContentEditable || e.ctrlKey || e.altKey || e.metaKey) return;
+
+        if (e.key === '/') {
+            const candidates = [
+                document.getElementById('ct-failing-search'),
+                document.getElementById('cs-failing-search'),
+                document.getElementById('ct-rem-search'),
+            ];
+            const active = candidates.find(el => el && !el.classList.contains('hidden') && el.offsetParent !== null);
+            if (active) { e.preventDefault(); active.focus(); active.select(); }
+            return;
+        }
+
+        if (e.key === 'q' || e.key === 'Q') {
+            const pairs = [
+                [document.getElementById('ct-action-board'), document.getElementById('ct-quick-fix-btn')],
+                [document.getElementById('cs-action-board'), document.getElementById('cs-quick-fix-btn')],
+            ];
+            for (const [board, btn] of pairs) {
+                if (board && !board.classList.contains('hidden') && btn && !btn.disabled) {
+                    btn.click(); break;
+                }
+            }
+        }
+    });
 
     /* Tailoring tab */
     document.getElementById('ct-tailor-content-select')
@@ -920,15 +955,17 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
         .then(output => {
             const parsed   = JSON.parse(output);
             const manifest = {
-                timestamp:       currentTimestamp,
-                sds_file:        currentSdsPath,
-                profile_id:      profileId,
-                profile_title:   profileTitle,
-                tailoring_file:  tailoringPath || null,
-                result_id:       parsed.result_id,
-                counts:          parsed.counts,
-                severity_counts: parsed.sev,
-                score:           parsed.score,
+                timestamp:        currentTimestamp,
+                sds_file:         currentSdsPath,
+                profile_id:       profileId,
+                profile_title:    profileTitle,
+                tailoring_file:   tailoringPath || null,
+                result_id:        parsed.result_id,
+                counts:           parsed.counts,
+                severity_counts:  parsed.sev,
+                score:            parsed.score,
+                scan_duration_s:  Math.round((Date.now() - hostScanStart) / 1000),
+                scan_id:          generateScanId(),
             };
             return cockpit.file(currentResultsDir + 'manifest.json', { superuser: 'require' })
                 .replace(JSON.stringify(manifest, null, 2))
@@ -981,9 +1018,7 @@ function openRemediationPanel(resultsDir) {
     document.getElementById('ct-rem-search').value = '';
     document.getElementById('ct-apply-output-area').classList.add('hidden');
 
-    const panel = document.getElementById('ct-remediation-panel');
-    panel.classList.remove('hidden');
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    openRemDrawer();
 
     document.getElementById('ct-remediation-loading').classList.remove('hidden');
     document.getElementById('ct-remediation-content').classList.add('hidden');
@@ -1039,61 +1074,11 @@ function openRemediationPanel(resultsDir) {
         });
 }
 
-function buildRemPanelDOM(container, rules, updateCountFn, opts) {
-    opts = opts || {};
+function buildRemPanelDOM(container, rules, updateCountFn) {
     const groups = { high: [], medium: [], low: [], unknown: [] };
     rules.forEach(r => (groups[r.severity] || groups.unknown).push(r));
 
     container.innerHTML = '';
-
-    /* Recommended section — automatable high/critical rules sorted by weight */
-    const recRules = rules
-        .filter(r => ['high', 'critical'].includes(r.severity) && r.automated)
-        .sort((a, b) => (b.weight || 1.0) - (a.weight || 1.0));
-
-    if (recRules.length > 0) {
-        const recDiv = document.createElement('div');
-        recDiv.className = 'ct-rem-recommended';
-
-        const heading = document.createElement('div');
-        heading.className = 'ct-rem-recommended-heading';
-        heading.textContent = 'Recommended — ' + recRules.length +
-            ' automatable critical/high rule' + (recRules.length !== 1 ? 's' : '');
-        recDiv.appendChild(heading);
-
-        const actions = document.createElement('div');
-        actions.className = 'ct-rem-recommended-actions';
-
-        if (opts.showApplyNow && opts.onRecApply) {
-            const applyBtn = document.createElement('button');
-            applyBtn.className = 'pf-v6-c-button pf-m-danger ct-requires-admin';
-            applyBtn.type = 'button';
-            applyBtn.textContent = 'Apply Now';
-            applyBtn.addEventListener('click', () => opts.onRecApply(recRules));
-            actions.appendChild(applyBtn);
-        }
-
-        if (opts.onRecBash) {
-            const bashBtn = document.createElement('button');
-            bashBtn.className = 'pf-v6-c-button pf-m-secondary';
-            bashBtn.type = 'button';
-            bashBtn.textContent = 'Download Bash Script';
-            bashBtn.addEventListener('click', e => opts.onRecBash(recRules, e.currentTarget));
-            actions.appendChild(bashBtn);
-        }
-
-        if (opts.onRecAnsible) {
-            const ansibleBtn = document.createElement('button');
-            ansibleBtn.className = 'pf-v6-c-button pf-m-secondary';
-            ansibleBtn.type = 'button';
-            ansibleBtn.textContent = 'Download Ansible Playbook';
-            ansibleBtn.addEventListener('click', e => opts.onRecAnsible(recRules, e.currentTarget));
-            actions.appendChild(ansibleBtn);
-        }
-
-        recDiv.appendChild(actions);
-        container.appendChild(recDiv);
-    }
 
     const order = [['high','High','ct-sev-high'],['medium','Medium','ct-sev-medium'],['low','Low','ct-sev-low']];
     order.forEach(([sev, label, cls]) => {
@@ -1168,13 +1153,7 @@ function renderRemediationRules(rules) {
     buildRemPanelDOM(
         document.getElementById('ct-remediation-rules'),
         rules,
-        updateRemediationCount,
-        {
-            showApplyNow: true,
-            onRecApply:   (rec) => applyRecommendedRules(rec),
-            onRecBash:    (rec, btn) => generateSelectiveFix('bash', rec.map(r => r.id), btn),
-            onRecAnsible: (rec, btn) => generateSelectiveFix('ansible', rec.map(r => r.id), btn),
-        }
+        updateRemediationCount
     );
     updateAdminControls();
 
@@ -1282,13 +1261,6 @@ function generateSelectiveFix(fixType, selectedIds, btnEl) {
 
 let pendingApplyRules  = [];
 let pendingApplyTitles = [];
-
-function applyRecommendedRules(rec) {
-    pendingApplyRules  = rec.map(r => r.id);
-    pendingApplyTitles = rec.map(r => r.title || r.id);
-    if (!pendingApplyRules.length) return;
-    document.getElementById('ct-apply-gate1').classList.remove('hidden');
-}
 
 function onApplyNowClick() {
     const all = document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox');
@@ -1578,8 +1550,8 @@ function loadScanDiff(newXml, oldXml, containerId) {
         });
 }
 
-function buildScoreDonut(score, failCount) {
-    const r     = 28;
+function buildScoreDonut(score, failCount, animate) {
+    const r     = 40;
     const circ  = 2 * Math.PI * r;
     const offset = circ * (1 - score / 100);
     const color  = failCount === 0  ? 'var(--ct-color-success)'
@@ -1588,46 +1560,81 @@ function buildScoreDonut(score, failCount) {
     const NS = 'http://www.w3.org/2000/svg';
 
     const svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('width', '72');
-    svg.setAttribute('height', '72');
-    svg.setAttribute('viewBox', '0 0 72 72');
+    svg.setAttribute('width', '96');
+    svg.setAttribute('height', '96');
+    svg.setAttribute('viewBox', '0 0 96 96');
     svg.classList.add('ct-score-donut');
 
     const track = document.createElementNS(NS, 'circle');
-    track.setAttribute('cx', '36'); track.setAttribute('cy', '36');
+    track.setAttribute('cx', '48'); track.setAttribute('cy', '48');
     track.setAttribute('r', String(r)); track.setAttribute('fill', 'none');
-    track.setAttribute('stroke-width', '7');
+    track.setAttribute('stroke-width', '8');
     track.style.stroke = 'var(--ct-color-border)';
     svg.appendChild(track);
 
     const arc = document.createElementNS(NS, 'circle');
-    arc.setAttribute('cx', '36'); arc.setAttribute('cy', '36');
+    arc.setAttribute('cx', '48'); arc.setAttribute('cy', '48');
     arc.setAttribute('r', String(r)); arc.setAttribute('fill', 'none');
-    arc.setAttribute('stroke-width', '7');
+    arc.setAttribute('stroke-width', '8');
     arc.setAttribute('stroke-linecap', 'round');
     arc.setAttribute('stroke-dasharray', String(circ));
     arc.setAttribute('stroke-dashoffset', String(offset));
-    arc.setAttribute('transform', 'rotate(-90 36 36)');
+    arc.setAttribute('transform', 'rotate(-90 48 48)');
     arc.style.stroke = color;
     svg.appendChild(arc);
 
     const text = document.createElementNS(NS, 'text');
-    text.setAttribute('x', '36'); text.setAttribute('y', '41');
+    text.setAttribute('x', '48'); text.setAttribute('y', '54');
     text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('font-size', '13');
+    text.setAttribute('font-size', '15');
     text.setAttribute('font-weight', '700');
     text.setAttribute('fill', 'currentColor');
     text.textContent = score.toFixed(1) + '%';
     svg.appendChild(text);
 
+    if (animate) {
+        arc.setAttribute('stroke-dashoffset', String(circ));
+        arc.style.transition = 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            arc.setAttribute('stroke-dashoffset', String(offset));
+        }));
+    }
+
     return svg;
 }
 
-function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath) {
+function onFailingSummarySearch(groupsId, searchId) {
+    const term   = document.getElementById(searchId).value.toLowerCase();
+    const groups = document.querySelectorAll('#' + groupsId + ' .ct-failing-group');
+    groups.forEach(group => {
+        const items = group.querySelectorAll('.ct-rule-item');
+        let visible = 0;
+        items.forEach(item => {
+            const match = !term ||
+                (item.dataset.title || '').includes(term) ||
+                (item.dataset.cce   || '').includes(term);
+            item.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        if (!term) {
+            group.style.display = '';
+            group.open = group.dataset.defaultOpen === '1';
+        } else {
+            group.style.display = visible ? '' : 'none';
+            if (visible) group.open = true;
+        }
+    });
+}
+
+function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, searchId) {
     const groupsEl  = document.getElementById(groupsId);
     const loadingEl = document.getElementById(loadingId);
     groupsEl.innerHTML = '';
     loadingEl.classList.remove('hidden');
+    if (searchId) {
+        const s = document.getElementById(searchId);
+        if (s) { s.value = ''; s.classList.add('hidden'); }
+    }
 
     const spawnArgs = remPath
         ? ['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsXmlPath, remPath]
@@ -1646,6 +1653,7 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath) {
                 if (!list.length) return;
                 const details = document.createElement('details');
                 details.className = 'ct-failing-group ct-failing-group-' + sev;
+                details.dataset.defaultOpen = idx === 0 ? '1' : '0';
                 if (idx === 0) details.open = true;
                 const summary = document.createElement('summary');
                 summary.className = 'ct-failing-group-summary';
@@ -1659,6 +1667,8 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath) {
                         ? document.createElement('details')
                         : document.createElement('div');
                     wrapper.className = 'ct-rule-item';
+                    wrapper.dataset.title = (r.title || '').toLowerCase();
+                    wrapper.dataset.cce   = (r.cce   || '').toLowerCase();
 
                     const row = hasExpand
                         ? document.createElement('summary')
@@ -1712,6 +1722,10 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath) {
                 details.appendChild(ruleList);
                 groupsEl.appendChild(details);
             });
+            if (searchId) {
+                const s = document.getElementById(searchId);
+                if (s) s.classList.remove('hidden');
+            }
         })
         .catch(() => { loadingEl.classList.add('hidden'); });
 }
@@ -1764,13 +1778,46 @@ function updateActionBoard(sev, totalFail, autoCount) {
         qBtn.textContent = 'Quick Fix — ' + autoCount + ' rule' + (autoCount !== 1 ? 's' : '');
     }
 
-    rBtn.textContent = 'Review all ' + totalFail + ' failure' + (totalFail !== 1 ? 's' : '') + ' →';
+    rBtn.textContent = 'Review all ' + totalFail + ' failure' + (totalFail !== 1 ? 's' : '') + ' ↓';
     board.classList.remove('hidden');
 }
 
 function onQuickFixClick() {
     pendingQuickFix = true;
     openRemediationPanel(currentResultsDir);
+}
+
+function generateScanId() {
+    return 'scan-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+}
+
+function openRemDrawer() {
+    document.getElementById('ct-remediation-panel').classList.add('ct-drawer-open');
+    document.getElementById('ct-drawer-backdrop').classList.add('open');
+}
+
+function closeRemDrawer() {
+    document.getElementById('ct-remediation-panel').classList.remove('ct-drawer-open');
+    document.getElementById('ct-drawer-backdrop').classList.remove('open');
+}
+
+function openRuleDetailDrawer() {
+    closeRemDrawer();
+    closeCsRemDrawer();
+    document.getElementById('ct-rule-detail-drawer').classList.add('ct-drawer-open');
+    document.getElementById('ct-drawer-backdrop').classList.add('open');
+}
+
+function closeRuleDetailDrawer() {
+    document.getElementById('ct-rule-detail-drawer').classList.remove('ct-drawer-open');
+    document.getElementById('ct-drawer-backdrop').classList.remove('open');
+}
+
+function formatDuration(seconds) {
+    if (seconds < 60) return seconds + 's';
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return m + 'm ' + (s < 10 ? '0' : '') + s + 's';
 }
 
 function showResults(manifest) {
@@ -1783,6 +1830,20 @@ function showResults(manifest) {
     document.getElementById('ct-results-timestamp').textContent = timestamp
         ? timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2')
         : '';
+    const durEl = document.getElementById('ct-results-duration');
+    if (manifest.scan_duration_s != null) {
+        durEl.textContent = 'Completed in ' + formatDuration(manifest.scan_duration_s);
+        durEl.classList.remove('hidden');
+    } else {
+        durEl.classList.add('hidden');
+    }
+    const idEl = document.getElementById('ct-results-scan-id');
+    if (manifest.scan_id) {
+        idEl.textContent = manifest.scan_id;
+        idEl.classList.remove('hidden');
+    } else {
+        idEl.classList.add('hidden');
+    }
 
     const badges = document.getElementById('ct-result-badges');
     badges.innerHTML = '';
@@ -1800,7 +1861,7 @@ function showResults(manifest) {
 
     const scoreEl = document.getElementById('ct-result-score');
     scoreEl.innerHTML = '';
-    scoreEl.appendChild(buildScoreDonut(score, counts.fail));
+    scoreEl.appendChild(buildScoreDonut(score, counts.fail, true));
 
     const uploadedWarn = document.getElementById('ct-uploaded-content-warning');
     if (currentSdsPath && currentSdsPath.startsWith(CONTENT_BASE)) {
@@ -1854,7 +1915,7 @@ function showResults(manifest) {
     document.getElementById('ct-results').classList.remove('hidden');
     renderFailingSummary(currentResultsDir + 'results.xml',
                          'ct-failing-summary-groups', 'ct-failing-summary-loading',
-                         currentRemBashPath || null);
+                         currentRemBashPath || null, 'ct-failing-search');
 
     /* Action Board — show severity counts immediately, load automatable count async */
     eagerRemRules = null;
@@ -1941,12 +2002,26 @@ function showScanProgress() {
     hostScanStart = Date.now();
     const elapsedEl = document.getElementById('ct-scan-elapsed');
     elapsedEl.textContent = '';
+    const _profileId = (document.getElementById('ct-profile-select') || {}).value || null;
+    const _prevScan  = currentHostHistory.find(m =>
+        m.profile_id === _profileId && m.sds_file === currentSdsPath && m.scan_duration_s != null
+    );
+    const _estSecs = _prevScan ? _prevScan.scan_duration_s : null;
     hostScanTimer = setInterval(() => {
         const s = Math.floor((Date.now() - hostScanStart) / 1000);
         const m = Math.floor(s / 60);
-        elapsedEl.textContent = m > 0
-            ? m + 'm ' + (s % 60) + 's'
-            : s + 's';
+        const elapsedStr = m > 0 ? m + 'm ' + (s % 60) + 's' : s + 's';
+        if (_estSecs && s < _estSecs * 1.5) {
+            const rem = Math.max(0, _estSecs - s);
+            const rm  = Math.floor(rem / 60);
+            const rs  = rem % 60;
+            const remStr = rem === 0 ? 'finishing…'
+                : rm > 0 ? '∼' + rm + 'm ' + String(rs).padStart(2, '0') + 's remaining'
+                : '∼' + rs + 's remaining';
+            elapsedEl.textContent = elapsedStr + ' · ' + remStr;
+        } else {
+            elapsedEl.textContent = elapsedStr;
+        }
     }, 1000);
     loadHistory();
 }

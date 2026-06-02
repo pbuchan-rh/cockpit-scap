@@ -26,8 +26,20 @@ let csTailoringMap = {};
 let csImageName      = null;
 let csImageId        = null;
 let csVersionBlocked = false;
-let csRemDir       = null;
-let csRemRules     = [];
+let csRemDir         = null;
+let csRemRules       = [];
+let csPendingQuickFix = false;
+let csEagerRemRules   = null;
+
+function openCsRemDrawer() {
+    document.getElementById('cs-remediation-panel').classList.add('ct-drawer-open');
+    document.getElementById('ct-drawer-backdrop').classList.add('open');
+}
+
+function closeCsRemDrawer() {
+    document.getElementById('cs-remediation-panel').classList.remove('ct-drawer-open');
+    document.getElementById('ct-drawer-backdrop').classList.remove('open');
+}
 let csCurrentManifest = null;
 
 function initContainerScan() {
@@ -64,9 +76,13 @@ function initContainerScan() {
         ));
     document.getElementById('cs-selective-rem-btn')
         .addEventListener('click', () => openCsRemPanel(csResultsDir));
+    document.getElementById('cs-quick-fix-btn')
+        .addEventListener('click', () => { csPendingQuickFix = true; openCsRemPanel(csResultsDir); });
+    document.getElementById('cs-review-all-btn')
+        .addEventListener('click', () => openCsRemPanel(csResultsDir));
     document.getElementById('cs-rem-close-btn')
         .addEventListener('click', () => {
-            document.getElementById('cs-remediation-panel').classList.add('hidden');
+            closeCsRemDrawer();
         });
     document.getElementById('cs-rem-bash-btn')
         .addEventListener('click', () => generateCsSelectiveFix('bash'));
@@ -74,6 +90,8 @@ function initContainerScan() {
         .addEventListener('click', () => generateCsSelectiveFix('ansible'));
     document.getElementById('cs-rem-search')
         .addEventListener('input', onCsRemSearch);
+    document.getElementById('cs-failing-search')
+        .addEventListener('input', () => onFailingSummarySearch('cs-failing-summary-groups', 'cs-failing-search'));
     document.getElementById('cs-rem-select-all-btn')
         .addEventListener('click', () => {
             document.querySelectorAll('#cs-remediation-rules .ct-rem-rule-item:not([style*="none"]) .ct-rem-checkbox')
@@ -501,18 +519,20 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
         .then(output => {
             const parsed   = JSON.parse(output);
             const manifest = {
-                timestamp:       csTimestamp,
-                scan_type:       'container',
-                image_name:      csImageName,
-                image_id:        csImageId,
-                sds_file:        csSdsPath,
-                profile_id:      profileId,
-                profile_title:   profileTitle,
-                tailoring_file:  tailoringPath || null,
-                result_id:       parsed.result_id,
-                counts:          parsed.counts,
-                severity_counts: parsed.sev,
-                score:           parsed.score,
+                timestamp:        csTimestamp,
+                scan_type:        'container',
+                image_name:       csImageName,
+                image_id:         csImageId,
+                sds_file:         csSdsPath,
+                profile_id:       profileId,
+                profile_title:    profileTitle,
+                tailoring_file:   tailoringPath || null,
+                result_id:        parsed.result_id,
+                counts:           parsed.counts,
+                severity_counts:  parsed.sev,
+                score:            parsed.score,
+                scan_duration_s:  Math.round((Date.now() - csScanStart) / 1000),
+                scan_id:          generateScanId(),
             };
             return cockpit.file(csResultsDir + 'manifest.json', { superuser: 'require' })
                 .replace(JSON.stringify(manifest, null, 2))
@@ -581,6 +601,41 @@ function csLoadScanFromHistory(manifest) {
     document.getElementById('cs-results').scrollIntoView({ behavior: 'smooth' });
 }
 
+function updateCsActionBoard(sev, totalFail, autoCount) {
+    const board = document.getElementById('cs-action-board');
+    const sevEl = document.getElementById('cs-action-board-sev');
+    sevEl.innerHTML = '';
+    [['high','ct-sev-high','High'],['medium','ct-sev-medium','Medium'],['low','ct-sev-low','Low']].forEach(([k, cls, label]) => {
+        const n = sev[k] || 0;
+        if (!n) return;
+        const span = document.createElement('span');
+        span.className = 'ct-sev-badge ' + cls;
+        span.textContent = label + ': ' + n;
+        sevEl.appendChild(span);
+    });
+
+    const autoEl = document.getElementById('cs-action-board-auto');
+    const qBtn   = document.getElementById('cs-quick-fix-btn');
+    const rBtn   = document.getElementById('cs-review-all-btn');
+
+    if (autoCount === null) {
+        autoEl.textContent = 'Checking for auto-remediable rules…';
+        qBtn.disabled = true;
+        qBtn.textContent = 'Quick Fix';
+    } else if (autoCount === 0) {
+        autoEl.textContent = 'No automated fixes available for critical/high failures';
+        qBtn.disabled = true;
+        qBtn.textContent = 'Quick Fix';
+    } else {
+        autoEl.textContent = autoCount + ' critical/high rule' + (autoCount !== 1 ? 's' : '') + ' can be auto-remediated';
+        qBtn.disabled = false;
+        qBtn.textContent = 'Quick Fix — ' + autoCount + ' rule' + (autoCount !== 1 ? 's' : '');
+    }
+
+    rBtn.textContent = 'Review all ' + totalFail + ' failure' + (totalFail !== 1 ? 's' : '') + ' ↓';
+    board.classList.remove('hidden');
+}
+
 function csShowResults(manifest) {
     clearInterval(csScanTimer);
     csScanTimer = null;
@@ -592,6 +647,20 @@ function csShowResults(manifest) {
     document.getElementById('cs-results-timestamp').textContent = timestamp
         ? timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2')
         : '';
+    const csDurEl = document.getElementById('cs-results-duration');
+    if (manifest.scan_duration_s != null) {
+        csDurEl.textContent = 'Completed in ' + formatDuration(manifest.scan_duration_s);
+        csDurEl.classList.remove('hidden');
+    } else {
+        csDurEl.classList.add('hidden');
+    }
+    const csIdEl = document.getElementById('cs-results-scan-id');
+    if (manifest.scan_id) {
+        csIdEl.textContent = manifest.scan_id;
+        csIdEl.classList.remove('hidden');
+    } else {
+        csIdEl.classList.add('hidden');
+    }
 
     const badges = document.getElementById('cs-result-badges');
     badges.innerHTML = '';
@@ -610,7 +679,7 @@ function csShowResults(manifest) {
 
     const scoreEl = document.getElementById('cs-result-score');
     scoreEl.innerHTML = '';
-    scoreEl.appendChild(buildScoreDonut(score, counts.fail));
+    scoreEl.appendChild(buildScoreDonut(score, counts.fail, true));
 
     const csPrev = currentCsHistory.find(m =>
         m.timestamp  <  manifest.timestamp &&
@@ -662,9 +731,22 @@ function csShowResults(manifest) {
     document.getElementById('cs-results').classList.remove('hidden');
     renderFailingSummary(csResultsDir + 'results.xml',
                          'cs-failing-summary-groups', 'cs-failing-summary-loading',
-                         csBashPath || null);
+                         csBashPath || null, 'cs-failing-search');
     csLoadHistory();
     dbInvalidate();
+
+    const csSev = { high: 0, medium: 0, low: 0 };
+    (manifest.severity_counts || []).forEach(([s, n]) => { if (s in csSev) csSev[s] = n; });
+    csEagerRemRules = null;
+    updateCsActionBoard(csSev, counts.fail, null);
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, csResultsDir + 'results.xml'],
+        { err: 'message' })
+        .then(output => {
+            csEagerRemRules = JSON.parse(output);
+            const recCount = csEagerRemRules.filter(r => ['high','critical'].includes(r.severity) && r.automated).length;
+            updateCsActionBoard(csSev, counts.fail, recCount);
+        })
+        .catch(() => updateCsActionBoard(csSev, counts.fail, 0));
 }
 
 /* ---- History ---------------------------------------------- */
@@ -770,7 +852,7 @@ function csBuildHistoryRow(manifest) {
 
     [
         ['View Scan',  () => csLoadScanFromHistory(manifest), !!csProc],
-        ['Remediate',  () => openCsRemPanel(dir),             false],
+        ['Remediate',  () => { csLoadScanFromHistory(manifest); openCsRemPanel(dir); }, false],
     ].forEach(([label, handler, disabled]) => {
         const btn       = document.createElement('button');
         btn.className   = 'pf-v6-c-button pf-m-link';
@@ -931,12 +1013,27 @@ function csShowProgress() {
     csScanStart = Date.now();
     const elapsedEl = document.getElementById('cs-scan-elapsed');
     elapsedEl.textContent = '';
+    const _csProfileId = (document.getElementById('cs-profile-select') || {}).value || null;
+    const _csPrevScan  = currentCsHistory.find(m =>
+        m.profile_id === _csProfileId && m.sds_file === csSdsPath &&
+        m.image_id   === csImageId    && m.scan_duration_s != null
+    );
+    const _csEstSecs = _csPrevScan ? _csPrevScan.scan_duration_s : null;
     csScanTimer = setInterval(() => {
         const s = Math.floor((Date.now() - csScanStart) / 1000);
         const m = Math.floor(s / 60);
-        elapsedEl.textContent = m > 0
-            ? m + 'm ' + (s % 60) + 's'
-            : s + 's';
+        const elapsedStr = m > 0 ? m + 'm ' + (s % 60) + 's' : s + 's';
+        if (_csEstSecs && s < _csEstSecs * 1.5) {
+            const rem = Math.max(0, _csEstSecs - s);
+            const rm  = Math.floor(rem / 60);
+            const rs  = rem % 60;
+            const remStr = rem === 0 ? 'finishing…'
+                : rm > 0 ? '∼' + rm + 'm ' + String(rs).padStart(2, '0') + 's remaining'
+                : '∼' + rs + 's remaining';
+            elapsedEl.textContent = elapsedStr + ' · ' + remStr;
+        } else {
+            elapsedEl.textContent = elapsedStr;
+        }
     }, 1000);
     csLoadHistory();
 }
@@ -1036,9 +1133,7 @@ function openCsRemPanel(resultsDir) {
     document.getElementById('cs-rem-search').value = '';
     csHidePrereq();
 
-    const panel = document.getElementById('cs-remediation-panel');
-    panel.classList.remove('hidden');
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    openCsRemDrawer();
 
     document.getElementById('cs-remediation-loading').classList.remove('hidden');
     document.getElementById('cs-remediation-content').classList.add('hidden');
@@ -1066,6 +1161,16 @@ function openCsRemPanel(resultsDir) {
         })
         .catch(() => {});
 
+    if (csEagerRemRules && resultsDir === csResultsDir) {
+        const reused = csEagerRemRules;
+        csEagerRemRules = null;
+        csRemRules = reused;
+        document.getElementById('cs-remediation-loading').classList.add('hidden');
+        renderCsRemRules(reused);
+        document.getElementById('cs-remediation-content').classList.remove('hidden');
+        return;
+    }
+
     cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsDir + 'results.xml'],
                   { err: 'message' })
         .then(output => {
@@ -1086,13 +1191,19 @@ function renderCsRemRules(rules) {
     buildRemPanelDOM(
         document.getElementById('cs-remediation-rules'),
         rules,
-        updateCsRemCount,
-        {
-            showApplyNow: false,
-            onRecBash:    (rec, btn) => generateCsSelectiveFix('bash', rec.map(r => r.id), btn),
-            onRecAnsible: (rec, btn) => generateCsSelectiveFix('ansible', rec.map(r => r.id), btn),
-        }
+        updateCsRemCount
     );
+
+    if (csPendingQuickFix) {
+        csPendingQuickFix = false;
+        const recIds = new Set(rules
+            .filter(r => ['high', 'critical'].includes(r.severity) && r.automated)
+            .map(r => r.id));
+        document.querySelectorAll('#cs-remediation-rules .ct-rem-checkbox').forEach(cb => {
+            cb.checked = recIds.has(cb.dataset.id);
+        });
+        updateCsRemCount();
+    }
 }
 
 function onCsRemSearch() {

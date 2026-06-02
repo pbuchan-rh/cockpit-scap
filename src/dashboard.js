@@ -128,7 +128,7 @@ function renderDashboard(el, hostManifests, containerManifests) {
             m.profile_id === latest.profile_id &&
             m.sds_file   === latest.sds_file
         ) || null;
-        sections.push(buildHostCard(latest, prev));
+        sections.push(buildHostCard(latest, prev, hostManifests));
     }
 
     if (containerManifests.length) {
@@ -154,7 +154,7 @@ function renderDashboard(el, hostManifests, containerManifests) {
 
     el.innerHTML = sections.join('');
 
-    if (hostManifests.length) loadTopFailures(hostManifests[0]);
+    if (hostManifests.length) loadHostInsights(hostManifests[0]);
 
     el.querySelectorAll('[data-view-ts]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -183,58 +183,177 @@ function renderDashboard(el, hostManifests, containerManifests) {
     });
 }
 
-function loadTopFailures(manifest) {
-    if (!manifest || !manifest.sds_file || !manifest.timestamp) return;
+function populateRuleDetailDrawer(rule, manifest) {
+    const sevClass = rule.severity === 'high' || rule.severity === 'critical'
+        ? 'ct-sev-high' : rule.severity === 'medium' ? 'ct-sev-medium' : 'ct-sev-low';
+    const autoTag = rule.automated
+        ? '<span class="db-auto-tag" style="font-size:0.8rem">Automatable</span>' : '';
+
+    document.getElementById('ct-rdd-title').textContent = rule.title || rule.id;
+
+    document.getElementById('ct-rdd-body').innerHTML =
+        '<div class="ct-rdd-meta">' +
+            '<span class="ct-sev-badge ' + sevClass + '">' + escHtml(rule.severity) + '</span>' +
+            autoTag +
+            (rule.cce ? '<span class="ct-rdd-cce">' + escHtml(rule.cce) + '</span>' : '') +
+        '</div>' +
+        (rule.desc
+            ? '<div class="ct-rdd-section">' +
+                  '<p class="ct-rdd-section-title">Description</p>' +
+                  '<p class="ct-rdd-text">' + escHtml(rule.desc) + '</p>' +
+              '</div>'
+            : '') +
+        (rule.rat && rule.rat !== rule.desc
+            ? '<div class="ct-rdd-section">' +
+                  '<p class="ct-rdd-section-title">Rationale</p>' +
+                  '<p class="ct-rdd-text">' + escHtml(rule.rat) + '</p>' +
+              '</div>'
+            : '');
+
+    const viewBtn = document.getElementById('ct-rdd-view-btn');
+    viewBtn.onclick = () => {
+        const m = dbManifests.find(x => x.timestamp === manifest.timestamp);
+        closeRuleDetailDrawer();
+        if (m) {
+            document.getElementById('tab-btn-scan').click();
+            loadScanFromHistory(m);
+        }
+    };
+    document.getElementById('ct-rdd-footer').classList.remove('hidden');
+}
+
+function loadHostInsights(manifest) {
+    if (!manifest || !manifest.timestamp) return;
     const resultsXml = DB_RESULTS_BASE + manifest.timestamp + '/results.xml';
+    const remBash    = DB_RESULTS_BASE + manifest.timestamp + '/remediation.sh';
+    const el = document.getElementById('db-host-critical');
+    if (!el) return;
 
-    cockpit.spawn(['python3', '-c', PY_EXTRACT_HIGH_FAILURES, resultsXml, manifest.sds_file],
-                  { err: 'message' })
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsXml, remBash], { err: 'message' })
         .then(output => {
-            const rules = JSON.parse(output);
-            const el = document.getElementById('db-host-critical');
-            if (!el) return;
+            const all       = JSON.parse(output);
+            const highRules = all.filter(r => ['high', 'critical'].includes(r.severity));
+            const autoCount = highRules.filter(r => r.automated).length;
+            dbInsightRules  = all;
+            dbInsightTs     = manifest.timestamp;
 
-            if (!rules.length) {
-                el.innerHTML =
-                    '<p class="db-critical-clean">&#10003; No HIGH severity failures</p>';
+            if (!highRules.length) {
+                el.innerHTML = '<p class="db-critical-clean">&#10003; No HIGH severity failures</p>';
                 return;
             }
 
             const MAX_SHOWN = 8;
-            const shown   = rules.slice(0, MAX_SHOWN);
-            const overflow = rules.length - shown.length;
+            const shown    = highRules.slice(0, MAX_SHOWN);
+            const overflow = highRules.length - shown.length;
+
+            const quickFixBtn = autoCount > 0
+                ? '<button class="pf-v6-c-button pf-m-link pf-m-sm db-quick-fix-link" type="button" ' +
+                      'data-fix-ts="' + escHtml(manifest.timestamp) + '">' +
+                      'Quick Fix &mdash; ' + autoCount + ' rule' + (autoCount !== 1 ? 's' : '') + ' &#8595;' +
+                  '</button>'
+                : '';
 
             const items = shown.map(r =>
-                '<button class="db-critical-item" type="button" ' +
-                    'data-view-ts="' + escHtml(manifest.timestamp) + '">' +
-                    escHtml(r.title || r.id) +
-                '</button>'
+                '<div class="db-critical-rule">' +
+                    '<button class="db-critical-item" type="button" ' +
+                        'data-rule-id="' + escHtml(r.id) + '">' +
+                        escHtml(r.title || r.id) +
+                    '</button>' +
+                    (r.automated ? '<span class="db-auto-tag">Automatable</span>' : '') +
+                '</div>'
             ).join('');
 
             const more = overflow > 0
-                ? '<p class="db-critical-more">+ ' + overflow + ' more HIGH severity failures</p>'
+                ? '<p class="db-critical-more">+ ' + overflow + ' more</p>'
                 : '';
 
             el.innerHTML =
-                '<p class="db-critical-label">Critical Findings &mdash; ' +
-                    rules.length + ' HIGH Severity Failure' + (rules.length > 1 ? 's' : '') +
-                '</p>' +
+                '<div class="db-critical-header">' +
+                    '<p class="db-critical-label">Critical Findings &mdash; ' +
+                        highRules.length + ' HIGH Severity Failure' + (highRules.length > 1 ? 's' : '') +
+                    '</p>' +
+                    quickFixBtn +
+                '</div>' +
                 '<div class="db-critical-list">' + items + '</div>' +
                 more;
 
-            el.querySelectorAll('[data-view-ts]').forEach(btn => {
+            el.querySelectorAll('[data-rule-id]').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const m = dbManifests.find(x => x.timestamp === btn.dataset.viewTs);
+                    const rule = dbInsightRules.find(r => r.id === btn.dataset.ruleId);
+                    if (!rule) return;
+                    populateRuleDetailDrawer(rule, manifest);
+                    openRuleDetailDrawer();
+                });
+            });
+
+            const fixBtn = el.querySelector('[data-fix-ts]');
+            if (fixBtn) {
+                fixBtn.addEventListener('click', () => {
+                    const m = dbManifests.find(x => x.timestamp === manifest.timestamp);
                     if (!m) return;
                     document.getElementById('tab-btn-scan').click();
                     loadScanFromHistory(m);
+                    setTimeout(() => { if (typeof onQuickFixClick === 'function') onQuickFixClick(); }, 600);
                 });
-            });
+            }
         })
-        .catch(() => {
-            const el = document.getElementById('db-host-critical');
-            if (el) el.innerHTML = '';
-        });
+        .catch(() => { el.innerHTML = ''; });
+}
+
+let dbInsightRules  = [];
+let dbInsightTs     = null;
+
+function buildScoreChart(hostManifests, latest) {
+    const relevant = hostManifests
+        .filter(m => m.profile_id === latest.profile_id &&
+                     m.sds_file   === latest.sds_file   &&
+                     m.score != null)
+        .slice(0, 10)
+        .reverse();
+    if (relevant.length < 2) return '';
+
+    const scores = relevant.map(m => parseFloat(m.score));
+    const lo     = Math.max(0,   Math.min(...scores) - 1.5);
+    const hi     = Math.min(100, Math.max(...scores) + 1.5);
+    const range  = hi - lo || 1;
+    const W = 500, H = 64, PX = 10, PY = 8;
+
+    const pts = relevant.map((m, i) => ({
+        x:     PX + (i / (relevant.length - 1)) * (W - PX * 2),
+        y:     PY + (1 - (parseFloat(m.score) - lo) / range) * (H - PY * 2),
+        score: parseFloat(m.score),
+        date:  m.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2')
+    }));
+
+    const trend = scores[scores.length - 1] - scores[0];
+    const color = trend >  0.3 ? 'var(--ct-color-success)'
+                : trend < -0.3 ? 'var(--ct-color-danger)'
+                : 'var(--pf-global--Color--200)';
+
+    const linePts = pts.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+    const dots    = pts.map((p, i) =>
+        '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' +
+        (i === pts.length - 1 ? '4.5' : '3') + '" fill="' + color + '"' +
+        ' stroke="var(--ct-color-bg-card)" stroke-width="1.5">' +
+            '<title>' + escHtml(p.score.toFixed(1) + '% — ' + p.date) + '</title>' +
+        '</circle>'
+    ).join('');
+
+    const firstDate = relevant[0].timestamp.split('T')[0];
+    const lastDate  = relevant[relevant.length - 1].timestamp.split('T')[0];
+
+    return '<div class="db-chart-section">' +
+        '<div class="db-chart-header">' +
+            '<span class="db-chart-title">Score Trend</span>' +
+            '<span class="db-chart-range">' + escHtml(firstDate) + ' &rarr; ' + escHtml(lastDate) +
+                ' &nbsp;&middot;&nbsp; ' + relevant.length + ' scans</span>' +
+        '</div>' +
+        '<svg class="db-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+            '<polyline points="' + linePts + '" fill="none" stroke="' + color +
+                '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+            dots +
+        '</svg>' +
+    '</div>';
 }
 
 function calcRiskScore(sc) {
@@ -242,7 +361,7 @@ function calcRiskScore(sc) {
     return (sc.high || 0) * 10 + (sc.medium || 0) * 3 + (sc.low || 0);
 }
 
-function buildHostCard(manifest, prev) {
+function buildHostCard(manifest, prev, hostManifests) {
     const score    = parseFloat(manifest.score);
     const hasScore = !isNaN(score);
 
@@ -331,8 +450,9 @@ function buildHostCard(manifest, prev) {
                         ? '<div class="db-stats-row db-host-counts">' + passHtml + failHtml + '</div>'
                         : '') +
                     sevHtml +
+                    buildScoreChart(hostManifests, manifest) +
                     '<div id="db-host-critical" class="db-host-critical">' +
-                        '<span class="db-critical-loading">Loading critical findings…</span>' +
+                        '<span class="db-critical-loading">Loading…</span>' +
                     '</div>' +
                 '</div>' +
             '</div>' +
