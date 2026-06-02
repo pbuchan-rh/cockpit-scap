@@ -340,6 +340,27 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 - **REQ-164:** ✅ A Settings tab MUST appear left of Activity providing system-wide module configuration; settings MUST be stored in `/var/lib/cockpit-scap/settings.json` and apply to all Cockpit users on the host
 - **REQ-165:** ✅ Settings MUST include configurable scan result retention (1–50 scans, per scan type) and module feature toggles (Enable Container Scanning, Enable Dashboard); disabling a tab MUST hide it immediately and redirect if it is currently active; all controls MUST be admin-gated
 
+### v3.5 Release (2026-06-01)
+
+- **REQ-166:** ✅ Remediation audit log — Apply Now MUST write a structured log to `/var/lib/cockpit-scap/remediation-logs/` containing timestamp, user, profile, rules applied, exit code, and full bash output; Activity tab MUST show a View Log button linking to a modal log viewer
+- **REQ-167:** ✅ All significant events MUST be dispatched to the systemd journal via `logger -t cockpit-scap` with the authenticated username included
+- **REQ-168:** ✅ Activity log entries MUST record the authenticated Cockpit username in a `user` field
+- **REQ-169:** ✅ Dashboard MUST be disabled by default on fresh installs; Settings checkbox defaults to unchecked; existing installs with saved settings are unaffected
+- **REQ-170:** ✅ `/var/lib/cockpit-scap/remediation-logs/` MUST be created by the RPM install and Makefile with correct SELinux context inherited from the wildcard fcontext rule
+
+---
+
+### v3.6 UX Refinement (planned)
+
+- **REQ-171:** ⬜ Gate 2 MUST show a structured list of selected rule titles instead of raw bash script — the current raw bash preview is not actionable for users and creates unnecessary friction
+- **REQ-172:** ⬜ Remediation panel severity groups MUST default to collapsed with counts visible — current default-open behavior is overwhelming for scans with many failures
+- **REQ-173:** ⬜ Download buttons (report, XML, scripts) MUST provide brief visual feedback ("✓ Downloaded") after the download is triggered — no current acknowledgment leaves users uncertain
+- **REQ-174:** ⬜ Scan progress MUST display an elapsed timer — scans taking 3-5 minutes give no indication of progress or whether the process is hung
+- **REQ-175:** ⬜ Activity log filter empty state MUST be contextual — "No tailoring activity found" not generic "No activity recorded yet"
+- **REQ-176:** ⬜ Settings disk usage MUST reflect total storage across all subdirectories (results, tailoring, content, remediation-logs), not results only
+- **REQ-177:** ⬜ Settings tab MUST include a "Clear All Data" button that wipes all runtime data with a confirmation modal listing what will be deleted; admin-gated; journal entry written since activity log is cleared
+- **REQ-178:** ⬜ View Compliance Guide button MUST show a loading state immediately on click — current behavior shows no feedback for 15-20 seconds while oscap generates the guide
+
 ---
 
 ## Out of Scope — v1

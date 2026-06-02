@@ -1,7 +1,7 @@
 # cockpit-scap — Design Document
 
-**Status:** v3.4-dev current  
-**Last updated:** 2026-05-31
+**Status:** v3.5 released 2026-06-01  
+**Last updated:** 2026-06-01
 
 ---
 
@@ -294,7 +294,8 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 | **v3** ✅ | Container image scanning | `oscap-podman` integration, root Podman store, version mismatch detection, per-image history |
 | **v3.3** ✅ | Selective remediation + observability | Selective Remediation Builder (host + container), Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
 | **v3.4** ✅ | UI polish release | Failing rules summary with CCE identifiers, score donut, View Scan from history, results card persistence, unified scan config card, close button; scheduled scanning deliberately deferred (see design note) |
-| **v3.5** ✅ | Actionability + intelligence | One-click remediation apply (two-gate confirmation, live output, admin-gated); rule detail expansion in selective remediation; remediation search (title + rule ID); dashboard hero card (single host compliance card, weighted risk score, async critical findings by name); Settings tab (retention, tab visibility, admin gate, activity audit); table scroll caps; cross-version content filtering; tailoring auto-fill |
+| **v3.5** ✅ | Actionability + audit trail | Apply Now (two-gate, live output, full audit log); remediation search + rule detail expansion; Settings tab (retention, tab visibility); activity log user field; admin gate hardening; container scan limited access parity; dashboard disabled by default (opt-in Preview) |
+| **v3.6** 🔲 | UX refinement | Gate 2 replace raw bash with structured rule list; remediation panel collapsed by default; download feedback; scan progress elapsed timer; activity log filter empty states; settings disk usage complete; clear all data button |
 
 **Explicitly out of scope (any version):**
 - Remote SSH scanning — different tool, different trust model

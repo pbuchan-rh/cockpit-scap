@@ -158,10 +158,30 @@
 - ✓ **Test regression scripts** — `tools/test-regression.sh` / `tools/test-regression-restore.sh` apply/remove 8 safe sysctl failures for Apply Now testing
 - ✓ **Playwright dashboard reporter** — ASCII progress bar with per-file grouping, live `[████░░] N/40` counter, PASSED/FAILED summary
 
-### 2. v3.4 — SHIPPED
-COPR build 10529631, GitHub + Gitea tagged v3.4, 10.0.0.214 confirmed clean upgrade from v3.3.
+### 2. v3.5 — SHIPPED (2026-06-01)
+COPR build 10533906, GitHub + Gitea tagged v3.5, 10.0.0.214 confirmed clean upgrade from v3.4. 39/40 Playwright tests passing (3 conditional skips).
 
-### 3. Future / Parking Lot
+### 3. v3.6 — UX Refinement (next session priority)
+
+**First priority: Clear All Data button** (Settings tab — see parking lot for spec)
+
+**UX critique findings from v3.5 (informed by extensive UI testing):**
+
+These issues were identified through hands-on use and are agreed by both user and Claude. All are captured in REQUIREMENTS.md as REQ-171 through REQ-178.
+
+| Issue | Impact | Fix |
+|---|---|---|
+| **Gate 2 raw bash** | Users can't meaningfully review the script; feels like security theater | Show structured rule title list instead of raw bash |
+| **Remediation panel default-open** | Wall of checkboxes on 80+ failure scans is overwhelming | Default groups to collapsed with counts visible |
+| **Download buttons no feedback** | Users don't know if click registered | Brief "✓ Downloaded" state on button |
+| **Scan progress black box** | 3-5 min scans give no indication of progress | Elapsed timer |
+| **Activity filter empty state** | Generic message regardless of which filter is active | Contextual "No X activity found" |
+| **Settings disk usage incomplete** | Only shows results/, ignores tailoring/content/remediation-logs | Sum all subdirs |
+| **View Guide no loading state** | 15-20 second silent wait after click | Immediate loading state on button |
+
+**Larger structural observation:** The scan tab is doing four jobs (configure → progress → results → remediation) sequentially on one panel. The vertical scroll journey from configuration to remediation output is the main UX friction point. Worth a design discussion before v3.6 whether remediation should be a separate tab or a drawer/side panel.
+
+### 4. Future / Parking Lot
 | Item | Notes |
 |---|---|
 | **Scheduled scanning** | Deferred — requires systemd units + helper script in /usr/libexec/, which changes the operating model from pure Cockpit module to system service. Full rationale in DESIGN.md §"Scheduled Scanning — Deliberately Deferred". Revisit as companion sub-package or after Cockpit provides a background execution mechanism. |
