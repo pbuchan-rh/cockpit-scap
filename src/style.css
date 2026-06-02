@@ -661,6 +661,13 @@ code {
   letter-spacing: 0.02em;
 }
 
+/* tighten top padding on the results card body — the title section is tall
+   (profile + timestamp lines) so the default 24px feels excessive */
+#ct-results .pf-v6-c-card__body,
+#cs-results .pf-v6-c-card__body {
+  padding-top: var(--ct-space-md);
+}
+
 /* ---- Drawer -------------------------------------------- */
 
 .ct-drawer-backdrop {
@@ -794,6 +801,7 @@ code {
 .ct-result-score {
   display: flex;
   align-items: center;
+  margin-left: auto;
 }
 
 .ct-score-donut {
