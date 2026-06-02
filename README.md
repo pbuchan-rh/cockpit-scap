@@ -5,29 +5,20 @@ scanning, container image scanning, profile tailoring, and selective remediation
 browser console that RHEL administrators already use — no separate tools, no desktop application,
 no context switching.
 
-## Why this exists
-
-Cockpit is the centralized web-based administration console for RHEL — the single interface where
-administrators manage storage, networking, containers, services, and more without leaving their
-browser. cockpit-scap extends that model to compliance. OpenSCAP and the SCAP Security Guide are
-powerful, well-supported tools that ship with RHEL — cockpit-scap gives them a native home in a
-console administrators already use, with the same look, feel, and security model as everything else
-in Cockpit.
-
 ## Features
 
-- **Failing rules summary** — collapsible HIGH/MEDIUM/LOW groups; each rule shows title, CCE identifier, Automated/Manual remediation annotation, and expandable description and rationale inline
-- **Regression and improvement detection** — banner fires when failure count changes vs the previous scan of the same profile; "See what changed" diffs the two result sets showing exactly which rules were Fixed, Regressed, or are New failures
-- **Selective Remediation Builder** — after any scan, search and select individual failing rules; expand inline description and rationale per rule; download filtered bash or Ansible scripts; or **Apply Now** directly on the host with two-gate danger confirmation and live streaming output; host-only, admin-gated
-- **Profile tailoring** — rule tree editor with enable/disable, variable value adjustment, search, and expand/collapse; saves valid XCCDF tailoring XML with full upload/download/edit/delete; edit files in place or save as a new copy; tailoring files are selectable at scan time and respected by remediation artifacts
+- **Failing rules summary** — collapsible HIGH/MEDIUM/LOW groups; each rule shows title, CCE identifier, Automated/Manual annotation, and expandable description and rationale inline
+- **Regression and improvement detection** — banner fires when failure count changes vs the previous scan of the same profile; "See what changed" shows exactly which rules were Fixed, Regressed, or are New failures
+- **Selective Remediation Builder** — search and select individual failing rules; download filtered bash or Ansible scripts; or **Apply Now** directly on the host with two-gate confirmation and live streaming output; host-only, admin-gated
+- **Profile tailoring** — rule tree editor with enable/disable, variable value adjustment, search, and expand/collapse; saves XCCDF tailoring XML; upload/download/edit/delete; edit files in place or save as a new copy
 - **Container image scanning** — scan images via `oscap-podman`; enumerates from the root Podman store; per-image scan history; selective remediation download for use in image build pipelines
 - **Scan history** — configurable retention per scan type; **View Scan** loads any historical result into the full results card; Run Again pre-fills from any history entry; Export CSV
-- **Content Library** — upload SDS files directly via browser; RHEL 6–10 SDS supported; host scan silently filters to version-compatible content only; validate with `oscap ds sds-validate`; SCP staging to `/var/lib/cockpit-scap/content/` also supported
+- **Content Library** — upload SDS files directly via browser; RHEL 6–10 SDS supported; auto-filters to version-compatible content; validate with `oscap ds sds-validate`
 - **Report and results export** — full oscap HTML report opens in a new tab; raw XCCDF results.xml download for auditor archives
 - **View Compliance Guide** — generate and view the full oscap security guide for the selected profile on any scan tab
-- **Compliance Dashboard** *(preview)* — host compliance hero card with score, weighted risk score (high×10 + med×3 + low×1), severity breakdown, and live-loaded HIGH severity failure names clickable to scan results; compact per-image container cards below
+- **Compliance Dashboard** *(preview)* — host compliance hero card with score, weighted risk score, severity breakdown, and HIGH severity failures linked to scan results; compact per-image container cards below
 - **Activity log** — timestamped record of all user actions; filterable by type; exportable as CSV
-- **Settings tab** — configure scan result retention per scan type; enable/disable Container Scan and Dashboard tabs; system-wide, admin-gated, audit-logged
+- **Settings tab** — scan result retention, tab visibility, Clear All Data; system-wide, admin-gated, audit-logged
 - **Admin gate** — Run Scan, Apply Now, upload, and delete are visually disabled with tooltip in limited Cockpit sessions; no error popup after the fact
 
 ## Screenshots
@@ -115,9 +106,9 @@ Reload Cockpit and navigate to **SCAP Compliance** in the sidebar.
 
 ### Settings tab
 
-- **Scan result retention** — set how many completed scans to keep per scan type (host and container independently); older results are removed automatically after each scan when the limit is reached
-- **Module features** — disable the Container Scan or Dashboard tabs for environments where they are not relevant; takes effect immediately and applies to all Cockpit users on the host
-- All settings changes are logged to the Activity log; all controls require administrative access
+- **Scan result retention** — set how many completed scans to keep per scan type; older results are removed automatically after each scan when the limit is reached
+- **Module features** — disable the Container Scan or Dashboard tabs for environments where they are not relevant
+- **Clear All Data** — wipe all scan results, tailoring files, uploaded content, and logs in one admin-gated action
 
 ## Storage
 
@@ -162,14 +153,9 @@ standard Cockpit prompt and applies for the session.
 
 No polkit action file, sudoers entry, or setuid binary is required.
 
-## What this module does not do
-
-- Remote scanning via SSH (`oscap-ssh`) — explicitly out of scope
-- OVAL vulnerability scanning — not in scope
-
 ## Development status
 
-**Current version:** v3.5
+**Current version:** v3.6
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
@@ -180,7 +166,8 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 |---|---|
 | **v1** | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
 | **v2** | Multi-version SDS content management — RHEL 6–9 SDS staging, CPE OS detection, Content tab |
-| **v3** | Container image scanning — `oscap-podman`, root Podman store, version mismatch detection, per-image history |
-| **v3.3** | Selective Remediation Builder, Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
-| **v3.4** | Failing rules summary with CCE + Automated/Manual + inline description, regression/improvement detection, scan diff, View Scan from history, unified scan config card, SDS upload, admin gate, dashboard overhaul |
-| **v3.5** *(current)* | Apply Now direct remediation with two-gate confirmation, live output, and full audit trail; Settings tab; admin gate hardening; activity log user field; container scan limited access parity |
+| **v3** | Container image scanning — `oscap-podman`, root Podman store, per-image history |
+| **v3.3** | Selective Remediation Builder, Activity log, Compliance Dashboard (preview), tailoring update-in-place |
+| **v3.4** | Failing rules with CCE and inline description, regression detection, scan diff, SDS upload, admin gate |
+| **v3.5** | Apply Now with two-gate confirmation and audit trail; Settings tab; container scan parity |
+| **v3.6** *(current)* | UX refinements — scan timer, download feedback, Clear All Data, improved remediation gate, contextual activity log |

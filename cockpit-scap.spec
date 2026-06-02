@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.5
+Version:        3.6
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -88,6 +88,18 @@ fi
 %dir /var/lib/%{name}/remediation-logs
 
 %changelog
+* Mon Jun 02 2026 Peter Buchan <pbuchan@redhat.com> - 3.6-1
+- Settings: Clear All Data wipes all scan results, tailoring files, uploaded
+  content, and remediation logs in one admin-gated action with modal confirmation
+- Selective Remediation Builder: Gate 2 shows affected rule titles before
+  applying; raw script accessible via collapsible details element
+- Remediation groups collapsed by default; expand individual severity groups
+- Download buttons show brief confirmation feedback after file is saved
+- Scan elapsed timer displayed during active host and container scans
+- Activity log: contextual empty state message per filter type
+- Disk usage in Settings reflects full /var/lib/cockpit-scap/ tree
+- View Compliance Guide shows loading page during generation delay
+
 * Mon Jun 01 2026 Peter Buchan <pbuchan@redhat.com> - 3.5-1
 - Apply Now: two-gate danger confirmation, live streaming bash output,
   admin-gated with full remediation audit log (structured log file,
