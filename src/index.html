@@ -693,6 +693,8 @@
                        id="cs-rem-search" placeholder="Search rules&#8230;" autocomplete="off">
                 <div id="cs-remediation-rules"></div>
                 <div class="ct-rem-actions">
+                  <!-- cs-rem-apply-btn intentionally has no click handler and stays permanently disabled.
+                       Any future implementation must add ct-requires-admin + superuser:'require'. -->
                   <button class="pf-v6-c-button pf-m-danger" type="button"
                           id="cs-rem-apply-btn" disabled
                           title="Container remediation scripts must be applied to image builds, not running containers. Download the script and add it to your Dockerfile or build pipeline.">Apply Now</button>
@@ -1071,7 +1073,7 @@
             </div>
             <div class="ct-settings-check-row">
               <input type="checkbox" class="ct-requires-admin"
-                     id="ct-setting-dashboard-enabled" checked>
+                     id="ct-setting-dashboard-enabled">
               <label for="ct-setting-dashboard-enabled">Enable Dashboard</label>
             </div>
           </div>

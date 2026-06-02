@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.4
+Version:        3.5
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -16,25 +16,20 @@ Recommends:     scap-security-guide
 Recommends:     openscap-utils
 
 %description
-cockpit-scap is a native Cockpit module for SCAP compliance scanning,
-reporting, and tailoring on RHEL systems. It replaces the archived SCAP
-Workbench GUI, integrating directly into the Cockpit web console.
+cockpit-scap is a native Cockpit module that brings OpenSCAP compliance
+scanning, profile tailoring, and selective remediation directly into
+the browser console RHEL administrators already use.
 
-Features:
-  - Auto-detects system-installed SCAP Security Guide data stream files
-  - Multi-version content: system and user-staged SDS files with
-    optgroup selector
-  - Cross-version OS compatibility detection with inline warning
-  - Full XCCDF tailoring editor: rule tree, variables, saved profiles,
-    upload/download
-  - Container image scanning via oscap-podman with per-image scan history
-  - Selective Remediation Builder: cherry-pick failing rules before downloading
-    bash or Ansible remediation scripts (host and container)
-  - Scan history with CSP-compliant HTML report viewer and results XML download
-  - Activity log: real-time log of all actions with semantic badge colors
-  - Compliance Dashboard (preview): latest scan status per host and
-    container image
-  - Operates correctly with SELinux in enforcing mode
+  - Host and container image scanning on demand; configurable history
+    retention per scan type; regression and improvement detection;
+    CSV export
+  - Selective Remediation Builder: filter and cherry-pick failing
+    rules; download bash or Ansible scripts; or Apply Now directly
+    on the host with two-gate confirmation and full audit trail
+  - Profile tailoring editor: rule tree with enable/disable, variable
+    adjustment, and saved XCCDF tailoring files; upload and download
+  - Activity log with systemd journal integration; admin-gated
+    privileged operations; full SELinux enforcing mode support
 
 %prep
 %autosetup
@@ -62,6 +57,7 @@ install -d -m 755 %{buildroot}/var/lib/%{name}
 install -d -m 755 %{buildroot}/var/lib/%{name}/results
 install -d -m 755 %{buildroot}/var/lib/%{name}/tailoring
 install -d -m 755 %{buildroot}/var/lib/%{name}/content
+install -d -m 755 %{buildroot}/var/lib/%{name}/remediation-logs
 
 %post
 # Set SELinux file context for /var/lib/cockpit-scap/ and apply it
@@ -89,8 +85,29 @@ fi
 %dir /var/lib/%{name}/results
 %dir /var/lib/%{name}/tailoring
 %dir /var/lib/%{name}/content
+%dir /var/lib/%{name}/remediation-logs
 
 %changelog
+* Mon Jun 01 2026 Peter Buchan <pbuchan@redhat.com> - 3.5-1
+- Apply Now: two-gate danger confirmation, live streaming bash output,
+  admin-gated with full remediation audit log (structured log file,
+  systemd journal entry, Activity tab View Log link)
+- Settings tab: scan result retention per type, tab visibility toggle,
+  admin-gated and activity-logged
+- Activity log user field: all entries record the authenticated user
+- Selective Remediation Builder: search/filter by title or rule ID;
+  inline rule description and rationale expansion
+- Container scan limited access: history visible and View Scan works
+  without admin elevation
+- Remediate from history loads scan results first (host scan parity)
+- Large file downloads: max_read_size bypass for files over 15 MB
+- Stale cache fixes: tailoring/content cross-notify after save/delete
+- Admin gate audit: all privileged UI actions gated and tooltip-annotated
+- Security hardening: remediation log path validation
+- Dashboard hero card: weighted risk score, severity breakdown, async
+  HIGH severity failure names
+- Platform: broadened support references to CentOS Stream 10
+
 * Sun May 31 2026 Peter Buchan <pbuchan@redhat.com> - 3.4-1
 - Compliance Dashboard: per-profile cards with score sparkline (trend over
   time), Quick Scan one-click re-run, View Last Scan navigation, Needs

@@ -1,6 +1,6 @@
 'use strict';
 
-const MODULE_VERSION = 'v3.4';
+const MODULE_VERSION = 'v3.5';
 const SSG_CONTENT_DIR = '/usr/share/xml/scap/ssg/content/';
 const RESULTS_BASE    = '/var/lib/cockpit-scap/results/';
 const TAILORING_BASE  = '/var/lib/cockpit-scap/tailoring/';
@@ -27,7 +27,7 @@ const RETENTION_MAX      = 50;
 let   hostRetention        = RETENTION_DEFAULT;
 let   containerRetention   = RETENTION_DEFAULT;
 let   containerScanEnabled = true;
-let   dashboardEnabled     = true;
+let   dashboardEnabled     = false;
 
 const ACTIVITY_LOG   = '/var/lib/cockpit-scap/activity.log';
 const ACTIVITY_MAX   = 1000;
@@ -476,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!btn) return;
         const logPath = btn.dataset.logPath;
         if (!logPath) return;
+        if (!normalizePath(logPath).startsWith(REMEDIATION_LOG_BASE)) return;
         cockpit.file(logPath, { superuser: 'require' }).read()
             .then(content => {
                 document.getElementById('ct-log-modal-path').textContent = logPath;

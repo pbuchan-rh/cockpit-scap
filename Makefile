@@ -34,6 +34,7 @@ install:
 	install -d -m 755 $(DATA_DIR)/results
 	install -d -m 755 $(DATA_DIR)/tailoring
 	install -d -m 755 $(DATA_DIR)/content
+	install -d -m 755 $(DATA_DIR)/remediation-logs
 
 	@echo "--- Installing module files"
 	install -d -m 755 $(COCKPIT_DIR)

@@ -135,8 +135,10 @@ All runtime data is written to `/var/lib/cockpit-scap/`:
 ├── tailoring/
 │   ├── <name>-<timestamp>.xml   # XCCDF tailoring file
 │   └── <name>-<timestamp>.json  # Sidecar metadata
-└── content/
-    └── ssg-rhel<N>-ds.xml    # User-staged SDS files (root:root ownership required)
+├── content/
+│   └── ssg-rhel<N>-ds.xml    # User-staged SDS files (root:root ownership required)
+└── remediation-logs/
+    └── <TIMESTAMP>-<profile>.log  # Apply Now audit log (user, rules applied, exit code)
 ```
 
 Scan history is pruned automatically after each scan. Retention defaults to 10 results per scan type and is configurable via the Settings tab (1–50).
@@ -167,7 +169,7 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 ## Development status
 
-**Current version:** v3.4-dev
+**Current version:** v3.5
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
@@ -180,4 +182,5 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 | **v2** | Multi-version SDS content management — RHEL 6–9 SDS staging, CPE OS detection, Content tab |
 | **v3** | Container image scanning — `oscap-podman`, root Podman store, version mismatch detection, per-image history |
 | **v3.3** | Selective Remediation Builder, Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
-| **v3.4** *(current dev)* | Failing rules summary with CCE + Automated/Manual + inline description, regression/improvement detection, scan diff, View Scan from history, unified scan config card, SDS upload, admin gate, dashboard overhaul |
+| **v3.4** | Failing rules summary with CCE + Automated/Manual + inline description, regression/improvement detection, scan diff, View Scan from history, unified scan config card, SDS upload, admin gate, dashboard overhaul |
+| **v3.5** *(current)* | Apply Now direct remediation with two-gate confirmation, live output, and full audit trail; Settings tab; admin gate hardening; activity log user field; container scan limited access parity |
