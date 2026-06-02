@@ -187,7 +187,7 @@ function populateRuleDetailDrawer(rule, manifest) {
     const sevClass = rule.severity === 'high' || rule.severity === 'critical'
         ? 'ct-sev-high' : rule.severity === 'medium' ? 'ct-sev-medium' : 'ct-sev-low';
     const autoTag = rule.automated
-        ? '<span class="db-auto-tag" style="font-size:0.8rem">Automatable</span>' : '';
+        ? '<span class="db-auto-tag">Automatable</span>' : '';
 
     document.getElementById('ct-rdd-title').textContent = rule.title || rule.id;
 

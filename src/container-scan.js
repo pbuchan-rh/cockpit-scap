@@ -100,6 +100,14 @@ function initContainerScan() {
             document.getElementById('cs-export-menu').classList.add('hidden');
             document.getElementById('cs-export-toggle').setAttribute('aria-expanded', 'false');
         });
+    document.addEventListener('click', e => {
+        const menu = document.getElementById('cs-export-menu');
+        if (menu && !menu.classList.contains('hidden') &&
+            !e.target.closest('#cs-export-toggle') && !e.target.closest('#cs-export-menu')) {
+            menu.classList.add('hidden');
+            document.getElementById('cs-export-toggle').setAttribute('aria-expanded', 'false');
+        }
+    });
     document.getElementById('cs-quick-fix-btn')
         .addEventListener('click', () => { csPendingQuickFix = true; openCsRemPanel(csResultsDir); });
     document.getElementById('cs-review-all-btn')
@@ -482,8 +490,8 @@ function updateCsScanCmd() {
     const cmdEl         = document.getElementById('cs-scan-cmd');
 
     let profileId;
-    if (tailoring && tailoringFilesMap && tailoringFilesMap[tailoring]) {
-        profileId = tailoringFilesMap[tailoring].profile_id;
+    if (tailoring && csTailoringMap && csTailoringMap[tailoring]) {
+        profileId = csTailoringMap[tailoring].profile_id;
     } else {
         profileId = profileSelect.value;
     }
@@ -497,6 +505,7 @@ function updateCsScanCmd() {
     if (tailoring) cmd += ' --tailoring-file ' + tailoring;
     cmd += ' --results /var/lib/cockpit-scap/results/<timestamp>/results.xml';
     cmd += ' --report /var/lib/cockpit-scap/results/<timestamp>/report.html';
+    cmd += ' --results-arf /var/lib/cockpit-scap/results/<timestamp>/results.arf';
     cmd += ' ' + csSdsPath;
 
     cmdEl.textContent = cmd;
@@ -714,6 +723,7 @@ function updateCsActionBoard(sev, totalFail, autoCount) {
     }
 
     rBtn.textContent = 'All Failures (' + totalFail + ')';
+    rBtn.disabled = totalFail === 0;
     board.classList.remove('hidden');
 }
 
@@ -792,7 +802,7 @@ function csShowResults(manifest) {
         csRegressionAlert.classList.add('hidden');
         const prevXml = RESULTS_BASE + csPrev.timestamp + '/results.xml';
         document.getElementById('cs-diff-btn').addEventListener('click',
-            () => loadScanDiff(csResultsDir + 'results.xml', prevXml, 'cs-scan-diff'));
+            () => loadScanDiff(csResultsDir + 'results.xml', prevXml, 'cs-scan-diff'), { once: true });
     } else if (csPrev && counts.fail > csPrev.counts.fail) {
         const delta    = counts.fail - csPrev.counts.fail;
         const prevDate = csPrev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
@@ -804,7 +814,7 @@ function csShowResults(manifest) {
         csImprovementAlert.classList.add('hidden');
         const prevXml = RESULTS_BASE + csPrev.timestamp + '/results.xml';
         document.getElementById('cs-diff-btn-reg').addEventListener('click',
-            () => loadScanDiff(csResultsDir + 'results.xml', prevXml, 'cs-scan-diff'));
+            () => loadScanDiff(csResultsDir + 'results.xml', prevXml, 'cs-scan-diff'), { once: true });
     } else {
         csImprovementAlert.classList.add('hidden');
         csRegressionAlert.classList.add('hidden');
@@ -819,11 +829,12 @@ function csShowResults(manifest) {
     csLoadHistory();
     dbInvalidate();
 
-    const csSev = { high: 0, medium: 0, low: 0 };
-    (manifest.severity_counts || []).forEach(([s, n]) => { if (s in csSev) csSev[s] = n; });
+    const csSev = Object.assign({ high: 0, medium: 0, low: 0 }, manifest.severity_counts || {});
     csEagerRemRules = null;
     updateCsActionBoard(csSev, counts.fail, null);
-    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, csResultsDir + 'results.xml'],
+    const csEagerArgs = [csResultsDir + 'results.xml'];
+    if (csBashPath) csEagerArgs.push(csBashPath);
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...csEagerArgs],
         { err: 'message' })
         .then(output => {
             csEagerRemRules = JSON.parse(output);
@@ -1255,7 +1266,10 @@ function openCsRemPanel(resultsDir) {
         return;
     }
 
-    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsDir + 'results.xml'],
+    const csLazyArgs = [resultsDir + 'results.xml'];
+    const csBashForDir = resultsDir === csResultsDir ? csBashPath : resultsDir + 'remediation.sh';
+    if (csBashForDir) csLazyArgs.push(csBashForDir);
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...csLazyArgs],
                   { err: 'message' })
         .then(output => {
             csRemRules = JSON.parse(output);
@@ -1264,6 +1278,7 @@ function openCsRemPanel(resultsDir) {
             document.getElementById('cs-remediation-content').classList.remove('hidden');
         })
         .catch(err => {
+            csPendingQuickFix = false;
             document.getElementById('cs-remediation-loading').classList.add('hidden');
             document.getElementById('cs-remediation-error-msg').textContent =
                 'Failed to load failing rules: ' + (err.message || String(err));

@@ -437,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ct-rdd-close-btn')
         .addEventListener('click', closeRuleDetailDrawer);
     document.getElementById('ct-drawer-backdrop')
-        .addEventListener('click', () => { closeRemDrawer(); closeCsRemDrawer(); });
+        .addEventListener('click', () => { closeRemDrawer(); closeCsRemDrawer(); closeRuleDetailDrawer(); });
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             closeRemDrawer(); closeCsRemDrawer(); closeRuleDetailDrawer();
@@ -1128,6 +1128,7 @@ function openRemediationPanel(resultsDir) {
                   { err: 'message' })
         .then(output => showRules(JSON.parse(output)))
         .catch(err => {
+            pendingQuickFix = false;
             document.getElementById('ct-remediation-loading').classList.add('hidden');
             document.getElementById('ct-remediation-error-msg').textContent =
                 'Failed to load failing rules: ' + (err.message || String(err));
@@ -1844,6 +1845,7 @@ function updateActionBoard(sev, totalFail, autoCount) {
     }
 
     rBtn.textContent = 'All Failures (' + totalFail + ')';
+    rBtn.disabled = totalFail === 0;
     board.classList.remove('hidden');
 }
 
@@ -1961,7 +1963,7 @@ function showResults(manifest) {
         regressionAlert.classList.add('hidden');
         const prevXml = RESULTS_BASE + prev.timestamp + '/results.xml';
         document.getElementById('ct-diff-btn').addEventListener('click',
-            () => loadScanDiff(currentResultsDir + 'results.xml', prevXml, 'ct-scan-diff'));
+            () => loadScanDiff(currentResultsDir + 'results.xml', prevXml, 'ct-scan-diff'), { once: true });
     } else if (prev && counts.fail > prev.counts.fail) {
         const delta    = counts.fail - prev.counts.fail;
         const prevDate = prev.timestamp.replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
@@ -1973,7 +1975,7 @@ function showResults(manifest) {
         improvementAlert.classList.add('hidden');
         const prevXml = RESULTS_BASE + prev.timestamp + '/results.xml';
         document.getElementById('ct-diff-btn-reg').addEventListener('click',
-            () => loadScanDiff(currentResultsDir + 'results.xml', prevXml, 'ct-scan-diff'));
+            () => loadScanDiff(currentResultsDir + 'results.xml', prevXml, 'ct-scan-diff'), { once: true });
     } else {
         improvementAlert.classList.add('hidden');
         regressionAlert.classList.add('hidden');
@@ -2178,6 +2180,7 @@ function updateHostScanCmd() {
     if (tailoringPath) cmd += ' --tailoring-file ' + tailoringPath;
     cmd += ' --results /var/lib/cockpit-scap/results/<timestamp>/results.xml';
     cmd += ' --report /var/lib/cockpit-scap/results/<timestamp>/report.html';
+    cmd += ' --results-arf /var/lib/cockpit-scap/results/<timestamp>/results.arf';
     cmd += ' ' + currentSdsPath;
 
     cmdEl.textContent = cmd;
