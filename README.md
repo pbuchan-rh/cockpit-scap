@@ -16,6 +16,7 @@ no context switching.
 - **Container image scanning** — scan images via `oscap-podman`; enumerates from the root Podman store; per-image scan history and action bar; selective remediation download for use in image build pipelines
 - **Scan history** — configurable retention per scan type; **View Scan** loads any historical result; **Remediate** from history loads the scan and opens the drawer; score delta shown inline; Export CSV
 - **Scan timing** — elapsed time shown during active scans; estimated time remaining computed from the most recent matching scan; scan duration and stable scan ID stored in each result manifest
+- **Full profile remediation** — generate a bash or Ansible remediation script for the entire selected profile without running a scan first; available on Host Scan, Container Scan, and Policy Tailoring tabs; buttons are disabled until content and profile are selected; on the Tailoring tab the active tailoring file is included if one is loaded in the editor
 - **Dry-run command preview** — the full `oscap xccdf eval` command for the current selection is shown before scanning; Copy to clipboard
 - **Content Library** — upload SDS files directly via browser; RHEL 6–10 SDS supported; auto-filters to version-compatible content; validate with `oscap ds sds-validate`
 - **Report and results export** — full oscap HTML report opens in a new tab; raw XCCDF results.xml download for auditor archives
@@ -179,4 +180,4 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 | **v3.5** | Apply Now with two-gate confirmation and audit trail; Settings tab; container scan parity |
 | **v3.6** *(current release)* | UX refinements — scan timer, download feedback, Clear All Data, improved remediation gate |
 | **v3.7** | Action Board, score delta in history, dry-run command preview, Content Library in Settings |
-| **v3.8** | Drawer remediation, dashboard score trend chart and rule detail, scan ETA, keyboard shortcuts, failing rules search |
+| **v3.8** | Drawer remediation, dashboard score trend chart and rule detail, scan ETA, keyboard shortcuts, failing rules search, full profile remediation export |

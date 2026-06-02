@@ -6,7 +6,7 @@
 
 **Version:** v3.8-dev (in progress, not tagged)
 **Last session:** 2026-06-02
-**Last commit:** 604012c (feat: v3.8 — drawer remediation, dashboard charts, UX polish)
+**Last commit:** 62a9644 (feat: full profile remediation download on all three scan tabs)
 **Git tag:** v3.6 on both remotes — v3.7 and v3.8 not yet tagged
 **Deployed to:** rhel10cis.beastmode.localdomain — user-space install at `~/.local/share/cockpit/cockpit-scap/`
 **Published:** COPR build 10534383 (v3.6, el10)
@@ -33,6 +33,7 @@
 - Tailoring file selector with sidecar auto-fill
 - Scan execution via `oscap xccdf eval` with cancel support
 - **Dry-run command preview** — collapsible "View oscap command" in scan config card
+- **Full profile remediation** — "Full Profile — Bash" / "Full Profile — Ansible" buttons in scan footer; generates `oscap xccdf generate fix` for entire profile without a prior scan; disabled until content + profile selected; filename uses visible profile name (e.g. `profile-remediation-pci-dss.sh`); tailoring tab includes active tailoring file if loaded, appends `-tailored` to filename
 - **Scan ETA** — during scan, shows `1m 20s · ∼55s remaining` based on previous matching scan's `scan_duration_s`
 - Results summary: pass/fail/error/notchecked badges + compliance score donut (animates in on scan complete)
 - **Full-width action bar** — severity counts (HIGH/MEDIUM/LOW) left, Quick Fix + Review All right; separated from score row by border; loads automatable count async
@@ -148,7 +149,7 @@ User said "super close but not quite there." The action bar layout (severity lef
 | 2026-06-01 | v3.5 | Feature + Release | Apply Now two-gate, Settings tab, dashboard hero card, Playwright tests (40), COPR build 10533906 |
 | 2026-06-02 | v3.6 | UX + Release | Clear All Data, Gate 2 rule list, groups collapsed, scan timer, contextual activity, View Guide; COPR build 10534383 |
 | 2026-06-02 | v3.7-dev | Feature | Action Board, weight field, shared renderer, history score delta, Content Library → Settings, Manual Scheduling, dry-run preview, better scan errors |
-| 2026-06-02 | v3.8-dev | UX + Feature | Drawer remediation, action bar, donut animation, keyboard shortcuts, failing rules search, scan duration+ScanID, dashboard score chart, rule detail drawer, scan ETA, settings 2-card layout |
+| 2026-06-02 | v3.8-dev | UX + Feature | Drawer remediation, action bar, donut animation, keyboard shortcuts, failing rules search, scan duration+ScanID, dashboard score chart, rule detail drawer, scan ETA, settings 2-card layout, full profile remediation on all tabs |
 
 ---
 
