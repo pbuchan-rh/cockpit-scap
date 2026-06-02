@@ -765,20 +765,18 @@ code {
 .ct-badge-na      { background-color: transparent; border: 1px solid var(--ct-color-border); color: var(--ct-color-text-secondary); }
 
 .ct-action-board {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   padding: 10px 0 4px;
   border-top: 1px solid var(--pf-v6-global--BorderColor--100, rgba(0,0,0,0.12));
-  flex-wrap: wrap;
 }
 
 .ct-action-board-left {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1;
   flex-wrap: wrap;
 }
 
@@ -797,6 +795,7 @@ code {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .ct-result-score {
