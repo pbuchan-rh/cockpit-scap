@@ -765,18 +765,22 @@ code {
 .ct-badge-na      { background-color: transparent; border: 1px solid var(--ct-color-border); color: var(--ct-color-text-secondary); }
 
 .ct-action-board {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0 4px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
   border-top: 1px solid var(--pf-v6-global--BorderColor--100, rgba(0,0,0,0.12));
+  border-bottom: 1px solid var(--pf-v6-global--BorderColor--100, rgba(0,0,0,0.12));
+  margin-bottom: var(--ct-space-md);
+  flex-wrap: wrap;
 }
 
 .ct-action-board-left {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 1;
   flex-wrap: wrap;
 }
 
