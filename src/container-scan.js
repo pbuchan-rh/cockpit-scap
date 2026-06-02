@@ -698,23 +698,22 @@ function updateCsActionBoard(sev, totalFail, autoCount) {
     if (autoCount === null) {
         autoEl.textContent = 'Checking for auto-remediable rules…';
         qBtn.disabled = true;
-        qBtn.textContent = 'Remediation Builder';
+        qBtn.textContent = 'Critical Rules';
         qBtn.title = '';
     } else if (autoCount === 0) {
         autoEl.textContent = 'No automated fixes available for critical/high failures';
         qBtn.disabled = true;
-        qBtn.textContent = 'Remediation Builder';
+        qBtn.textContent = 'Critical Rules';
         qBtn.title = '';
     } else {
         autoEl.textContent = autoCount + ' critical/high rule' + (autoCount !== 1 ? 's' : '') + ' can be auto-remediated';
         qBtn.disabled = false;
-        qBtn.textContent = 'Remediation Builder (' + autoCount + ' auto)';
-        qBtn.title = 'Opens the remediation builder pre-filtered to ' + autoCount +
-            ' automatable high/critical rule' + (autoCount !== 1 ? 's' : '') +
-            '. Review the selection, then download or apply a fix script — nothing is applied until you confirm.';
+        qBtn.textContent = 'Critical Rules (' + autoCount + ')';
+        qBtn.title = 'Pre-selects the ' + autoCount + ' automatable high/critical rule' +
+            (autoCount !== 1 ? 's' : '') + '. Review and confirm before anything is applied.';
     }
 
-    rBtn.textContent = 'Remediation Builder';
+    rBtn.textContent = 'All Failures (' + totalFail + ')';
     board.classList.remove('hidden');
 }
 

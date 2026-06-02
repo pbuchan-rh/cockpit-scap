@@ -797,9 +797,17 @@ code {
 
 .ct-action-board-actions {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.ct-action-board-label {
+  font-size: var(--ct-font-size-sm);
+  color: var(--ct-color-text-secondary);
+  white-space: nowrap;
+  margin-right: 0.25rem;
 }
 
 .ct-result-score {
@@ -1875,6 +1883,12 @@ html.pf-v6-theme-dark .ct-badge-error {
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   align-items: start;
+}
+
+@media (max-width: 900px) {
+  .ct-settings-page-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ct-settings-body {
