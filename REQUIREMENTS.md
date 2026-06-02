@@ -367,7 +367,7 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 > **Design goal:** shift from process-oriented to outcome-oriented. Scan results must immediately answer: what are my highest-risk failures, which ones have automated fixes, and how do I apply them right now — all within the native Cockpit aesthetic.
 
-- **REQ-179:** ⬜ The results card MUST include an Action Board section showing CRITICAL / HIGH / MEDIUM failure counts immediately from manifest data (no async required), with automatable count filled in progressively once `PY_EXTRACT_FAILING_RULES` completes
+- **REQ-179:** ✅ The results card MUST include an Action Board section showing CRITICAL / HIGH / MEDIUM failure counts immediately from manifest data (no async required), with automatable count filled in progressively once `PY_EXTRACT_FAILING_RULES` completes
 
 - **REQ-180:** ⬜ The Action Board MUST include a "Quick Fix" button that opens the remediation panel with only automatable CRITICAL+HIGH rules pre-selected, sorted by XCCDF rule weight descending; when zero such rules exist the button MUST be hidden and replaced with "No automated fixes available for critical/high failures"
 

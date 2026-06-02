@@ -4,21 +4,23 @@
 
 ## Current State
 
-**Version:** v3.6-dev (in progress, not tagged)
+**Version:** v3.7-dev (in progress, not tagged)
 **Last session:** 2026-06-02
-**Last commit:** e535196 (feat: v3.6 UX refinements REQ-171 through REQ-178)
-**Git tag:** v3.5 on both remotes — v3.6 not yet tagged
-**Deployed to:** rhel10cis.beastmode.localdomain — user-space install at `~/.local/share/cockpit/cockpit-scap/` (takes precedence over system install — always deploy here, no sudo)
-**Published:** COPR build 10533906 (v3.5, el10)
-**RPM test host:** 10.0.0.214 upgraded to v3.5 — clean install confirmed, SELinux enforcing, all dirs correct
-**GitHub release:** https://github.com/pbuchan-rh/cockpit-scap/releases/tag/v3.5
-**Gitea release:** http://git.beastmode.localdomain:3000/admin/cockpit-scap/releases/tag/v3.5
+**Last commit:** 9d22f56 (feat: v3.7 — Action Board, Recommended section, Content in Settings, dry-run)
+**Git tag:** v3.6 on both remotes — v3.7 not yet tagged
+**Deployed to:** rhel10cis.beastmode.localdomain — user-space install at `~/.local/share/cockpit/cockpit-scap/` (takes precedence over system install)
+**Published:** COPR build 10534383 (v3.6, el10)
+**RPM test host:** 10.0.0.214 upgraded to v3.6 — clean install confirmed, SELinux enforcing
+**GitHub release:** https://github.com/pbuchan-rh/cockpit-scap/releases/tag/v3.6
+**Gitea release:** http://git.beastmode.localdomain:3000/admin/cockpit-scap/releases/tag/v3.6
 
-**NOTE: rhel10cis state (2026-06-01):**
-- PCI-DSS partial remediation applied during screenshot capture (16 rules, exit 0)
-- Sudoers fixed: use_pty commented out, NOPASSWD restored
-- Remaining sysctl changes (network hardening) left in place — machine healthy
-- Machine rebooted and confirmed stable post-remediation
+**Status:** v3.7 is implemented and deployed to rhel10cis. Ready for user acceptance testing. Not yet tagged or published to COPR.
+
+**rhel10cis state:**
+- PCI-DSS partial remediation still applied (sysctl hardening, sudoers fixed)
+- User-space deploy takes precedence: `~/.local/share/cockpit/cockpit-scap/`
+- 20+ scan results in `/var/lib/cockpit-scap/results/`
+- settings.json: host_retention=10, container_retention=10, dashboard_enabled=true
 
 ---
 
@@ -28,210 +30,115 @@
 - Auto-detect SSG data stream files from `/usr/share/xml/scap/ssg/content/` and `/var/lib/cockpit-scap/content/`
 - SDS selector uses `<optgroup>` grouping: "System Content" / "Uploaded Content"
 - Human-readable SDS display names (static map covers all standard SSG filenames including RHEL 6–10)
-- Cross-version content filtering — host scan dropdown shows only SDS files matching the host OS version; incompatible files silently excluded; no warning banner; CPE alert and `cpeBlocksScan` removed entirely
+- Cross-version content filtering — host scan dropdown shows only SDS files matching host OS version
 - Profile selection with full description display
-- Tailoring file selector always visible; selecting a tailoring file auto-fills content + profile dropdowns from sidecar `base_profile_id` / `sds_path`
-- Scan execution via `oscap xccdf eval` with cancel support; server-side XML parsing (fixes 15–18 MB WebSocket limit)
-- Results summary — pass/fail/error/notchecked/notapplicable counts + compliance score
+- Tailoring file selector always visible; selecting a tailoring file auto-fills content + profile from sidecar
+- Scan execution via `oscap xccdf eval` with cancel support; server-side XML parsing
+- **Dry-run command preview** — collapsible "View oscap command" section in scan config card; reactive to content/profile/tailoring selections; Copy button; both host and container tabs
+- Results summary — pass/fail/error/notchecked counts + compliance score donut
+- **Action Board** — below score donut: severity counts (HIGH/MEDIUM/LOW) from manifest immediately; automatable count loaded async; "Quick Fix — N rules" button pre-selects only automatable critical/high rules; "Review all N failures →" opens full panel
+- **Score delta in history** — inline ↑+X% (green) or ↓-X% (red) vs previous same-profile scan in Score column
 - View Full Report (IndexedDB bridge → viewer.html, CSP-compliant)
-- Download report HTML, Download Results XML (XCCDF results.xml for auditors)
-- Apply Remediation button (disabled stub, tooltip on hover)
-- **View Guide** link alongside Run Scan — generates oscap security guide to viewer tab
-- Scan history — last 10 host scans retained independently, auto-pruned per type
-- **Run Again** button on each history row — pre-fills content, profile, tailoring file
-- **View Scan** button on each history row — loads that scan's full results card (sets all current* vars from manifest); replaces separate View Report + Download XML actions
-- **Export CSV** link on history card — exports all manifest fields
-- Prereq detection: shows install instructions if openscap-scanner / SSG are missing
-- History table: full-width layout, Actions column `width:1px` trick, profile CSS ellipsis truncation
-- **Failing rules summary** — async-loaded below scan badges; HIGH/MEDIUM/LOW collapsible groups; each rule: title + CCE + right-aligned Automated/Manual annotation + expandable description/rationale (`<details>/<summary>`); `PY_EXTRACT_FAILING_RULES` extended with desc, rat, automated fields; remediation cross-reference via `# BEGIN fix` block parsing
-- **Results card** — SVG arc score donut (0 fail=green, 1–10=yellow, 11+=red); timestamp + profile title; regression banner (yellow) or improvement banner (green) when fail count changes vs previous same-profile scan; "See what changed" button on either banner triggers `PY_SCAN_DIFF` diff of two results.xml files showing Fixed/Regressed/New groups; Close button bottom-right; Run Again pre-fills from `currentManifest`; `loadScanFromHistory()` loads any historical scan
-- **Scan configuration** — single unified card with internal two-column grid (`ct-scan-body-grid`); form fields left, profile description right with border divider; eliminates layout shift vs results/history cards
-- History rows disabled during scan — `loadHistory()` called in `showScanProgress()` so View Scan + Run Again are visually disabled; `loadScanFromHistory()` also guards `if (currentScanProc) return`
-- **`rerunHostScan(manifest, autoStart=false)`** — autoStart flag added; when true, clicks `ct-scan-btn` after profile loads; used by Dashboard Quick Scan
+- Download report HTML, Download Results XML
+- **View Guide** — generates oscap security guide; loading page shown during delay
+- Scan history — configurable retention, auto-pruned per type
+- Run Again / View Scan / Export CSV on history
+- Prereq detection: install instructions if openscap-scanner / SSG missing
+- Failing rules summary — HIGH/MEDIUM/LOW collapsible groups with CCE + Automated/Manual + expandable description/rationale
+- Regression + improvement banners; "See what changed" scan diff
+- **Better scan error logging** — streams oscap output; shows raw output in collapsible "View output" section on failure
 
 ### Container Scan Tab
-- Full `oscap-podman` workflow: prereq check → image selection → content/profile/tailoring → scan → results → history
-- Image enumeration from root Podman store (`sudo podman images --format json`)
-- Eager prereq checks: `which oscap-podman` + `podman --version` run in parallel at module init so tab feels instant
-- Three-state prereq empty state: `oscap-podman` not found / Podman not installed / no images in root store
-- Version mismatch detection from image name regex vs SDS filename — shows warning and blocks scan button
-- Results XML parsed server-side via Python (avoids 15–18 MB WebSocket limit)
-- `notapplicable` contextual note per RHEL 10 Security Hardening guide §5.2.5
-- **View Guide** link alongside Run Scan
-- Download report HTML, Download Results XML
-- History: Date / Image / Content / Profile / Pass / Fail / Score / Actions
-- **Run Again** button on each history row — pre-fills image, content, profile, tailoring file
-- **View Scan** button on each history row — loads that scan's full results card; replaces separate View Report + Download XML
-- **Export CSV** link on history card — exports all manifest fields including image info
-- Apply Remediation permanently stubbed — `oscap-podman` rejects `--remediate`
-- All logic in `container-scan.js` — single `initContainerScan()` entry point; fully removable
-- **`csRerunScan(manifest, autoStart=false)`** — same autoStart pattern as host; clicks `cs-scan-btn` after profile loads
-- **Limited access mode** — "Administrative access required" empty state with actionable guidance when `podman images` fails; detected via `/not permitted|permission denied/i` on error message
-- Tailoring file selection auto-fills profile dropdown from sidecar `base_profile_id` via `onCsTailorFileChange()`
+- Full `oscap-podman` workflow; eager prereq checks at module init
+- Image enumeration from root Podman store
+- Version mismatch detection; three-state prereq empty state
+- All scan, history, remediation, guide, CSV features parallel to host tab
+- **Dry-run command preview** — `oscap-podman <image> xccdf eval …` command; reactive; Copy button
+- **Better scan error logging** — same as host tab
+- Limited access mode — history visible without admin; actionable guidance shown
+- Apply Remediation permanently stubbed — container remediation is download-only
 
-### Selective Remediation (v3.3) — Host + Container
-- After any scan (current or history), "Remediate" button opens the Selective Remediation panel
-- Failing rules extracted from `results.xml` via Python, grouped HIGH / MEDIUM / LOW
-- HIGH group expanded by default; MEDIUM and LOW collapsed
-- Per-group "X of Y selected" counts with "Select all" / "Deselect all" toggle
-- Global "Select All" / "Deselect All" shortcuts + total count
-- Context bar: Profile, Score, Failing count, Content, Scanned timestamp (container also shows Image)
-- "Download Bash Script" → filters existing `remediation.sh` to selected rules only
-- "Download Ansible Playbook" → filters existing `remediation.yml` to selected rules only
-- Bash filter: parses `# BEGIN fix` / `# END fix` block comments
-- Ansible filter: parses task blocks by 4-space indent, matches rule ID in tags list
-- Download filename: `selective-remediation-TIMESTAMP.sh` (host) / `container-selective-remediation-TIMESTAMP.sh`
-- Container panel includes warning: "scripts apply to Containerfile/Dockerfile, not live container"
-- Activity logged: `{ type: 'remediate_download', tab: 'host'|'container', fix_type, rules_selected: N }`
-- `PY_EXTRACT_FAILING_RULES` and `PY_FILTER_FIX` constants in index.js (shared globals)
-- Scan results buttons: View Full Report / Download Report / Download Results XML / Remediate / New Scan
-- History row actions: Run Again / View Report / Download XML / Remediate / Delete
-- **IMPORTANT:** Each tab has its own duplicate panel HTML with prefixed IDs (`ct-rem-` host, `cs-rem-` container). Shared page-level panels were tried and broke everything. Do not attempt again.
+### Selective Remediation — Host + Container
+- Failing rules extracted from results.xml via Python; grouped HIGH/MEDIUM/LOW
+- **`buildRemPanelDOM(container, rules, updateCountFn, opts)`** — shared renderer eliminating ~80 lines of duplication between host and container panels
+- **Recommended section** — at top of panel above severity groups; shows automatable critical/high rule count; own Download Bash / Download Ansible / Apply Now buttons (host) acting on that subset regardless of checkbox state; container shows Download only
+- **XCCDF `weight` field** — extracted by `PY_EXTRACT_FAILING_RULES`; used to sort recommended rules (highest weight = most important)
+- All severity groups collapsed by default; per-group "Select all" toggle
+- Global Select All / Deselect All + total count; search by title or rule ID
+- Download Bash / Ansible filtered to selected rules
+- Apply Now: two-gate danger confirmation, live streaming bash output, full audit trail
+- Context bar: Profile, Score, Failing count, Content, Scanned timestamp
+- **Quick Fix mode** — when Action Board "Quick Fix" is clicked, panel opens with only recommended rules pre-selected (uncheck all, check recommended only); `pendingQuickFix` flag
+- **Panel rule reuse** — `eagerRemRules` pre-loaded in `showResults()`; panel reuses them if same dir, skipping Python spawn
 
 ### Policy Tailoring Tab
-- Content + base profile selection, named tailored profile
-- Python3 iterparse extracts rule tree + variables from SDS; early break on Benchmark element avoids parsing 35MB OVAL section
-- `<details>/<summary>` rule tree with checkboxes and delta tracking
-- Expand All / Collapse All, rule search, variable editor
-- Generates valid XCCDF tailoring XML + JSON sidecar — no `autotailor` dependency
-- Saved Tailoring Files list: Edit, Download, Delete, Upload
-- **View Guide** link alongside Load Profile
-- **Update button** — when editing an existing file, shows "Update" (primary) + "Save as New" (secondary). Update overwrites original XML + JSON sidecar in place. Save as New creates new timestamped file as before.
-- **Inline name field** — editor header shows ✏ icon + editable name input (bold, matches card title font). Populated when editor opens. Both Update and Save as New read name from this field. Pencil icon focuses/selects on click.
-- `tailorEditingSidecar` module var tracks which file is being edited; cleared on resetTailorForm
-- **Unified setup card** — matches Host/Container Scan layout: `ct-scan-body-grid` single card, form left, profile description right with border separator
+- Full XCCDF tailoring editor: rule tree with enable/disable, variable adjustment, search
+- Update-in-place or Save as New; inline name field; View Guide
+- Saved Tailoring Files list: Edit / Download / Delete / Upload
 
-### Content Library Tab
-- System Content card: read-only list from `/usr/share/xml/scap/ssg/content/`
-- Uploaded Content card: Name / File / Size / Modified / Actions columns
-- **Upload SDS File button** — browser file picker → FileReader → `cockpit.file().replace()`; stat check before write; confirm dialog if file exists (shows existing size + date vs new size); Checking…/Uploading… button states; confirmed working at 26 MB
-- **Validate** link runs `oscap ds sds-validate`; shows ✓ Valid / ✗ Invalid inline; error details in scrollable modal
-- Size and Modified columns populated via `stat --format=%s %Y` per file
+### Settings Tab (expanded v3.7)
+- Scan result retention per type; tab visibility toggles; admin-gated; audit-logged
+- **Content Library** — moved from own tab into Settings: System Content card (read-only) + Uploaded Content card (upload, validate, delete with Size/Modified columns); refreshes on Settings tab open
+- Clear All Data — wipes all scan results, tailoring files, uploaded content, remediation logs, activity log; confirmation modal; `data_clear` activity entry + journal
+- **Manual Scheduling** — shows exact `oscap xccdf eval` command from most recent scan; Copy button; no systemd required
+- Disk usage for full `/var/lib/cockpit-scap/` tree
 
-### Admin Gate (v3.4)
-- `adminPermission = cockpit.permission({ admin: true })` with `typeof` guard (some Cockpit versions lack this API)
-- `updateAdminControls()` queries all `.ct-requires-admin` buttons and disables/enables them; called on `changed` event and at end of each render function that creates privileged buttons
-- Gated buttons: Content upload + delete; tailoring upload + delete; host history delete; container history delete; Activity Log Clear (also requires entries)
-- Default: allowed when `adminPermission` null (API unavailable) — `{ superuser: 'require' }` on operations is the real enforcement boundary
-
-### Compliance Dashboard Tab (v3.4 — Preview)
-- One card per profile+SDS combo for host; one card per image for containers
-- Score delta compares two most recent scans of same profile (was comparing most recent overall — bug fixed)
-- **Score sparkline** — plain SVG `<polyline>`, green trending up / red trending down; only shown for 2+ scans
-- **Quick Scan button** — calls `rerunHostScan(m, true)` / `csRerunScan(m, true)`; navigates to tab and auto-starts scan
-- **View Last Scan** — navigates to tab AND loads results card
-- **Needs Attention banner** — lists profiles with regressions and stale scans; green "all current" when clean
-- **Staleness badges** — yellow at 7+ days, red at 14+ days; `STALE_WARN_DAYS` / `STALE_ERR_DAYS` constants
-- All logic in `dashboard.js`; `dbManifests` module var for click handler lookup; `groupManifests(manifests, keyFn)` utility
-- Preview badge stays until user feels confident — do not remove without discussion
+### Compliance Dashboard Tab (Preview)
+- Host compliance hero card: score, weighted risk score, severity breakdown, HIGH failure names
+- Quick Scan, View Last Scan; Needs Attention banner; staleness badges
+- Compact per-image container cards
+- Preview badge stays until user is genuinely impressed — do not remove without discussion
 
 ### Activity Log Tab
-- Real-time log of all user actions
-- Semantic badge colors: blue=scan, red=deletes/errors, orange=remediation, teal=tailoring, yellow=validate, green=guide
-- Full type→CSS class map (`ACTIVITY_BADGE_CLASS`) — not prefix-based
-- Logs: scan_start/complete/cancel/error/delete, guide, validate, content_delete, tailor_upload/load/save/delete/download, remediate_download
-- Written to `/var/lib/cockpit-scap/activity.log` as JSON lines; capped at 1000 entries
-- Auto-refreshes every 3 seconds; poll starts/stops on tab activate/leave
-- Filter chips: All / Scans / Guide / Content / Tailoring
-- Limit selector: Last 50 / 100 / 250
-- **Export CSV**, **Clear Log** with confirmation
+- Real-time timestamped record; filter by type; Export CSV; Clear Log
+- Semantic badge colors; `data_clear` activity type (red/danger)
+- Auto-refresh every 3s; capped at 1000 entries
 
 ---
 
 ## What Is NOT Done (Next Session Priority)
 
-### 1. v3.6 — SHIPPED THIS SESSION ✓
+### 1. v3.7 UAT + Release
 
-- ✓ **Clear All Data button** (Settings tab) — admin-gated, confirmation modal with bullet list of what is deleted, parallel `find -mindepth 1 -delete` on all 4 dirs, clears activity.log, writes `data_clear` activity entry + journal, refreshes all UI state including content library and container scan history
-- ✓ **Gate 2 rule list** (REQ-171) — replaced raw bash preview with structured rule title list; script still accessible via collapsible "View script" toggle; `pendingApplyTitles` collected alongside `pendingApplyRules`; `pendingApplyScript` module var holds script for `onApplyGate2Execute()`
-- ✓ **Remediation groups collapsed by default** (REQ-172) — `details.open = false` in both `renderRemediationRules()` and `renderCsRemRules()`; test updated to open first group before clicking rule detail
-- ✓ **Download button feedback** (REQ-173) — `downloadArtifact(filePath, filename, mimeType, btn)` accepts optional btn; shows "✓ Downloaded" for 2s; wired for report, XML, bash, ansible in both host and container
-- ✓ **Scan elapsed timer** (REQ-174) — `hostScanTimer` / `csScanTimer` intervals in `showScanProgress()` / `csShowProgress()`; cleared in `showScanSetup()` / `csShowSetup()` and `showResults()` / `csShowResults()`; `<span id="ct-scan-elapsed">` / `<span id="cs-scan-elapsed">` in HTML
-- ✓ **Activity contextual empty state** (REQ-175) — `ACTIVITY_EMPTY_MSG` map keyed by filter; `renderActivityTable(entries, filter)` sets `ct-activity-empty-msg` text dynamically
-- ✓ **Disk usage all subdirs** (REQ-176) — `du -sh /var/lib/cockpit-scap/` replaces `results/` only; label changed to "Storage used"
-- ✓ **View Guide loading page** (REQ-178) — `win.document.write()` shows "Generating compliance guide…" immediately; all three guide buttons (host, container, tailoring) updated
+- ⬜ User acceptance testing on rhel10cis — Action Board, Quick Fix, Recommended section, score delta, dry-run preview, error logging, Content in Settings
+- ⬜ Bump `MODULE_VERSION` to v3.7 in `src/index.js`
+- ⬜ Add v3.7 changelog entry to `cockpit-scap.spec`
+- ⬜ Update README roadmap table + version line
+- ⬜ Build RPM on rhel10cis, push to COPR, test install on 10.0.0.214
+- ⬜ Tag v3.7 on both remotes + create GitHub release
 
-### 2. v3.6 — REMAINING
+### 2. UX Feedback — "Still reads linearly"
 
-- ⬜ **Version bump** — `MODULE_VERSION` still says `v3.5`; bump to `v3.6` when ready to tag
-- ⬜ **README update** — roadmap table, screenshots (Settings tab looks different with Data Management section)
-- ⬜ **COPR / release** — not yet tagged or published
+User noted during v3.7 implementation that the UI "reads very linearly." The Action Board helps but the results experience may still feel like a sequential report rather than an outcome dashboard. Discuss after UAT — possible next moves:
+- Drawer/slide-in remediation panel (right long-term answer per design doc)
+- Collapsible last-scan summary row on scan tabs
+- Richer Dashboard as the real landing experience
 
-### 3. v3.7 — Action Board & Intelligent Remediation (DESIGNED, NOT STARTED)
+### 3. v3.8 Candidates
 
-**This is the "wow" redesign for the security engineer / auditor audience.** Full design decisions locked in session 2026-06-02. See REQUIREMENTS.md REQ-179 through REQ-186 for spec.
-
-**Core philosophy:** shift from process-oriented (follow these steps) to outcome-oriented (here's your risk, here's your fix). The scan result should immediately answer: what do I have to fix, and how do I fix it right now?
-
-**Implementation order (locked):**
-
-1. **Extract `buildRemPanelDOM(container, rules)`** — shared renderer called by both `renderRemediationRules()` and `renderCsRemRules()`. Eliminates the 80-line duplication before adding new code. This is the foundation; do it first.
-
-2. **Add `weight` field to `PY_EXTRACT_FAILING_RULES`** — extract XCCDF `weight` attribute alongside severity and automated. Used for sorting within the recommended set. ~5 lines of Python.
-
-3. **Action Board on results card** — new section below score donut:
-   - Severity counts (CRITICAL / HIGH / MEDIUM) shown immediately from manifest
-   - Automatable count filled in async once failing rules load
-   - "⚡ Quick Fix — N rules" button: pre-selects only automatable CRITICAL+HIGH rules in remediation panel, ordered by weight descending
-   - "Review all N →" button: opens panel as today (full set)
-   - When zero automatable H/C rules: hide Quick Fix, show "No automated fixes for critical/high — review manually"
-
-4. **Recommended section in remediation panel** — at top of panel above severity groups:
-   - Shows count of automatable CRITICAL+HIGH rules
-   - Has its own Download Bash / Download Ansible / Apply Now buttons acting on that subset only
-   - Does NOT use checkbox state — always acts on the precomputed recommended set
-   - Container panel: same section, Download Bash/Ansible only (no Apply Now — permanently stubbed)
-   - Severity groups below remain for power-user customization
-
-5. **History table score delta** — computed from `findPreviousScan()` at render time; shown inline in Score column as `↑ +7%` (green) or `↓ -3%` (red); no new column, no layout change
-
-**Design constraints (do not violate):**
-- No build toolchain — vanilla JS, no ES module splitting of index.js
-- All changes are additive or extractions — no rewrites of working code
-- Native Cockpit aesthetic throughout — PF6 tokens only, no custom color hex, no decorative chrome
-- Remediation panel HTML must remain duplicated per-tab (shared JS renderer, separate DOM) — shared panel was tried and broke tab show/hide architecture
-- Drawer (slide-in remediation) is the right long-term answer but scope separately — implement Action Board first, prove the value, then tackle layout
-- Container Apply Now remains permanently stubbed — container remediation is download-only by design
-
-**Cron hint for scheduled scanning** — Add to Settings a "Manual Scheduling" section showing the exact `oscap` command built from current settings (content + profile) with a Copy button. No systemd, no new packages. Parking lot until Action Board ships.
-
-### 4. Future / Parking Lot
-
-### 4. Future / Parking Lot
 | Item | Notes |
 |---|---|
-| **Scheduled scanning** | Deferred — requires systemd units + helper script in /usr/libexec/, which changes the operating model from pure Cockpit module to system service. Full rationale in DESIGN.md §"Scheduled Scanning — Deliberately Deferred". Revisit as companion sub-package or after Cockpit provides a background execution mechanism. |
-| **Ansible remediation apply** | Bash Apply Now shipped in v3.5. Ansible apply still deferred — requires `ansible-playbook` installed on target, adds a dependency not guaranteed present. Ansible download remains available. Revisit if user base requests it. |
-| **EPEL 10 submission** | Pre-work complete: `%check` section added, all rpmlint errors fixed (description line lengths, `%%post` macro-in-comment). Only false-positive spelling errors remain (`oscap`, `podman`, `optgroup`). Next steps: file Bugzilla package review request, ping Red Hat colleague for sponsor. User is RH employee — sponsor path straightforward. |
-| **Dashboard — next wow features** | Current state: single host hero card (score, risk score, severity, critical findings by name), compact container cards. Not yet wowing. Next ideas to pursue: (1) Compliance Debt panel — rules failing N+ consecutive scans, days open, cross-profile; (2) Real 30/60/90-day trend chart per profile; (3) "Fix This Week" — filtered priority remediation download for HIGH failures only; (4) Collapsible last-scan summary row on Host Scan and Container Scan tabs (cards belong there, not dashboard). Dashboard stays Preview until one of these lands and the user is genuinely impressed. |
-| **Dashboard Preview badge** | Do not remove until user is wowed by the dashboard. Current state does not meet that bar. |
-| **Multi-host** | RHEL 10.2 deprecates Cockpit host switcher. Research Cockpit Client flatpak as sanctioned multi-host model before pursuing. |
-| **Vulnerability scanning** | Trivy or similar — see Ecosystem Watch below. Explicitly out of scope today but natural next step. |
-| **Security appliance** | Image mode bootable container, bake in openscap/SSG/Cockpit/cockpit-scap, MCP capabilities for AI-accessible compliance engine. Red Hat publishes an official hardened OpenSCAP container image (`registry.access.redhat.com/hi/openscap:latest`) — this is a natural scanner engine building block. Instead of requiring oscap installed on every host, the appliance pulls this image and runs scans via `podman run hi/openscap`, giving a consistent/signed oscap version everywhere. For multi-host scanning: central appliance pulls the image, SSHes to targets or mounts filesystems, runs scans, ships XCCDF results back. The orchestration + aggregation + UI layer is essentially what cockpit-scap already builds — the appliance is the next step up. |
-| **Per-user settings** | Currently all settings (retention, tab visibility) are system-wide via `/var/lib/cockpit-scap/settings.json`. If a multi-user environment needs personal preferences (e.g. one user wants container scan hidden, another doesn't), per-user settings in `~/.config/cockpit-scap/` would be the path. Compliance policy settings (retention) should stay system-wide; only UI preferences would be per-user. Scope carefully before implementing. |
-| **Cockpit applications page listing** | `jelly` from the cockpit team replied to the GitHub issue on 2026-06-01: "if you want to be featured on the cockpit website's application page make a PR to cockpit-project/cockpit-project.github.io". Hold until module is production-ready and polished enough to represent well in the enterprise Linux ecosystem. Pre-requisites: EPEL 10 listed, Dashboard Preview badge removed, sparkline polish complete, no known UX rough edges. |
-| **External API / integration** | No outward-facing REST API story today — Cockpit is WebSocket/bridge, not HTTP. File-based data at `/var/lib/cockpit-scap/` is already an implicit API (manifests are JSON, results are standard XCCDF). Near-term: companion query script (`cockpit-scap-query --format json`) ships with RPM, ~2-3h work. Medium-term: D-Bus interface for Ansible/Prometheus/systemd integration. Long-term: REST microservice as separate systemd unit (changes operating model — same concern as scheduled scanning). Scope when a concrete integration request arrives. |
-| **Clear all data button** | Settings tab — single button to wipe all scan results, tailoring files, uploaded content, remediation logs, and activity log in one operation. Useful for fresh starts, lab resets, or pre-deployment cleanup. Needs confirmation modal, admin gate, activity log entry (journal only, since log is cleared), and a "what will be deleted" summary before confirming. |
-| **Activity log user field — extend to manifests** | `user` field added to activity log entries (v3.5). Natural follow-on: add `user` to scan manifest JSON at scan completion so history table and dashboard can show "run by pbuchan". Deferred — history table already dense. Revisit when multi-user display is explicitly requested. |
-| **Admin gate / activity log audit** | ✓ Fixed in 2026-06-01 session — tailoring save/update, Run Again (both tabs), activity clear all properly gated. |
-| **Stale cache after delete/add operations** | ✓ Fixed in 2026-06-01 session — all 6 one-liners applied. |
+| **CIS Level 1/2 weighting** | Extract group hierarchy from XCCDF to differentiate Level 1 (must-do baseline) vs Level 2 rules within CIS profiles. More intelligent than weight alone but requires group hierarchy traversal. Park for v3.8 after weight-based recommendations are validated. |
+| **Dashboard wow features** | Compliance Debt panel (rules failing N+ consecutive scans); 30/60/90-day trend chart; "Fix This Week" filtered priority download. Dashboard stays Preview until one lands. |
+| **Scheduled scanning** | Deliberately deferred — requires systemd units + helper script in /usr/libexec/, changes operating model. Cron hint in Settings covers the immediate need. |
+| **Ansible Apply Now** | Download works; apply deferred — requires `ansible-playbook` installed, adds dependency not guaranteed present. |
+| **EPEL 10 submission** | rpmlint clean, `%check` section added. Only false-positive spelling errors remain. Next: file Bugzilla review request, find sponsor. |
+| **Drawer remediation** | Right long-term answer for remediation UX. Scope after Action Board proves value. |
+| **Cockpit applications page** | Hold until module is production-ready. Pre-requisites: EPEL 10 listed, Dashboard Preview badge removed, no known UX rough edges. |
 
-**Playwright test backlog** (tracked in `tests/TESTING.md`):
+### 4. Playwright Test Backlog
 
 | Test | What to cover |
 |---|---|
-| Regression / improvement banners | Assert `#ct-regression-alert` or `#ct-improvement-alert` visible after loading a scan with a prior same-profile result; skip if only 1 result exists |
-| Scan diff ("See what changed") | Click banner trigger, assert `#ct-scan-diff` shows Fixed/Regressed/New groups |
-| Activity log user field | After an action, assert User column shows Cockpit login name (not "—") |
-| Export CSV (history + activity) | Playwright download event; validate header rows |
-
-### 3. Ecosystem Watch — gen-y-labs/cockpit-security
-Discussion: https://github.com/cockpit-project/cockpit/discussions/22951  
-Repo: https://github.com/gen-y-labs/cockpit-security (branch: feature/security)
-
-A prototype Cockpit module combining Security Updates + Vulnerability Scan (Trivy) + Compliance (OpenSCAP). Posted to Cockpit maintainers for feedback. Built with TypeScript/Node.js toolchain. SCAP is one shallow tab among three — no tailoring, no history, no container scanning.
-
-Their three-column security posture dashboard (patches + vulns + compliance) is where our long-term vision is heading. They built the frame without depth; we built deep on compliance and are growing outward. Worth revisiting to track maintainer response and whether Trivy integration makes sense for us.
+| Action Board | Assert `#ct-action-board` visible after scan; Quick Fix button enabled when automatable rules exist |
+| Recommended section | After opening remediation panel, assert `ct-rem-recommended` visible with Apply Now and download buttons |
+| Score delta | Assert ↑/↓ delta spans visible in history Score column after 2+ same-profile scans |
+| Dry-run command | Assert `ct-scan-cmd-details` shows after profile selected; command contains profile ID and SDS path |
+| Error output | Assert `ct-scan-error-details` visible after a forced scan error |
+| Content in Settings | Already covered by updated content-library.spec.js |
+| Regression/improvement banners | Assert `#ct-regression-alert` or `#ct-improvement-alert` visible |
+| Scan diff | Click banner trigger, assert Fixed/Regressed/New groups |
+| Activity user field | After action, assert User column shows Cockpit login |
 
 ---
 
@@ -239,41 +146,24 @@ Their three-column security posture dashboard (patches + vulns + compliance) is 
 
 | Decision | Outcome |
 |---|---|
-| Selective remediation panel | MUST be duplicated per-tab with prefixed IDs. Shared page-level panels break Cockpit's tab show/hide architecture. Tried and failed badly. |
-| Scan config card | Single `pf-v6-c-card` with `ct-scan-body-grid` (CSS grid, 1fr 1fr). Left col: form fields. Right col: profile description with left border. Replaces two-card flex layout that caused layout shift. |
-| View Scan / loadScanFromHistory | Sets all `current*` vars from manifest, hides scan row, calls `showResults`. Guarded by `if (currentScanProc) return`. `loadHistory()` called in `showScanProgress()` so rows rebuild with `disabled` state during scan. |
-| Run Again on results card | `currentManifest` stored in `showResults`. Results card "Run Again" calls `rerunHostScan(currentManifest)`. `rerunHostScan` now calls `showScanSetup()` at top — works from both history and results card. |
-| Failing rules summary | `renderFailingSummary(xmlPath, groupsId, loadingId)` — shared function, called from both `showResults` and `csShowResults`. Async, non-blocking. Uses existing `PY_EXTRACT_FAILING_RULES`. Silent catch — summary is informational. |
-| Score donut | `buildScoreDonut(score, failCount)` in index.js — plain SVG, no library. Arc = compliance %, color = failure count (0=green, 1–10=yellow, 11+=red). Shared global, called from both `showResults` and `csShowResults`. Replaces plain score text and the earlier Compliant/Non-Compliant badge. |
-| Regression/improvement detection | `findPreviousScan(manifest, history)` finds most recent scan with same profile_id + sds_file with older timestamp. Compares fail counts. One of three states: improvement (green banner), regression (yellow banner), or neither (both hidden). Container adds image_id to comparison. |
-| Scan diff | `PY_SCAN_DIFF` parses two results.xml files, returns `{fixed, regressed, new_failures}` JSON. `loadScanDiff(newXml, oldXml, containerId)` renders collapsible groups inline below the banner. Triggered by "See what changed" button wired at banner-show time. `prevXml` derived from `prev.timestamp`. |
-| Automated/Manual annotation | `PY_EXTRACT_FAILING_RULES` accepts optional `sys.argv[2]` (bash remediation path). Parses `# BEGIN fix (N / TOTAL) for 'rule_id'` blocks to build `auto_rules` set. Adds `automated: true/false` to each rule. Annotation hidden when remediation file absent. |
-| Inline rule description/rationale | `PY_EXTRACT_FAILING_RULES` extracts `desc` and `rat` via `itertext()` (handles `<html:pre>` children). Rules with description rendered as `<details>` with summary row + expand body. Rules without description stay as plain `<div>`. |
-| SDS upload overwrite check | `uploadContent(file)` stats dest path first. Non-zero exit = file absent → proceed directly. Zero exit = file exists → show confirm modal with existing size+date vs new size. Write only happens in `doWriteContent()` after confirmation. |
-| Admin gate | `adminPermission = cockpit.permission({ admin: true })` wrapped in `typeof` guard. `updateAdminControls()` queries `.ct-requires-admin` selectors. Called from `changed` event AND at end of each render function that creates privileged buttons. Default: allowed when API unavailable. |
-| Dashboard grouping | Host: `profile_id + sds_file` key. Container: `image_id \|\| image_name` key (image only — profile+image combos create too many cards). `groupManifests(manifests, keyFn)` utility in dashboard.js. |
-| Settings scope | `settings.json` lives at `/var/lib/cockpit-scap/settings.json` — system-wide, applies to all Cockpit users on the host. Intentional: compliance tool configuration should be uniform per host, not per-user. If per-user settings are ever needed (e.g. personal UI preferences separate from compliance policy), they would go in `~/.config/cockpit-scap/` — but that is a different concern and should be scoped and discussed before implementing. |
-| Quick Scan | `autoStart` boolean added to `rerunHostScan` and `csRerunScan`. When true, clicks the Run Scan button inside the Promise.all `.then()` after profile is loaded — timing is safe because profile select + dispatchEvent happen synchronously just before. |
-| Dashboard sparkline | `buildSparkline(scores)` — `scores` array ascending (oldest first). SVG `<polyline>` with `preserveAspectRatio="none"`, `viewBox="0 0 200 28"`, `width="100%"`. Green if `scores[last] >= scores[0]`, red otherwise. Omitted for < 2 scores. |
-| normalizePath() | Resolves `..` and `.` in a path string without filesystem access. Applied before every `startsWith(BASE)` path guard so a path like `BASE + '../../../etc/target'` is correctly rejected. Lives in index.js near the escape helpers. |
-| TIMESTAMP_RE | `/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/` — module constant in index.js; `CS_TIMESTAMP_RE` same pattern in container-scan.js. Re-validated on every `manifest.timestamp` before use in path construction or `rm -rf`. Directory listing regex and manifest field validation are now consistent. |
-| File.name validation | `uploadContent()` guards `file.name.includes('/')` before constructing `CONTENT_BASE + file.name`. Browser APIs already prevent `/` in File.name but code validates explicitly. |
-| oscap-podman imageArg | `csImageId \|\| csImageName` stored in `imageArg` and validated `!imageArg \|\| imageArg.startsWith('--')` before passing to oscap-podman to prevent option confusion with crafted image tags. |
-| Container scan modularity | All logic in `container-scan.js`; single `initContainerScan()` entry point; removable by deleting file + 3 references |
-| Dashboard modularity | `dashboard.js` + single `initDashboard()` entry point — same pattern |
-| History pruning | `pruneHistoryByType(scanType)` — host and container pruned independently to `HISTORY_MAX=10` each |
-| Results parsing | Python3 `iterparse` server-side via `cockpit.spawn` — avoids 15–18 MB WebSocket limit for both scan types |
-| oscap-podman invocation | Uses `csImageId` (stable 12-char ID) not tag name — immune to tag mutations |
-| Manifest tools key | Must be `"index"` not `""` — empty string causes nav highlight loss |
-| Activity log badge | `ACTIVITY_BADGE_CLASS` map in index.js maps full event type → CSS class. Not prefix-based. |
-| Tailoring update | `tailorEditingSidecar` var tracks loaded file. `doUpdateTailoringFile()` overwrites in place. `resetTailorForm()` clears it and restores button state. |
-| Cross-version content filtering | `detectSdsVersion(path)` extracts RHEL version from filename. `detectContent()` builds two filtered arrays for scan select — only files matching `hostOsVersion` appear. Tailor select always receives all files. `cpeBlocksScan`, `checkCpeCompat`, `showCpeAlert`, `clearCpeAlert` removed entirely. |
-| Tailoring auto-fill | `onTailorFileSelectChange()` reads `tailoringFilesMap[path]` sidecar. If content differs from `sidecar.sds_path`, sets content select + calls `loadProfiles().then(setProfile)`. Container scan: `onCsTailorFileChange()` sets `cs-profile-select` then calls `csUpdateScanBtn()`. |
-| Playwright test harness | `tests/` (gitignored). `npm test` runs 40 tests (~38 pass, 2 skip conditionally). `globalTeardown` auto-removes `playwright-*` artifacts after every run. Module loaded via direct URL — no iframe wrapper. Admin elevated on Cockpit SHELL overview page BEFORE navigating to module (critical: container scan renders blank otherwise). `requestAdmin()` uses `waitFor()` not `isVisible()` — do not revert. Settings tests must `await expect(saveBtn).toBeEnabled()` before clicking save (admin state is async). See `tests/TESTING.md` for full reference and test backlog. |
-| RPM builds | MUST be built on rhel10cis — local Fedora produces `fc39` dist tag |
-| Dev deploy target | rhel10cis has TWO locations. User-space `~/.local/share/cockpit/cockpit-scap/` takes precedence over system `/usr/share/cockpit/cockpit-scap/`. Always deploy to user-space (no sudo). System location is what the RPM uses — leave it alone. |
-| Hardened build environment | rhel10cis had PCI-DSS remediation applied (121 rules, 2026-06-01). `requiretty` sudoers rule was backed out for dev convenience. Future rebuild WILL be fully hardened — all tooling and test scripts must work within `requiretty` and related constraints. Non-interactive `sudo` via SSH will not work on a hardened host. |
-| Cockpit bridge restart | Optional — browser refresh sufficient for user-space deploys |
+| Selective remediation panel | MUST be duplicated per-tab with prefixed IDs. Shared page-level panels break Cockpit tab show/hide. Tried and failed. |
+| `buildRemPanelDOM` | Shared JS renderer, separate DOM per tab. Defined in index.js (global scope), called from container-scan.js. Takes `(container, rules, updateCountFn, opts)`. `opts.showApplyNow` controls Apply Now visibility. `opts.onRec*` callbacks for Recommended section buttons. |
+| Recommended section actions | Act on precomputed `recRules` subset — do NOT read checkbox state. `onRecApply` → `applyRecommendedRules(rec)`, downloads → `generateSelectiveFix(type, ids, btn)` with optional override params. |
+| Action Board eager load | `showResults()` runs `PY_EXTRACT_FAILING_RULES` eagerly and stores result in `eagerRemRules`. `openRemediationPanel()` reuses `eagerRemRules` if `resultsDir === currentResultsDir`, skipping a second Python spawn. |
+| Quick Fix pre-select | `pendingQuickFix` flag set before `openRemediationPanel()` call. `renderRemediationRules()` checks flag after building DOM — unchecks all, re-checks recommended only, clears flag. |
+| Score delta | `findPreviousScan(manifest, currentHostHistory)` called inside `buildHistoryRow()`. Delta computed per-row at render time. `ct-score-delta-up` / `ct-score-delta-down` CSS classes use PF6 success/danger color tokens. |
+| Dry-run command | `updateHostScanCmd()` called from `setScanButtonEnabled()` — fires whenever profile/content/tailoring changes. Hidden until profile + content both selected. Same pattern in `csUpdateScanBtn()` → `updateCsScanCmd()`. |
+| Scan error output | `cockpit.spawn().stream(data => scanOutput += data)` during scan. Passed to `onScanError(msg, output)`. Shown in collapsible `<details>` only when output is non-empty. Both host and container. |
+| Content Library in Settings | Removed `panel-content` tab panel and `tab-btn-content` nav item. Cards moved into `panel-settings`. `onSettingsTabOpen()` calls `renderContentTab()` + `detectContent()` so content refreshes on each Settings tab open. |
+| RPM builds | MUST be built on rhel10cis — local Fedora produces wrong dist tag. Workflow: `git archive` tarball → scp to rhel10cis `~/rpmbuild/SOURCES/` → `rpmbuild -ba` → COPR from rhel10cis. |
+| Dev deploy target | rhel10cis user-space `~/.local/share/cockpit/cockpit-scap/` takes precedence. Deploy via `scp src/` files there — no sudo, no make. |
+| Scan config card | Single `pf-v6-c-card` with `ct-scan-body-grid` (CSS grid 1fr 1fr). Left: form fields. Right: profile description with border. |
+| Score donut | `buildScoreDonut(score, failCount)` — plain SVG, no library. Color: 0 fail=green, 1–10=yellow, 11+=red. |
+| Regression/improvement | `findPreviousScan(manifest, history)` finds most recent with same profile_id + sds_file + older timestamp. One of three states. |
+| Admin gate | `updateAdminControls()` queries `.ct-requires-admin`. Called on `changed` event AND after any render that creates privileged buttons. Default: allowed when API unavailable. |
+| XCCDF weight | Extracted in `PY_EXTRACT_FAILING_RULES` as `float(rule.get("weight", "1.0"))`. Default 1.0. SSG sets higher on important rules. Used to sort recommended set descending. |
+| normalizePath() | Resolves `..` in path strings before `startsWith(BASE)` guards — prevents path traversal. |
+| TIMESTAMP_RE | `/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/` — validated on every manifest.timestamp before use in path construction. |
 | Git identity | `Peter Buchan <pbuchan@redhat.com>` |
 | Gitea remote | Named `origin` — use `git push origin main` |
 
@@ -286,26 +176,12 @@ Their three-column security posture dashboard (patches + vulns + compliance) is 
 | 2026-05-28 | v0.1 | Planning | Full design session — architecture locked |
 | 2026-05-28 | v0.2–v0.8 | Implementation | Scaffolding → scan → tailoring tab complete |
 | 2026-05-29 | v1.0 | Release | SELinux, Makefile, clean install test, Gitea |
-| 2026-05-29 | v1.1 | UI Polish | Unified tailoring editor, variables panel, unsaved-changes guard |
-| 2026-05-29 | v2.0 | Feature | Content tab, multi-version SDS, CPE detection |
-| 2026-05-29 | v2.0 | Release | RPM, COPR, GitHub, code review (15 findings fixed) |
-| 2026-05-29 | v2.1 | Release | Dark mode, UI polish, COPR build 10525374 |
-| 2026-05-29 | v3.0-dev | Implementation | Container Scan tab, oscap-podman workflow, server-side XML parsing |
-| 2026-05-30 | v3.0 | Release | Git/repo cleanup, code review (6 findings fixed), nav highlight fix, per-type history pruning, COPR + GitHub + Gitea |
-| 2026-05-30 | v3.1 | Release | Run Again, View Guide (all 3 tabs), Export CSV, Content Validation; COPR build 10526904 |
-| 2026-05-30 | v3.2 | Feature | Activity tab; src/ restructure; Dashboard stub; UI consistency polish |
-| 2026-05-31 | v3.3 | Release | Selective Remediation Builder (host + container); Results XML download; Activity log badge colors + modal confirm; Dashboard (hostname, delta, cache); Tailoring Update-in-place + inline name; code review (9 findings); docs + screenshots refresh; COPR build 10528640 |
-| 2026-05-31 | v3.4-dev | UI Polish | Unified scan config card; View Scan from history; results card persistence + timestamp + Close button; Run Again on results card; score donut (failure-count thresholds); CCE identifiers; Automated/Manual annotation; inline rule description/rationale expansion; regression + improvement banners; scan diff (See what changed); README + DESIGN.md overhaul; scheduled scanning deliberately deferred |
-| 2026-05-31 | v3.4-dev | Features | SDS file upload (browser → cockpit.file, 26MB confirmed); overwrite confirmation with stat; admin gate (ct-requires-admin + cockpit.permission); container tab admin error state; dashboard overhaul (per-profile cards, sparkline, Quick Scan, attention banner, staleness badges, delta fix); Content Library size+modified columns; Policy Tailoring unified card layout |
-| 2026-05-31 | v3.4-dev | Polish | Full code review (21 findings, 18 fixed); deep security audit (path traversal hardening, TIMESTAMP_RE validation, file.name guard, oscap-podman option confusion guard, startsWith bypass fix with normalizePath); dead code removal (~60 lines); screenshots refreshed; README curated to 4-shot narrative |
-| 2026-05-31 | v3.4 | Release | COPR build 10529631 (el10); GitHub + Gitea release v3.4; 10.0.0.214 confirmed clean upgrade from v3.3 |
-| 2026-06-01 | v3.4 | Polish | Cross-version content filtering: host scan shows only host-OS-compatible SDS; CPE alert removed. Tailoring auto-fill: selecting tailoring file populates content + profile (host + container). EPEL prep: `%check` section, rpmlint fixes. Playwright test harness: 19 passing, `npm test`, tests/ gitignored |
-| 2026-06-01 | v3.5 | Features | Dashboard hero card: single full-width host compliance card, weighted risk score, async HIGH failure names. Settings tab: retention + tab visibility + admin gate + activity log. Table scroll caps (history + saved policies). Severity counts in manifest. Dashboard per-profile card grouping removed. |
-| 2026-06-01 | v3.5 | Features | Selective Remediation Apply Now: two-gate confirmation (danger modal → script review), live streaming bash output, admin-gated, activity log. Remediation search (title + rule ID). Rule detail expansion (description + rationale). Policy editor name field: pf-v6-c-form-control + decorative pencil. Button hierarchy fix. Settings label fix. |
-| 2026-06-01 | v3.5 | Testing + Polish | Playwright test suite expanded 29→40 tests covering all v3.5 features (settings tab visibility, Apply Now gate, remediation search, rule detail expansion, dashboard hero card, critical findings). Fixed 4 race conditions (requestAdmin used isVisible not waitFor; history-dependent tests used isVisible; dashboard async timing; tailoring auto-fill detectTailoringFiles rebuild race). globalTeardown auto-cleans playwright-* tailoring artifacts after each run. Activity log user field: cockpit.user() fetched at init, user: field on every log entry, User column in table and CSV. README items 1-5 done; items 6-8 (version bump, roadmap, screenshots) held pending user go-ahead to tag. |
-| 2026-06-01 | v3.5 | Security + Polish | Remediation audit logging: structured log file + systemd journal via logger(1) + modal footer + Activity View Log button. System journal logging via buildJournalMessage() for all significant events. Admin gate audit: tailoring save/update + Run Again buttons gated. Stale cache: 6 cross-notify one-liners (csDetectTailoringFiles, csDetectContent, dbInvalidate). Container scan limited access: history always visible, View Scan/Remediate replace admin banner, Run Again gated. Remediate from history loads results card first (host scan parity with container). downloadArtifact max_read_size: -1 fixes 18MB XML download. Test regression scripts in tools/. Playwright ASCII dashboard reporter. PCI-DSS remediation accidentally applied to rhel10cis (121 rules, 99.6% score). requiretty + use_pty hardening backed out for dev. GitHub repo description + topics updated. README broadened to RHEL / CentOS Stream 10. |
-| 2026-05-30 | v3.2 | Release | COPR build 10527341; GitHub release; RPM test host upgraded |
-| 2026-05-31 | v3.3-dev | Feature | Selective Remediation (host + container); Dashboard (hostname, delta, cache, preview); activity badge colors; tailor_download log; results XML download; history table layout; tailoring Update-in-place + inline name field |
+| 2026-05-29 | v1.1–v2.1 | Feature + Release | Content tab, multi-version SDS, dark mode, COPR |
+| 2026-05-29 | v3.0–v3.2 | Feature + Release | Container scan, oscap-podman, activity tab, src/ restructure |
+| 2026-05-31 | v3.3–v3.4 | Feature + Release | Selective Remediation, Apply Now, scan diff, SDS upload, admin gate, dashboard, COPR |
+| 2026-06-01 | v3.5 | Feature + Release | Apply Now two-gate, Settings tab, dashboard hero card, Playwright tests (40), COPR build 10533906 |
+| 2026-06-02 | v3.6 | UX + Release | Clear All Data, Gate 2 rule list, groups collapsed, download feedback, scan timer, contextual activity, View Guide loading page; COPR build 10534383; RPM on 10.0.0.214 confirmed |
+| 2026-06-02 | v3.7-dev | Feature | Action Board, Recommended section, weight field, shared renderer, history score delta, Content Library → Settings, Manual Scheduling, dry-run command preview, better scan errors |
 
 ---
 
