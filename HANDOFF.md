@@ -4,10 +4,10 @@
 
 ## Current State
 
-**Version:** v3.5 (released 2026-06-01)
-**Last session:** 2026-06-01
-**Last commit:** daaf6ef (docs: update screenshots and README for v3.5)
-**Git tag:** v3.5 on both remotes (github + origin/Gitea)
+**Version:** v3.6-dev (in progress, not tagged)
+**Last session:** 2026-06-02
+**Last commit:** e535196 (feat: v3.6 UX refinements REQ-171 through REQ-178)
+**Git tag:** v3.5 on both remotes — v3.6 not yet tagged
 **Deployed to:** rhel10cis.beastmode.localdomain — user-space install at `~/.local/share/cockpit/cockpit-scap/` (takes precedence over system install — always deploy here, no sudo)
 **Published:** COPR build 10533906 (v3.5, el10)
 **RPM test host:** 10.0.0.214 upgraded to v3.5 — clean install confirmed, SELinux enforcing, all dirs correct
@@ -140,46 +140,62 @@
 
 ## What Is NOT Done (Next Session Priority)
 
-### 1. v3.5 — REMAINING (blocking tag)
+### 1. v3.6 — SHIPPED THIS SESSION ✓
 
-1. **Version bump** — `MODULE_VERSION` in `src/index.js` still says `v3.4`. Change to `v3.5`.
-2. **README** — version string + add v3.5 row to roadmap table + screenshots refresh (dashboard and settings look different)
-3. **Full test suite run** — last clean run was 38/40 before today's session changes. Run `npm test` to confirm still clean with all session fixes in place.
+- ✓ **Clear All Data button** (Settings tab) — admin-gated, confirmation modal with bullet list of what is deleted, parallel `find -mindepth 1 -delete` on all 4 dirs, clears activity.log, writes `data_clear` activity entry + journal, refreshes all UI state including content library and container scan history
+- ✓ **Gate 2 rule list** (REQ-171) — replaced raw bash preview with structured rule title list; script still accessible via collapsible "View script" toggle; `pendingApplyTitles` collected alongside `pendingApplyRules`; `pendingApplyScript` module var holds script for `onApplyGate2Execute()`
+- ✓ **Remediation groups collapsed by default** (REQ-172) — `details.open = false` in both `renderRemediationRules()` and `renderCsRemRules()`; test updated to open first group before clicking rule detail
+- ✓ **Download button feedback** (REQ-173) — `downloadArtifact(filePath, filename, mimeType, btn)` accepts optional btn; shows "✓ Downloaded" for 2s; wired for report, XML, bash, ansible in both host and container
+- ✓ **Scan elapsed timer** (REQ-174) — `hostScanTimer` / `csScanTimer` intervals in `showScanProgress()` / `csShowProgress()`; cleared in `showScanSetup()` / `csShowSetup()` and `showResults()` / `csShowResults()`; `<span id="ct-scan-elapsed">` / `<span id="cs-scan-elapsed">` in HTML
+- ✓ **Activity contextual empty state** (REQ-175) — `ACTIVITY_EMPTY_MSG` map keyed by filter; `renderActivityTable(entries, filter)` sets `ct-activity-empty-msg` text dynamically
+- ✓ **Disk usage all subdirs** (REQ-176) — `du -sh /var/lib/cockpit-scap/` replaces `results/` only; label changed to "Storage used"
+- ✓ **View Guide loading page** (REQ-178) — `win.document.write()` shows "Generating compliance guide…" immediately; all three guide buttons (host, container, tailoring) updated
 
-### 2. v3.5 — COMPLETED THIS SESSION ✓
+### 2. v3.6 — REMAINING
 
-- ✓ **Remediation audit logging** — `/var/lib/cockpit-scap/remediation-logs/TIMESTAMP-PROFILE.log`, journal via `logger -t cockpit-scap`, modal footer "View in Activity tab" link, "View Log" button on activity rows with log viewer modal
-- ✓ **System journal logging** — `buildJournalMessage()` in `appendActivityLog()` covers: scan start/complete/cancel/error/delete, remediation apply, content upload/delete, tailoring save/delete, settings change, activity clear
-- ✓ **Admin gate audit** — tailoring save + update buttons got `ct-requires-admin`; Run Again on both results cards got `ct-requires-admin`; activity clear dual-gated (admin + has entries) confirmed correct
-- ✓ **Stale cache fixes** — `csDetectTailoringFiles()` called after all 4 tailoring operations; `csDetectContent()` called after content upload/delete; `dbInvalidate()` called after host scan delete
-- ✓ **Container scan limited access** — history card moved outside `cs-scan-section`; View Scan + Remediate from history call `csHidePrereq()` so results replace admin banner; Close returns banner; `csShowSetup()` re-shows banner for limited users
-- ✓ **Remediate from history loads results first** — host scan Remediate button now calls `loadScanFromHistory` + `openRemediationPanel` together (consistent with container scan)
-- ✓ **Download large files** — `downloadArtifact()` now uses `cockpit.file(path, { max_read_size: -1 })` — bypasses 15MB Cockpit bridge limit cleanly
-- ✓ **Test regression scripts** — `tools/test-regression.sh` / `tools/test-regression-restore.sh` apply/remove 8 safe sysctl failures for Apply Now testing
-- ✓ **Playwright dashboard reporter** — ASCII progress bar with per-file grouping, live `[████░░] N/40` counter, PASSED/FAILED summary
+- ⬜ **Version bump** — `MODULE_VERSION` still says `v3.5`; bump to `v3.6` when ready to tag
+- ⬜ **README update** — roadmap table, screenshots (Settings tab looks different with Data Management section)
+- ⬜ **COPR / release** — not yet tagged or published
 
-### 2. v3.5 — SHIPPED (2026-06-01)
-COPR build 10533906, GitHub + Gitea tagged v3.5, 10.0.0.214 confirmed clean upgrade from v3.4. 39/40 Playwright tests passing (3 conditional skips).
+### 3. v3.7 — Action Board & Intelligent Remediation (DESIGNED, NOT STARTED)
 
-### 3. v3.6 — UX Refinement (next session priority)
+**This is the "wow" redesign for the security engineer / auditor audience.** Full design decisions locked in session 2026-06-02. See REQUIREMENTS.md REQ-179 through REQ-186 for spec.
 
-**First priority: Clear All Data button** (Settings tab — see parking lot for spec)
+**Core philosophy:** shift from process-oriented (follow these steps) to outcome-oriented (here's your risk, here's your fix). The scan result should immediately answer: what do I have to fix, and how do I fix it right now?
 
-**UX critique findings from v3.5 (informed by extensive UI testing):**
+**Implementation order (locked):**
 
-These issues were identified through hands-on use and are agreed by both user and Claude. All are captured in REQUIREMENTS.md as REQ-171 through REQ-178.
+1. **Extract `buildRemPanelDOM(container, rules)`** — shared renderer called by both `renderRemediationRules()` and `renderCsRemRules()`. Eliminates the 80-line duplication before adding new code. This is the foundation; do it first.
 
-| Issue | Impact | Fix |
-|---|---|---|
-| **Gate 2 raw bash** | Users can't meaningfully review the script; feels like security theater | Show structured rule title list instead of raw bash |
-| **Remediation panel default-open** | Wall of checkboxes on 80+ failure scans is overwhelming | Default groups to collapsed with counts visible |
-| **Download buttons no feedback** | Users don't know if click registered | Brief "✓ Downloaded" state on button |
-| **Scan progress black box** | 3-5 min scans give no indication of progress | Elapsed timer |
-| **Activity filter empty state** | Generic message regardless of which filter is active | Contextual "No X activity found" |
-| **Settings disk usage incomplete** | Only shows results/, ignores tailoring/content/remediation-logs | Sum all subdirs |
-| **View Guide no loading state** | 15-20 second silent wait after click | Immediate loading state on button |
+2. **Add `weight` field to `PY_EXTRACT_FAILING_RULES`** — extract XCCDF `weight` attribute alongside severity and automated. Used for sorting within the recommended set. ~5 lines of Python.
 
-**Larger structural observation:** The scan tab is doing four jobs (configure → progress → results → remediation) sequentially on one panel. The vertical scroll journey from configuration to remediation output is the main UX friction point. Worth a design discussion before v3.6 whether remediation should be a separate tab or a drawer/side panel.
+3. **Action Board on results card** — new section below score donut:
+   - Severity counts (CRITICAL / HIGH / MEDIUM) shown immediately from manifest
+   - Automatable count filled in async once failing rules load
+   - "⚡ Quick Fix — N rules" button: pre-selects only automatable CRITICAL+HIGH rules in remediation panel, ordered by weight descending
+   - "Review all N →" button: opens panel as today (full set)
+   - When zero automatable H/C rules: hide Quick Fix, show "No automated fixes for critical/high — review manually"
+
+4. **Recommended section in remediation panel** — at top of panel above severity groups:
+   - Shows count of automatable CRITICAL+HIGH rules
+   - Has its own Download Bash / Download Ansible / Apply Now buttons acting on that subset only
+   - Does NOT use checkbox state — always acts on the precomputed recommended set
+   - Container panel: same section, Download Bash/Ansible only (no Apply Now — permanently stubbed)
+   - Severity groups below remain for power-user customization
+
+5. **History table score delta** — computed from `findPreviousScan()` at render time; shown inline in Score column as `↑ +7%` (green) or `↓ -3%` (red); no new column, no layout change
+
+**Design constraints (do not violate):**
+- No build toolchain — vanilla JS, no ES module splitting of index.js
+- All changes are additive or extractions — no rewrites of working code
+- Native Cockpit aesthetic throughout — PF6 tokens only, no custom color hex, no decorative chrome
+- Remediation panel HTML must remain duplicated per-tab (shared JS renderer, separate DOM) — shared panel was tried and broke tab show/hide architecture
+- Drawer (slide-in remediation) is the right long-term answer but scope separately — implement Action Board first, prove the value, then tackle layout
+- Container Apply Now remains permanently stubbed — container remediation is download-only by design
+
+**Cron hint for scheduled scanning** — Add to Settings a "Manual Scheduling" section showing the exact `oscap` command built from current settings (content + profile) with a Copy button. No systemd, no new packages. Parking lot until Action Board ships.
+
+### 4. Future / Parking Lot
 
 ### 4. Future / Parking Lot
 | Item | Notes |

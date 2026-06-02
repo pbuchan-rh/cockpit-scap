@@ -350,16 +350,38 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 ---
 
-### v3.6 UX Refinement (planned)
+### v3.6 UX Refinement (shipped 2026-06-02)
 
-- **REQ-171:** ⬜ Gate 2 MUST show a structured list of selected rule titles instead of raw bash script — the current raw bash preview is not actionable for users and creates unnecessary friction
-- **REQ-172:** ⬜ Remediation panel severity groups MUST default to collapsed with counts visible — current default-open behavior is overwhelming for scans with many failures
-- **REQ-173:** ⬜ Download buttons (report, XML, scripts) MUST provide brief visual feedback ("✓ Downloaded") after the download is triggered — no current acknowledgment leaves users uncertain
-- **REQ-174:** ⬜ Scan progress MUST display an elapsed timer — scans taking 3-5 minutes give no indication of progress or whether the process is hung
-- **REQ-175:** ⬜ Activity log filter empty state MUST be contextual — "No tailoring activity found" not generic "No activity recorded yet"
-- **REQ-176:** ⬜ Settings disk usage MUST reflect total storage across all subdirectories (results, tailoring, content, remediation-logs), not results only
-- **REQ-177:** ⬜ Settings tab MUST include a "Clear All Data" button that wipes all runtime data with a confirmation modal listing what will be deleted; admin-gated; journal entry written since activity log is cleared
-- **REQ-178:** ⬜ View Compliance Guide button MUST show a loading state immediately on click — current behavior shows no feedback for 15-20 seconds while oscap generates the guide
+- **REQ-171:** ✅ Gate 2 shows structured rule title list; script accessible via collapsible toggle
+- **REQ-172:** ✅ Remediation panel groups default to collapsed with counts visible (host + container)
+- **REQ-173:** ✅ Download buttons show "✓ Downloaded" for 2s after click (report, XML, bash, ansible)
+- **REQ-174:** ✅ Scan progress shows elapsed timer in seconds/minutes (host + container)
+- **REQ-175:** ✅ Activity empty state is contextual per active filter chip
+- **REQ-176:** ✅ Settings disk usage sums all subdirs; label updated to "Storage used"
+- **REQ-177:** ✅ Clear All Data button in Settings — admin-gated, confirmation modal, journal entry
+- **REQ-178:** ✅ View Guide popup shows loading message immediately on all three tabs
+
+---
+
+### v3.7 Action Board & Intelligent Remediation (designed 2026-06-02)
+
+> **Design goal:** shift from process-oriented to outcome-oriented. Scan results must immediately answer: what are my highest-risk failures, which ones have automated fixes, and how do I apply them right now — all within the native Cockpit aesthetic.
+
+- **REQ-179:** ⬜ The results card MUST include an Action Board section showing CRITICAL / HIGH / MEDIUM failure counts immediately from manifest data (no async required), with automatable count filled in progressively once `PY_EXTRACT_FAILING_RULES` completes
+
+- **REQ-180:** ⬜ The Action Board MUST include a "Quick Fix" button that opens the remediation panel with only automatable CRITICAL+HIGH rules pre-selected, sorted by XCCDF rule weight descending; when zero such rules exist the button MUST be hidden and replaced with "No automated fixes available for critical/high failures"
+
+- **REQ-181:** ⬜ `PY_EXTRACT_FAILING_RULES` MUST extract the XCCDF `weight` attribute for each failing rule; weight MUST be included in the returned JSON and used to sort the recommended rule set
+
+- **REQ-182:** ⬜ The remediation panel MUST include a "Recommended Fixes" section above the severity groups showing the automatable CRITICAL+HIGH rule count with its own Download Bash, Download Ansible, and Apply Now buttons (host only) that act on that subset regardless of checkbox state; container panel shows Download Bash/Ansible only
+
+- **REQ-183:** ⬜ The scan history table Score column MUST show an inline delta vs the previous same-profile scan — `↑ +7%` (green) or `↓ -3%` (red) — computed at render time from in-memory manifests; no new column required
+
+- **REQ-184:** ⬜ A shared `buildRemPanelDOM(container, rules)` function MUST be extracted from the near-identical `renderRemediationRules()` and `renderCsRemRules()` implementations before adding the Recommended section — this extraction is a prerequisite for REQ-182
+
+- **REQ-185:** ⬜ Settings tab MUST include a "Manual Scheduling" section showing the exact `oscap xccdf eval` command for the most recently used content + profile, with a Copy to Clipboard button — provides a cron-paste path without requiring systemd units
+
+- **REQ-186:** ⬜ All v3.7 UI additions MUST use PatternFly v6 tokens exclusively — no hardcoded hex values, no custom colors outside `--ct-` custom property definitions; Cockpit native aesthetic is a hard requirement; dark mode MUST work on all new elements without additional effort (token-only colors guarantee this automatically)
 
 ---
 
