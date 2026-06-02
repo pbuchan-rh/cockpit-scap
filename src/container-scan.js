@@ -95,6 +95,16 @@ function initContainerScan() {
         .addEventListener('click', csShowSetup);
     document.getElementById('cs-scan-error-close')
         .addEventListener('click', csClearError);
+    document.getElementById('cs-scan-cmd-copy')
+        .addEventListener('click', () => {
+            const cmd = document.getElementById('cs-scan-cmd').textContent;
+            navigator.clipboard.writeText(cmd).then(() => {
+                const btn = document.getElementById('cs-scan-cmd-copy');
+                const orig = btn.textContent;
+                btn.textContent = '✓ Copied';
+                setTimeout(() => { btn.textContent = orig; }, 2000);
+            }).catch(() => {});
+        });
 
     /* Run the two non-superuser checks eagerly on init in parallel.
      * The superuser podman images check is deferred until first tab click
@@ -368,6 +378,36 @@ function csUpdateScanBtn() {
         !imageVal || (!profileId && !tailoring) || csVersionBlocked || !adminAllowed;
     document.getElementById('cs-guide-btn').disabled =
         !csSdsPath || (!profileId && !tailoring);
+    updateCsScanCmd();
+}
+
+function updateCsScanCmd() {
+    const imageVal      = document.getElementById('cs-image-select').value;
+    const profileSelect = document.getElementById('cs-profile-select');
+    const tailoring     = document.getElementById('cs-tailor-file-select').value;
+    const details       = document.getElementById('cs-scan-cmd-details');
+    const cmdEl         = document.getElementById('cs-scan-cmd');
+
+    let profileId;
+    if (tailoring && tailoringFilesMap && tailoringFilesMap[tailoring]) {
+        profileId = tailoringFilesMap[tailoring].profile_id;
+    } else {
+        profileId = profileSelect.value;
+    }
+
+    if (!csSdsPath || !profileId || !imageVal) {
+        details.classList.add('hidden');
+        return;
+    }
+
+    let cmd = 'oscap-podman ' + imageVal + ' xccdf eval --profile ' + profileId;
+    if (tailoring) cmd += ' --tailoring-file ' + tailoring;
+    cmd += ' --results /var/lib/cockpit-scap/results/<timestamp>/results.xml';
+    cmd += ' --report /var/lib/cockpit-scap/results/<timestamp>/report.html';
+    cmd += ' ' + csSdsPath;
+
+    cmdEl.textContent = cmd;
+    details.classList.remove('hidden');
 }
 
 /* ---- Scan execution --------------------------------------- */
@@ -422,7 +462,9 @@ function onCsScanClick() {
                 csSdsPath
             );
 
+            let csScanOutput = '';
             csProc = cockpit.spawn(args, { superuser: 'require', err: 'out' });
+            csProc.stream(data => { csScanOutput += data; });
             csProc
                 .then(() => csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath))
                 .catch(err => {
@@ -435,7 +477,7 @@ function onCsScanClick() {
                         appendActivityLog({ type: 'scan_cancel', tab: 'container' });
                         csShowSetup();
                     } else {
-                        csScanError(err.message || String(err));
+                        csScanError(err.message || String(err), csScanOutput);
                     }
                 });
         })
@@ -924,16 +966,25 @@ function csShowSetup() {
     csAnsiblePath = null;
 }
 
-function csScanError(msg) {
+function csScanError(msg, output) {
     csProc = null;
     appendActivityLog({ type: 'scan_error', tab: 'container', message: msg });
     csShowSetup();
     document.getElementById('cs-scan-error-message').textContent = msg;
+    const detailsEl = document.getElementById('cs-scan-error-details');
+    const outputEl  = document.getElementById('cs-scan-error-output');
+    if (output && output.trim()) {
+        outputEl.textContent = output.trim();
+        detailsEl.classList.remove('hidden');
+    } else {
+        detailsEl.classList.add('hidden');
+    }
     document.getElementById('cs-scan-error-alert').classList.remove('hidden');
 }
 
 function csClearError() {
     document.getElementById('cs-scan-error-alert').classList.add('hidden');
+    document.getElementById('cs-scan-error-details').classList.add('hidden');
 }
 
 function csShowProfileDesc(title, desc) {
@@ -1032,79 +1083,16 @@ function openCsRemPanel(resultsDir) {
 }
 
 function renderCsRemRules(rules) {
-    const groups = { high: [], medium: [], low: [], unknown: [] };
-    rules.forEach(r => (groups[r.severity] || groups.unknown).push(r));
-
-    const container = document.getElementById('cs-remediation-rules');
-    container.innerHTML = '';
-
-    const order = [['high','High','ct-sev-high'],['medium','Medium','ct-sev-medium'],['low','Low','ct-sev-low']];
-    order.forEach(([sev, label, cls]) => {
-        const list = groups[sev];
-        if (!list || !list.length) return;
-
-        const details = document.createElement('details');
-        details.open = false;
-        details.className = 'ct-rem-group';
-
-        const summary = document.createElement('summary');
-        summary.className = 'ct-rem-group-summary';
-        summary.innerHTML =
-            '<span class="ct-sev-badge ' + cls + '">' + label + '</span>' +
-            '<span class="ct-rem-group-count">' + list.length + ' rule' + (list.length !== 1 ? 's' : '') + '</span>' +
-            '<button class="pf-v6-c-button pf-m-link ct-rem-select-sev" type="button" data-sev="' + sev + '">Select all</button>';
-        details.appendChild(summary);
-
-        list.forEach(rule => {
-            const shortId = rule.id.split('_rule_').pop();
-            const item = document.createElement('div');
-            item.className = 'ct-rem-rule-item';
-            item.dataset.title  = (rule.title || '').toLowerCase();
-            item.dataset.ruleid = shortId.toLowerCase();
-
-            const row = document.createElement('label');
-            row.className = 'ct-rem-rule-row';
-            row.innerHTML =
-                '<input type="checkbox" class="ct-rem-checkbox" data-id="' + escapeAttr(rule.id) + '" checked>' +
-                '<span class="ct-rem-rule-title">' + escHtmlRem(rule.title) + '</span>' +
-                '<span class="ct-rem-rule-id">' + escHtmlRem(shortId) + '</span>';
-            item.appendChild(row);
-
-            if (rule.desc) {
-                const det = document.createElement('details');
-                det.className = 'ct-rem-rule-detail';
-                const rat = rule.rat
-                    ? '<p class="ct-rem-detail-rat"><strong>Rationale:</strong> ' + escHtmlRem(rule.rat) + '</p>'
-                    : '';
-                det.innerHTML =
-                    '<summary class="ct-rem-detail-toggle">Details</summary>' +
-                    '<div class="ct-rem-detail-body">' +
-                        '<p class="ct-rem-detail-desc">' + escHtmlRem(rule.desc) + '</p>' +
-                        rat +
-                    '</div>';
-                item.appendChild(det);
-            }
-
-            details.appendChild(item);
-        });
-        container.appendChild(details);
-    });
-
-    container.querySelectorAll('.ct-rem-select-sev').forEach(btn => {
-        btn.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            const group = btn.closest('details');
-            const groupChecks = group.querySelectorAll('.ct-rem-checkbox');
-            const allChecked = Array.from(groupChecks).every(c => c.checked);
-            groupChecks.forEach(c => { c.checked = !allChecked; });
-            updateCsRemCount();
-        });
-    });
-
-    container.removeEventListener('change', updateCsRemCount);
-    container.addEventListener('change', updateCsRemCount);
-    updateCsRemCount();
+    buildRemPanelDOM(
+        document.getElementById('cs-remediation-rules'),
+        rules,
+        updateCsRemCount,
+        {
+            showApplyNow: false,
+            onRecBash:    (rec, btn) => generateCsSelectiveFix('bash', rec.map(r => r.id), btn),
+            onRecAnsible: (rec, btn) => generateCsSelectiveFix('ansible', rec.map(r => r.id), btn),
+        }
+    );
 }
 
 function onCsRemSearch() {
@@ -1159,9 +1147,10 @@ function updateCsRemCount() {
     });
 }
 
-function generateCsSelectiveFix(fixType) {
-    const all = document.querySelectorAll('#cs-remediation-rules .ct-rem-checkbox');
-    const selected = Array.from(all).filter(c => c.checked).map(c => c.dataset.id);
+function generateCsSelectiveFix(fixType, selectedIds, btnEl) {
+    const selected = selectedIds ||
+        Array.from(document.querySelectorAll('#cs-remediation-rules .ct-rem-checkbox'))
+            .filter(c => c.checked).map(c => c.dataset.id);
     if (!selected.length) return;
 
     const remFile = csRemDir + (fixType === 'bash' ? 'remediation.sh' : 'remediation.yml');
@@ -1169,7 +1158,7 @@ function generateCsSelectiveFix(fixType) {
     const mime    = fixType === 'bash' ? 'text/x-shellscript' : 'text/yaml';
     const ts      = csRemDir.replace(/\/$/, '').split('/').pop();
     const fname   = 'container-selective-remediation-' + ts + ext;
-    const btn     = document.getElementById(fixType === 'bash' ? 'cs-rem-bash-btn' : 'cs-rem-ansible-btn');
+    const btn     = btnEl || document.getElementById(fixType === 'bash' ? 'cs-rem-bash-btn' : 'cs-rem-ansible-btn');
 
     cockpit.spawn(
         ['python3', '-c', PY_FILTER_FIX, remFile, fixType, JSON.stringify(selected)],

@@ -126,7 +126,7 @@ const PY_EXTRACT_FAILING_RULES = [
     '    desc = " ".join("".join(d_el.itertext()).split()) if d_el is not None else ""',
     '    r_el = rule.find("{%s}rationale" % NS)',
     '    rat  = " ".join("".join(r_el.itertext()).split()) if r_el is not None else ""',
-    '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity", "unknown"), cce, desc, rat)',
+    '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity", "unknown"), cce, desc, rat, float(rule.get("weight", "1.0")))',
     'has_rem = False; auto_rules = set()',
     'if len(sys.argv) > 2:',
     '    try:',
@@ -140,8 +140,8 @@ const PY_EXTRACT_FAILING_RULES = [
     '        rid = rr.get("idref", "")',
     '        if rid in seen: continue',
     '        seen.add(rid)',
-    '        t, s, cce, desc, rat = rinfo.get(rid, (rid, rr.get("severity", "unknown"), "", "", ""))',
-    '        rule = {"id": rid, "title": t, "severity": s, "cce": cce, "desc": desc, "rat": rat}',
+    '        t, s, cce, desc, rat, w = rinfo.get(rid, (rid, rr.get("severity", "unknown"), "", "", "", 1.0))',
+    '        rule = {"id": rid, "title": t, "severity": s, "cce": cce, "desc": desc, "rat": rat, "weight": w}',
     '        if has_rem: rule["automated"] = rid in auto_rules',
     '        fails.append(rule)',
     'order = {"high":0,"medium":1,"low":2}',
@@ -248,6 +248,8 @@ let scanCancelledByUser   = false;
 /* Module state — selective remediation */
 let remediationDir   = null;   /* full path to scan results dir, trailing slash */
 let remediationRules = [];     /* [{id, title, severity}] from last load */
+let eagerRemRules    = null;   /* pre-loaded rules for Action Board / panel reuse */
+let pendingQuickFix  = false;  /* when true, renderRemediationRules pre-selects recommended only */
 
 /* Module state — tailoring */
 let tailorSdsPath         = null;
@@ -329,7 +331,21 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', showScanSetup);
     document.getElementById('ct-scan-error-close')
         .addEventListener('click', hideScanError);
+    document.getElementById('ct-scan-cmd-copy')
+        .addEventListener('click', () => {
+            const cmd = document.getElementById('ct-scan-cmd').textContent;
+            navigator.clipboard.writeText(cmd).then(() => {
+                const btn = document.getElementById('ct-scan-cmd-copy');
+                const orig = btn.textContent;
+                btn.textContent = '✓ Copied';
+                setTimeout(() => { btn.textContent = orig; }, 2000);
+            }).catch(() => {});
+        });
     document.getElementById('ct-selective-rem-btn')
+        .addEventListener('click', () => openRemediationPanel(currentResultsDir));
+    document.getElementById('ct-quick-fix-btn')
+        .addEventListener('click', onQuickFixClick);
+    document.getElementById('ct-review-all-btn')
         .addEventListener('click', () => openRemediationPanel(currentResultsDir));
     document.getElementById('ct-rem-apply-btn')
         .addEventListener('click', onApplyNowClick);
@@ -864,7 +880,9 @@ function runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath) {
         currentSdsPath
     );
 
+    let scanOutput = '';
     currentScanProc = cockpit.spawn(args, { superuser: 'require', err: 'out' });
+    currentScanProc.stream(data => { scanOutput += data; });
 
     currentScanProc
         .then(() => onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath))
@@ -876,7 +894,7 @@ function runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath) {
                 scanCancelledByUser = false;
                 onScanCancelled();
             } else {
-                onScanError(err.message || String(err));
+                onScanError(err.message || String(err), scanOutput);
             }
         });
 }
@@ -992,14 +1010,27 @@ function openRemediationPanel(resultsDir) {
         })
         .catch(() => {});
 
-    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsDir + 'results.xml'],
+    const showRules = (rules) => {
+        remediationRules = rules;
+        document.getElementById('ct-remediation-loading').classList.add('hidden');
+        renderRemediationRules(remediationRules);
+        document.getElementById('ct-remediation-content').classList.remove('hidden');
+    };
+
+    /* Reuse eagerly pre-loaded rules if they match the current results dir */
+    if (eagerRemRules && resultsDir === currentResultsDir) {
+        const reused = eagerRemRules;
+        eagerRemRules = null;
+        showRules(reused);
+        return;
+    }
+
+    const spawnArgs = [resultsDir + 'results.xml'];
+    const remBashForDir = resultsDir === currentResultsDir ? currentRemBashPath : resultsDir + 'remediation.sh';
+    if (remBashForDir) spawnArgs.push(remBashForDir);
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...spawnArgs],
                   { err: 'message' })
-        .then(output => {
-            remediationRules = JSON.parse(output);
-            document.getElementById('ct-remediation-loading').classList.add('hidden');
-            renderRemediationRules(remediationRules);
-            document.getElementById('ct-remediation-content').classList.remove('hidden');
-        })
+        .then(output => showRules(JSON.parse(output)))
         .catch(err => {
             document.getElementById('ct-remediation-loading').classList.add('hidden');
             document.getElementById('ct-remediation-error-msg').textContent =
@@ -1008,12 +1039,61 @@ function openRemediationPanel(resultsDir) {
         });
 }
 
-function renderRemediationRules(rules) {
+function buildRemPanelDOM(container, rules, updateCountFn, opts) {
+    opts = opts || {};
     const groups = { high: [], medium: [], low: [], unknown: [] };
     rules.forEach(r => (groups[r.severity] || groups.unknown).push(r));
 
-    const container = document.getElementById('ct-remediation-rules');
     container.innerHTML = '';
+
+    /* Recommended section — automatable high/critical rules sorted by weight */
+    const recRules = rules
+        .filter(r => ['high', 'critical'].includes(r.severity) && r.automated)
+        .sort((a, b) => (b.weight || 1.0) - (a.weight || 1.0));
+
+    if (recRules.length > 0) {
+        const recDiv = document.createElement('div');
+        recDiv.className = 'ct-rem-recommended';
+
+        const heading = document.createElement('div');
+        heading.className = 'ct-rem-recommended-heading';
+        heading.textContent = 'Recommended — ' + recRules.length +
+            ' automatable critical/high rule' + (recRules.length !== 1 ? 's' : '');
+        recDiv.appendChild(heading);
+
+        const actions = document.createElement('div');
+        actions.className = 'ct-rem-recommended-actions';
+
+        if (opts.showApplyNow && opts.onRecApply) {
+            const applyBtn = document.createElement('button');
+            applyBtn.className = 'pf-v6-c-button pf-m-danger ct-requires-admin';
+            applyBtn.type = 'button';
+            applyBtn.textContent = 'Apply Now';
+            applyBtn.addEventListener('click', () => opts.onRecApply(recRules));
+            actions.appendChild(applyBtn);
+        }
+
+        if (opts.onRecBash) {
+            const bashBtn = document.createElement('button');
+            bashBtn.className = 'pf-v6-c-button pf-m-secondary';
+            bashBtn.type = 'button';
+            bashBtn.textContent = 'Download Bash Script';
+            bashBtn.addEventListener('click', e => opts.onRecBash(recRules, e.currentTarget));
+            actions.appendChild(bashBtn);
+        }
+
+        if (opts.onRecAnsible) {
+            const ansibleBtn = document.createElement('button');
+            ansibleBtn.className = 'pf-v6-c-button pf-m-secondary';
+            ansibleBtn.type = 'button';
+            ansibleBtn.textContent = 'Download Ansible Playbook';
+            ansibleBtn.addEventListener('click', e => opts.onRecAnsible(recRules, e.currentTarget));
+            actions.appendChild(ansibleBtn);
+        }
+
+        recDiv.appendChild(actions);
+        container.appendChild(recDiv);
+    }
 
     const order = [['high','High','ct-sev-high'],['medium','Medium','ct-sev-medium'],['low','Low','ct-sev-low']];
     order.forEach(([sev, label, cls]) => {
@@ -1071,18 +1151,43 @@ function renderRemediationRules(rules) {
         btn.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
-            /* find checkboxes within this group */
             const group = btn.closest('details');
             const groupChecks = group.querySelectorAll('.ct-rem-checkbox');
             const allChecked = Array.from(groupChecks).every(c => c.checked);
             groupChecks.forEach(c => { c.checked = !allChecked; });
-            updateRemediationCount();
+            updateCountFn();
         });
     });
 
-    container.removeEventListener('change', updateRemediationCount);
-    container.addEventListener('change', updateRemediationCount);
-    updateRemediationCount();
+    container.removeEventListener('change', updateCountFn);
+    container.addEventListener('change', updateCountFn);
+    updateCountFn();
+}
+
+function renderRemediationRules(rules) {
+    buildRemPanelDOM(
+        document.getElementById('ct-remediation-rules'),
+        rules,
+        updateRemediationCount,
+        {
+            showApplyNow: true,
+            onRecApply:   (rec) => applyRecommendedRules(rec),
+            onRecBash:    (rec, btn) => generateSelectiveFix('bash', rec.map(r => r.id), btn),
+            onRecAnsible: (rec, btn) => generateSelectiveFix('ansible', rec.map(r => r.id), btn),
+        }
+    );
+    updateAdminControls();
+
+    if (pendingQuickFix) {
+        pendingQuickFix = false;
+        const recIds = new Set(rules
+            .filter(r => ['high', 'critical'].includes(r.severity) && r.automated)
+            .map(r => r.id));
+        document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox').forEach(cb => {
+            cb.checked = recIds.has(cb.dataset.id);
+        });
+        updateRemediationCount();
+    }
 }
 
 function onRemediationSearch() {
@@ -1139,9 +1244,10 @@ function updateRemediationCount() {
     });
 }
 
-function generateSelectiveFix(fixType) {
-    const all = document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox');
-    const selected = Array.from(all).filter(c => c.checked).map(c => c.dataset.id);
+function generateSelectiveFix(fixType, selectedIds, btnEl) {
+    const selected = selectedIds ||
+        Array.from(document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox'))
+            .filter(c => c.checked).map(c => c.dataset.id);
     if (!selected.length) return;
 
     const remFile = remediationDir + (fixType === 'bash' ? 'remediation.sh' : 'remediation.yml');
@@ -1149,7 +1255,7 @@ function generateSelectiveFix(fixType) {
     const mime    = fixType === 'bash' ? 'text/x-shellscript' : 'text/yaml';
     const ts      = remediationDir.replace(/\/$/, '').split('/').pop();
     const fname   = 'selective-remediation-' + ts + ext;
-    const btn     = document.getElementById(fixType === 'bash' ? 'ct-rem-bash-btn' : 'ct-rem-ansible-btn');
+    const btn     = btnEl || document.getElementById(fixType === 'bash' ? 'ct-rem-bash-btn' : 'ct-rem-ansible-btn');
 
     cockpit.spawn(
         ['python3', '-c', PY_FILTER_FIX, remFile, fixType, JSON.stringify(selected)],
@@ -1176,6 +1282,13 @@ function generateSelectiveFix(fixType) {
 
 let pendingApplyRules  = [];
 let pendingApplyTitles = [];
+
+function applyRecommendedRules(rec) {
+    pendingApplyRules  = rec.map(r => r.id);
+    pendingApplyTitles = rec.map(r => r.title || r.id);
+    if (!pendingApplyRules.length) return;
+    document.getElementById('ct-apply-gate1').classList.remove('hidden');
+}
 
 function onApplyNowClick() {
     const all = document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox');
@@ -1377,16 +1490,25 @@ function relaxResultsPerms() {
         .catch(err => console.error('chmod failed:', err.message || err));
 }
 
-function onScanError(message) {
+function onScanError(message, output) {
     appendActivityLog({ type: 'scan_error', tab: 'host', message });
     currentScanProc = null;
     showScanSetup();
     document.getElementById('ct-scan-error-message').textContent = message;
+    const detailsEl = document.getElementById('ct-scan-error-details');
+    const outputEl  = document.getElementById('ct-scan-error-output');
+    if (output && output.trim()) {
+        outputEl.textContent = output.trim();
+        detailsEl.classList.remove('hidden');
+    } else {
+        detailsEl.classList.add('hidden');
+    }
     document.getElementById('ct-scan-error-alert').classList.remove('hidden');
 }
 
 function hideScanError() {
     document.getElementById('ct-scan-error-alert').classList.add('hidden');
+    document.getElementById('ct-scan-error-details').classList.add('hidden');
 }
 
 /* ---- Results XML parsing ----------------------------------- */
@@ -1609,6 +1731,48 @@ function loadScanFromHistory(manifest) {
     document.getElementById('ct-results').scrollIntoView({ behavior: 'smooth' });
 }
 
+function updateActionBoard(sev, totalFail, autoCount) {
+    const board = document.getElementById('ct-action-board');
+    if (!board) return;
+
+    const sevEl = document.getElementById('ct-action-board-sev');
+    sevEl.innerHTML = '';
+    [['high','High','ct-sev-high'],['medium','Medium','ct-sev-medium'],['low','Low','ct-sev-low']].forEach(([key, label, cls]) => {
+        const n = (sev && sev[key]) || 0;
+        if (!n) return;
+        const span = document.createElement('span');
+        span.className = 'ct-sev-badge ' + cls;
+        span.textContent = label + ': ' + n;
+        sevEl.appendChild(span);
+    });
+
+    const autoEl = document.getElementById('ct-action-board-auto');
+    const qBtn   = document.getElementById('ct-quick-fix-btn');
+    const rBtn   = document.getElementById('ct-review-all-btn');
+
+    if (autoCount === null) {
+        autoEl.textContent = 'Checking for auto-remediable rules…';
+        qBtn.disabled = true;
+        qBtn.textContent = 'Quick Fix';
+    } else if (autoCount === 0) {
+        autoEl.textContent = 'No automated fixes available for critical/high failures';
+        qBtn.disabled = true;
+        qBtn.textContent = 'Quick Fix';
+    } else {
+        autoEl.textContent = autoCount + ' critical/high rule' + (autoCount !== 1 ? 's' : '') + ' can be auto-remediated';
+        qBtn.disabled = false;
+        qBtn.textContent = 'Quick Fix — ' + autoCount + ' rule' + (autoCount !== 1 ? 's' : '');
+    }
+
+    rBtn.textContent = 'Review all ' + totalFail + ' failure' + (totalFail !== 1 ? 's' : '') + ' →';
+    board.classList.remove('hidden');
+}
+
+function onQuickFixClick() {
+    pendingQuickFix = true;
+    openRemediationPanel(currentResultsDir);
+}
+
 function showResults(manifest) {
     clearInterval(hostScanTimer);
     hostScanTimer = null;
@@ -1691,6 +1855,21 @@ function showResults(manifest) {
     renderFailingSummary(currentResultsDir + 'results.xml',
                          'ct-failing-summary-groups', 'ct-failing-summary-loading',
                          currentRemBashPath || null);
+
+    /* Action Board — show severity counts immediately, load automatable count async */
+    eagerRemRules = null;
+    const sev = manifest.severity_counts || {};
+    updateActionBoard(sev, counts.fail, null);
+    const eagerArgs = [currentResultsDir + 'results.xml'];
+    if (currentRemBashPath) eagerArgs.push(currentRemBashPath);
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...eagerArgs], { err: 'message' })
+        .then(output => {
+            eagerRemRules = JSON.parse(output);
+            const recCount = eagerRemRules.filter(r => ['high','critical'].includes(r.severity) && r.automated).length;
+            updateActionBoard(sev, counts.fail, recCount);
+        })
+        .catch(() => updateActionBoard(sev, counts.fail, 0));
+
     loadHistory();
     dbInvalidate();
 }
@@ -1825,6 +2004,36 @@ function hideProfileDescription() {
 function setScanButtonEnabled(enabled) {
     const adminAllowed = !adminPermission || adminPermission.allowed !== false;
     document.getElementById('ct-scan-btn').disabled = !enabled || !adminAllowed;
+    updateHostScanCmd();
+}
+
+function updateHostScanCmd() {
+    const profileSelect  = document.getElementById('ct-profile-select');
+    const tailorSelect   = document.getElementById('ct-tailor-file-select');
+    const tailoringPath  = tailorSelect.value;
+    const details        = document.getElementById('ct-scan-cmd-details');
+    const cmdEl          = document.getElementById('ct-scan-cmd');
+
+    let profileId;
+    if (tailoringPath && tailoringFilesMap[tailoringPath]) {
+        profileId = tailoringFilesMap[tailoringPath].profile_id;
+    } else {
+        profileId = profileSelect.value;
+    }
+
+    if (!currentSdsPath || !profileId) {
+        details.classList.add('hidden');
+        return;
+    }
+
+    let cmd = 'oscap xccdf eval --profile ' + profileId;
+    if (tailoringPath) cmd += ' --tailoring-file ' + tailoringPath;
+    cmd += ' --results /var/lib/cockpit-scap/results/<timestamp>/results.xml';
+    cmd += ' --report /var/lib/cockpit-scap/results/<timestamp>/report.html';
+    cmd += ' ' + currentSdsPath;
+
+    cmdEl.textContent = cmd;
+    details.classList.remove('hidden');
 }
 
 function updateGuideButton() {
@@ -1983,15 +2192,32 @@ function buildHistoryRow(manifest) {
 
     const isUploaded = manifest.sds_file && manifest.sds_file.startsWith(CONTENT_BASE);
 
+    const prev      = findPreviousScan(manifest, currentHostHistory);
+    const scoreText = (manifest.score || 0).toFixed(1) + '%';
+    let   scoreDelta = '';
+    if (prev && prev.score != null && manifest.score != null) {
+        const d = parseFloat((manifest.score - prev.score).toFixed(1));
+        if (d > 0)      scoreDelta = ' ↑+' + d + '%';
+        else if (d < 0) scoreDelta = ' ↓' + d + '%';
+    }
+
     [
         date,
         manifest.profile_title,
         String(manifest.counts.pass),
         String(manifest.counts.fail),
-        (manifest.score || 0).toFixed(1) + '%',
+        scoreText,
     ].forEach((text, i) => {
         const td = document.createElement('td');
-        td.textContent = text;
+        if (i === 4 && scoreDelta) {
+            td.textContent = text;
+            const delta = document.createElement('span');
+            delta.className   = scoreDelta.includes('↑') ? 'ct-score-delta-up' : 'ct-score-delta-down';
+            delta.textContent = scoreDelta;
+            td.appendChild(delta);
+        } else {
+            td.textContent = text;
+        }
         if (i === 1) {
             td.className = 'ct-history-profile-cell';
             td.title     = isUploaded
@@ -3192,6 +3418,16 @@ function initSettings() {
     document.getElementById('ct-clear-all-cancel')
         .addEventListener('click', () =>
             document.getElementById('ct-clear-all-modal').classList.add('hidden'));
+    document.getElementById('ct-cron-copy-btn')
+        .addEventListener('click', () => {
+            const cmd = document.getElementById('ct-cron-cmd').textContent;
+            navigator.clipboard.writeText(cmd).then(() => {
+                const btn = document.getElementById('ct-cron-copy-btn');
+                const orig = btn.textContent;
+                btn.textContent = '✓ Copied';
+                setTimeout(() => { btn.textContent = orig; }, 2000);
+            }).catch(() => {});
+        });
 }
 
 function onSettingsTabOpen() {
@@ -3202,6 +3438,37 @@ function onSettingsTabOpen() {
     document.getElementById('ct-settings-warn').classList.add('hidden');
     document.getElementById('ct-settings-saved').classList.add('hidden');
     fetchDiskUsage();
+    renderCronHint();
+    renderContentTab();
+    detectContent();
+}
+
+function renderCronHint() {
+    const hint    = document.getElementById('ct-cron-hint');
+    const noScan  = document.getElementById('ct-cron-no-scan');
+    const cmdEl   = document.getElementById('ct-cron-cmd');
+    const last    = currentHostHistory && currentHostHistory[0];
+
+    if (!last) {
+        hint.classList.add('hidden');
+        noScan.classList.remove('hidden');
+        return;
+    }
+
+    const sds      = last.sds_file || '';
+    const profile  = last.profile_id || '';
+    const tailoring = last.tailoring_file || '';
+    const outDir   = '/var/lib/cockpit-scap/results/$(date +%Y-%m-%dT%H-%M-%S)';
+    let cmd = 'mkdir -p ' + outDir + ' && oscap xccdf eval' +
+        ' --profile ' + profile +
+        ' --results ' + outDir + '/results.xml' +
+        ' --report ' + outDir + '/report.html';
+    if (tailoring) cmd += ' --tailoring-file ' + tailoring;
+    cmd += ' ' + sds;
+
+    cmdEl.textContent = cmd;
+    hint.classList.remove('hidden');
+    noScan.classList.add('hidden');
 }
 
 function fetchDiskUsage() {

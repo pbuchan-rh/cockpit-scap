@@ -41,12 +41,6 @@
           </li>
           <li class="pf-v6-c-tabs__item" role="presentation">
             <button class="pf-v6-c-tabs__link" type="button" role="tab"
-                    aria-selected="false" data-panel="panel-content" id="tab-btn-content">
-              <span class="pf-v6-c-tabs__item-text">Content Library</span>
-            </button>
-          </li>
-          <li class="pf-v6-c-tabs__item" role="presentation">
-            <button class="pf-v6-c-tabs__link" type="button" role="tab"
                     aria-selected="false" data-panel="panel-dashboard" id="tab-btn-dashboard">
               <span class="pf-v6-c-tabs__item-text">Dashboard <span class="ct-tab-preview-badge">Preview</span></span>
             </button>
@@ -96,6 +90,10 @@
         <div class="ct-alert-body">
           <h4 class="pf-v6-c-alert__title">Scan failed</h4>
           <div class="pf-v6-c-alert__description" id="ct-scan-error-message"></div>
+          <details class="ct-scan-error-details hidden" id="ct-scan-error-details">
+            <summary class="ct-scan-error-summary">View output</summary>
+            <pre class="ct-scan-error-output" id="ct-scan-error-output"></pre>
+          </details>
         </div>
         <button class="pf-v6-c-button pf-m-link ct-alert-close" type="button"
                 id="ct-scan-error-close" aria-label="Dismiss">&#10005;</button>
@@ -175,6 +173,16 @@
             </div>
 
           </div>
+          <div class="ct-scan-cmd-section">
+            <details class="ct-scan-cmd-preview hidden" id="ct-scan-cmd-details">
+              <summary class="ct-scan-cmd-summary">View oscap command</summary>
+              <div class="ct-scan-cmd-body">
+                <code class="ct-scan-cmd" id="ct-scan-cmd"></code>
+                <button class="pf-v6-c-button pf-m-link" type="button"
+                        id="ct-scan-cmd-copy">Copy</button>
+              </div>
+            </details>
+          </div>
           <div class="pf-v6-c-card__footer ct-scan-actions">
             <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
                     id="ct-scan-btn" disabled>
@@ -216,6 +224,17 @@
             <div class="ct-result-summary-row">
               <div class="ct-result-badges" id="ct-result-badges"></div>
               <div class="ct-result-score" id="ct-result-score"></div>
+            </div>
+            <!-- Action Board — severity breakdown + quick action buttons -->
+            <div class="ct-action-board hidden" id="ct-action-board">
+              <div class="ct-action-board-sev" id="ct-action-board-sev"></div>
+              <div class="ct-action-board-auto" id="ct-action-board-auto"></div>
+              <div class="ct-action-board-actions">
+                <button class="pf-v6-c-button pf-m-primary" type="button"
+                        id="ct-quick-fix-btn" disabled>Quick Fix</button>
+                <button class="pf-v6-c-button pf-m-secondary" type="button"
+                        id="ct-review-all-btn">Review all failures</button>
+              </div>
             </div>
             <!-- Shown only when scan used uploaded (not system-package) content -->
             <div class="pf-v6-c-alert pf-m-warning ct-uploaded-warn hidden"
@@ -411,6 +430,10 @@
         <div class="ct-alert-body">
           <h4 class="pf-v6-c-alert__title">Scan failed</h4>
           <div class="pf-v6-c-alert__description" id="cs-scan-error-message"></div>
+          <details class="ct-scan-error-details hidden" id="cs-scan-error-details">
+            <summary class="ct-scan-error-summary">View output</summary>
+            <pre class="ct-scan-error-output" id="cs-scan-error-output"></pre>
+          </details>
         </div>
         <button class="pf-v6-c-button pf-m-link ct-alert-close" type="button"
                 id="cs-scan-error-close" aria-label="Dismiss">&#10005;</button>
@@ -544,6 +567,16 @@
                 <p class="hidden" id="cs-profile-description"></p>
               </div>
 
+            </div>
+            <div class="ct-scan-cmd-section">
+              <details class="ct-scan-cmd-preview hidden" id="cs-scan-cmd-details">
+                <summary class="ct-scan-cmd-summary">View oscap command</summary>
+                <div class="ct-scan-cmd-body">
+                  <code class="ct-scan-cmd" id="cs-scan-cmd"></code>
+                  <button class="pf-v6-c-button pf-m-link" type="button"
+                          id="cs-scan-cmd-copy">Copy</button>
+                </div>
+              </details>
             </div>
             <div class="pf-v6-c-card__footer ct-scan-actions">
               <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
@@ -984,48 +1017,6 @@
     <!-- ================================================== -->
     <!-- CONTENT TAB PANEL                                  -->
     <!-- ================================================== -->
-    <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-content"
-             role="tabpanel" aria-labelledby="tab-btn-content">
-
-      <!-- System content -->
-      <div class="pf-v6-c-card">
-        <div class="pf-v6-c-card__title">
-          <h2 class="pf-v6-c-card__title-text">System Content</h2>
-        </div>
-        <div class="pf-v6-c-card__body">
-          <p class="ct-content-help">SCAP content installed by packages. Managed via <code>dnf install scap-security-guide</code>. Read-only.</p>
-          <div id="ct-system-content-list"></div>
-        </div>
-      </div>
-
-      <!-- User-staged content -->
-      <div class="pf-v6-c-card">
-        <div class="pf-v6-c-card__title">
-          <div class="ct-tailor-rules-header">
-            <h2 class="pf-v6-c-card__title-text">Uploaded Content</h2>
-            <div>
-              <input type="file" id="ct-content-upload-input" accept=".xml" class="hidden">
-              <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
-                      id="ct-content-upload-btn">Upload SDS File</button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="ct-content-refresh-btn">Refresh</button>
-            </div>
-          </div>
-        </div>
-        <div class="pf-v6-c-card__body">
-          <p class="ct-content-help">
-            Upload SDS files for other RHEL versions directly, or copy them to
-            <code>/var/lib/cockpit-scap/content/</code> via SCP.
-            Tailoring works for any version;
-            scanning is blocked for content that does not match this host.
-          </p>
-          <div id="ct-content-upload-status" class="hidden"></div>
-          <div id="ct-user-content-list"></div>
-        </div>
-      </div>
-
-    </section>
-    <!-- END CONTENT TAB PANEL -->
 
     <!-- ================================================== -->
     <!-- DASHBOARD TAB PANEL                                -->
@@ -1123,6 +1114,61 @@
                     id="ct-clear-all-btn" disabled
                     title="Administrative access required">Clear All Data</button>
           </div>
+        </div>
+      </div>
+
+      <!-- System content -->
+      <div class="pf-v6-c-card">
+        <div class="pf-v6-c-card__title">
+          <h2 class="pf-v6-c-card__title-text">System Content</h2>
+        </div>
+        <div class="pf-v6-c-card__body">
+          <p class="ct-content-help">SCAP content installed by packages. Managed via <code>dnf install scap-security-guide</code>. Read-only.</p>
+          <div id="ct-system-content-list"></div>
+        </div>
+      </div>
+
+      <!-- User-staged content -->
+      <div class="pf-v6-c-card">
+        <div class="pf-v6-c-card__title">
+          <div class="ct-tailor-rules-header">
+            <h2 class="pf-v6-c-card__title-text">Uploaded Content</h2>
+            <div>
+              <input type="file" id="ct-content-upload-input" accept=".xml" class="hidden">
+              <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
+                      id="ct-content-upload-btn">Upload SDS File</button>
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="ct-content-refresh-btn">Refresh</button>
+            </div>
+          </div>
+        </div>
+        <div class="pf-v6-c-card__body">
+          <p class="ct-content-help">
+            Upload SDS files for other RHEL versions directly, or copy them to
+            <code>/var/lib/cockpit-scap/content/</code> via SCP.
+            Tailoring works for any version;
+            scanning is blocked for content that does not match this host.
+          </p>
+          <div id="ct-content-upload-status" class="hidden"></div>
+          <div id="ct-user-content-list"></div>
+        </div>
+      </div>
+
+      <div class="pf-v6-c-card">
+        <div class="pf-v6-c-card__title">
+          <h2 class="pf-v6-c-card__title-text">Manual Scheduling</h2>
+        </div>
+        <div class="pf-v6-c-card__body">
+          <p class="ct-settings-desc">To run scans on a schedule, add a cron job using the command below.
+            The command is built from your most recent scan. Replace the output paths as needed.</p>
+          <div class="ct-cron-hint hidden" id="ct-cron-hint">
+            <code class="ct-cron-cmd" id="ct-cron-cmd"></code>
+            <button class="pf-v6-c-button pf-m-link" type="button"
+                    id="ct-cron-copy-btn">Copy</button>
+          </div>
+          <p class="ct-settings-desc hidden" id="ct-cron-no-scan">
+            No scan history found. Run a scan first to generate the command.
+          </p>
         </div>
       </div>
 
