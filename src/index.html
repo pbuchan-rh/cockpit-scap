@@ -198,7 +198,7 @@
             <span class="pf-v6-c-spinner__lead-ball"></span>
             <span class="pf-v6-c-spinner__tail-ball"></span>
           </span>
-          <p>Scan in progress&hellip;</p>
+          <p>Scan in progress&hellip; <span class="ct-scan-elapsed" id="ct-scan-elapsed"></span></p>
           <button class="pf-v6-c-button pf-m-secondary" type="button"
                   id="ct-cancel-btn">Cancel</button>
         </div>
@@ -564,7 +564,7 @@
               <span class="pf-v6-c-spinner__lead-ball"></span>
               <span class="pf-v6-c-spinner__tail-ball"></span>
             </span>
-            <p>Container scan in progress&hellip;</p>
+            <p>Container scan in progress&hellip; <span class="ct-scan-elapsed" id="cs-scan-elapsed"></span></p>
             <button class="pf-v6-c-button pf-m-secondary" type="button"
                     id="cs-cancel-btn">Cancel</button>
           </div>
@@ -1162,7 +1162,7 @@
           <!-- Empty state -->
           <div class="pf-v6-c-empty-state hidden" id="ct-activity-empty">
             <div class="pf-v6-c-empty-state__content">
-              <p class="pf-v6-c-empty-state__body">No activity recorded yet. Run a scan to see entries here.</p>
+              <p class="pf-v6-c-empty-state__body" id="ct-activity-empty-msg">No activity recorded yet. Run a scan to see entries here.</p>
             </div>
           </div>
 
@@ -1204,13 +1204,17 @@
   </div>
 </div>
 
-<!-- Apply Gate 2: script review -->
+<!-- Apply Gate 2: rule list review -->
 <div class="ct-confirm-backdrop hidden" id="ct-apply-gate2"
      role="dialog" aria-modal="true" aria-labelledby="ct-apply-gate2-title">
   <div class="ct-confirm-dialog ct-apply-review-dialog">
-    <p class="ct-confirm-title" id="ct-apply-gate2-title">Review Remediation Script</p>
+    <p class="ct-confirm-title" id="ct-apply-gate2-title">Confirm Remediation</p>
     <p class="ct-confirm-body" id="ct-apply-gate2-desc"></p>
-    <pre class="ct-apply-script-preview" id="ct-apply-script-preview"></pre>
+    <ul class="ct-apply-rule-list" id="ct-apply-rule-list"></ul>
+    <details class="ct-apply-script-details">
+      <summary class="ct-apply-script-toggle">View script</summary>
+      <pre class="ct-apply-script-preview" id="ct-apply-script-preview"></pre>
+    </details>
     <div class="ct-confirm-footer">
       <button class="pf-v6-c-button pf-m-danger" type="button" id="ct-apply-gate2-apply">Apply Now</button>
       <button class="pf-v6-c-button pf-m-link" type="button" id="ct-apply-gate2-cancel">Cancel</button>

@@ -1341,6 +1341,35 @@ details.ct-tailor-group .ct-tailor-rule {
   color: var(--ct-color-text);
 }
 
+.ct-scan-elapsed {
+  font-size: 0.8rem;
+  color: var(--ct-color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  margin-left: 6px;
+}
+
+.ct-apply-rule-list {
+  margin: 0 0 var(--ct-space-sm) 20px;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  font-size: 0.875rem;
+  color: var(--ct-color-text);
+  line-height: 1.7;
+}
+
+.ct-apply-script-details {
+  margin-bottom: var(--ct-space-lg);
+}
+
+.ct-apply-script-toggle {
+  font-size: 0.8rem;
+  color: var(--ct-color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 8px;
+}
+
 .ct-apply-output-area {
   margin-top: 20px;
   border-top: 1px solid var(--pf-v6-global--BorderColor--100, rgba(255,255,255,0.1));

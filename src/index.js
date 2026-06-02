@@ -266,6 +266,13 @@ let confirmCallback  = null;
 let adminPermission  = null;
 let currentUser      = null;
 
+/* Module state — scan timer */
+let hostScanTimer    = null;
+let hostScanStart    = null;
+
+/* Module state — apply now */
+let pendingApplyScript = '';
+
 document.addEventListener('DOMContentLoaded', () => {
     cockpit.file('/etc/os-release').read()
         .then(content => {
@@ -300,16 +307,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ct-view-report-btn')
         .addEventListener('click', viewReport);
     document.getElementById('ct-download-report-btn')
-        .addEventListener('click', () => downloadArtifact(
+        .addEventListener('click', e => downloadArtifact(
             currentReportPath,
             'scap-report-' + currentTimestamp + '.html',
-            'text/html'
+            'text/html',
+            e.currentTarget
         ));
     document.getElementById('ct-download-xml-btn')
-        .addEventListener('click', () => downloadArtifact(
+        .addEventListener('click', e => downloadArtifact(
             currentResultsDir + 'results.xml',
             'scap-results-' + currentTimestamp + '.xml',
-            'application/xml'
+            'application/xml',
+            e.currentTarget
         ));
     document.getElementById('ct-new-scan-btn')
         .addEventListener('click', () => {
@@ -1012,7 +1021,7 @@ function renderRemediationRules(rules) {
         if (!list || !list.length) return;
 
         const details = document.createElement('details');
-        details.open = (sev === 'high');
+        details.open = false;
         details.className = 'ct-rem-group';
 
         const summary = document.createElement('summary');
@@ -1140,6 +1149,7 @@ function generateSelectiveFix(fixType) {
     const mime    = fixType === 'bash' ? 'text/x-shellscript' : 'text/yaml';
     const ts      = remediationDir.replace(/\/$/, '').split('/').pop();
     const fname   = 'selective-remediation-' + ts + ext;
+    const btn     = document.getElementById(fixType === 'bash' ? 'ct-rem-bash-btn' : 'ct-rem-ansible-btn');
 
     cockpit.spawn(
         ['python3', '-c', PY_FILTER_FIX, remFile, fixType, JSON.stringify(selected)],
@@ -1153,17 +1163,27 @@ function generateSelectiveFix(fixType) {
         a.download = fname;
         a.click();
         URL.revokeObjectURL(url);
+        if (btn) {
+            const orig = btn.textContent;
+            btn.textContent = '✓ Downloaded';
+            setTimeout(() => { btn.textContent = orig; }, 2000);
+        }
         appendActivityLog({ type: 'remediate_download', tab: 'host',
             fix_type: fixType, rules_selected: selected.length });
     })
     .catch(err => console.error('Selective remediation failed:', err.message || err));
 }
 
-let pendingApplyRules = [];
+let pendingApplyRules  = [];
+let pendingApplyTitles = [];
 
 function onApplyNowClick() {
     const all = document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox');
-    pendingApplyRules = Array.from(all).filter(c => c.checked).map(c => c.dataset.id);
+    const checked = Array.from(all).filter(c => c.checked);
+    pendingApplyRules  = checked.map(c => c.dataset.id);
+    pendingApplyTitles = checked.map(c =>
+        c.closest('.ct-rem-rule-item')?.querySelector('.ct-rem-rule-title')?.textContent || c.dataset.id
+    );
     if (!pendingApplyRules.length) return;
     document.getElementById('ct-apply-gate1').classList.remove('hidden');
 }
@@ -1177,9 +1197,18 @@ function onApplyGate1Proceed() {
         { err: 'message' }
     )
     .then(scriptContent => {
+        pendingApplyScript = scriptContent;
+        const n = pendingApplyRules.length;
         document.getElementById('ct-apply-gate2-desc').textContent =
-            pendingApplyRules.length + ' rule' + (pendingApplyRules.length > 1 ? 's' : '') +
-            ' selected for remediation. Review the script below before applying.';
+            'The following ' + n + ' rule' + (n > 1 ? 's' : '') +
+            ' will be applied to this host:';
+        const list = document.getElementById('ct-apply-rule-list');
+        list.innerHTML = '';
+        pendingApplyTitles.forEach(title => {
+            const li = document.createElement('li');
+            li.textContent = title;
+            list.appendChild(li);
+        });
         document.getElementById('ct-apply-script-preview').textContent = scriptContent;
         document.getElementById('ct-apply-gate2').classList.remove('hidden');
     })
@@ -1193,7 +1222,7 @@ function onApplyGate1Proceed() {
 function onApplyGate2Execute() {
     document.getElementById('ct-apply-gate2').classList.add('hidden');
 
-    const scriptContent = document.getElementById('ct-apply-script-preview').textContent;
+    const scriptContent = pendingApplyScript;
     const applyPath     = remediationDir + 'remediation-apply.sh';
     const outputEl      = document.getElementById('ct-apply-output');
     const areaEl        = document.getElementById('ct-apply-output-area');
@@ -1581,6 +1610,8 @@ function loadScanFromHistory(manifest) {
 }
 
 function showResults(manifest) {
+    clearInterval(hostScanTimer);
+    hostScanTimer = null;
     currentManifest = manifest;
     const { counts, score, profile_title, timestamp } = manifest;
 
@@ -1697,7 +1728,7 @@ function viewReportFromPath(reportPath) {
         });
 }
 
-function downloadArtifact(filePath, filename, mimeType) {
+function downloadArtifact(filePath, filename, mimeType, btn) {
     if (!filePath) return;
     cockpit.file(filePath, { max_read_size: -1 }).read()
         .then(content => {
@@ -1710,6 +1741,11 @@ function downloadArtifact(filePath, filename, mimeType) {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            if (btn) {
+                const orig = btn.textContent;
+                btn.textContent = '✓ Downloaded';
+                setTimeout(() => { btn.textContent = orig; }, 2000);
+            }
         })
         .catch(err => {
             console.error('Failed to download:', err);
@@ -1723,10 +1759,22 @@ function showScanProgress() {
     document.getElementById('ct-scan-row').classList.add('hidden');
     document.getElementById('ct-scan-progress').classList.remove('hidden');
     document.getElementById('ct-results').classList.add('hidden');
+    hostScanStart = Date.now();
+    const elapsedEl = document.getElementById('ct-scan-elapsed');
+    elapsedEl.textContent = '';
+    hostScanTimer = setInterval(() => {
+        const s = Math.floor((Date.now() - hostScanStart) / 1000);
+        const m = Math.floor(s / 60);
+        elapsedEl.textContent = m > 0
+            ? m + 'm ' + (s % 60) + 's'
+            : s + 's';
+    }, 1000);
     loadHistory();
 }
 
 function showScanSetup() {
+    clearInterval(hostScanTimer);
+    hostScanTimer = null;
     document.getElementById('ct-scan-row').classList.remove('hidden');
     document.getElementById('ct-scan-progress').classList.add('hidden');
     document.getElementById('ct-results').classList.add('hidden');
@@ -1810,6 +1858,8 @@ function onViewGuideClick() {
         console.error('Popup blocked — cannot open guide');
         return;
     }
+    win.document.write('<html><body style="font-family:RedHatText,sans-serif;padding:48px;color:#151515">' +
+        '<p>Generating compliance guide… this may take 15–20 seconds.</p></body></html>');
     cockpit.spawn(args, { err: 'message' })
         .then(html => storeReportInDB(html))
         .then(() => {
@@ -1840,6 +1890,8 @@ function onTailorViewGuideClick() {
         console.error('Popup blocked — cannot open guide');
         return;
     }
+    win.document.write('<html><body style="font-family:RedHatText,sans-serif;padding:48px;color:#151515">' +
+        '<p>Generating compliance guide… this may take 15–20 seconds.</p></body></html>');
     cockpit.spawn(['oscap', 'xccdf', 'generate', 'guide', '--profile', profileId, tailorSdsPath],
                   { err: 'message' })
         .then(html => storeReportInDB(html))
@@ -3385,12 +3437,20 @@ function loadActivityLog() {
                 entries = entries.filter(e => ACTIVITY_FILTER_MAP[filter].includes(e.type));
             }
 
-            renderActivityTable(entries.slice(0, limit));
+            renderActivityTable(entries.slice(0, limit), filter);
         })
-        .catch(() => renderActivityTable([]));
+        .catch(() => renderActivityTable([], filter));
 }
 
-function renderActivityTable(entries) {
+const ACTIVITY_EMPTY_MSG = {
+    all:       'No activity recorded yet. Run a scan to see entries here.',
+    scan:      'No scan activity found.',
+    guide:     'No compliance guides generated yet.',
+    validate:  'No content validation activity found.',
+    tailoring: 'No tailoring activity found.',
+};
+
+function renderActivityTable(entries, filter) {
     const table     = document.getElementById('ct-activity-table');
     const empty     = document.getElementById('ct-activity-empty');
     const tbody     = document.getElementById('ct-activity-tbody');
@@ -3403,6 +3463,8 @@ function renderActivityTable(entries) {
     clearBtn.disabled  = !hasEntries || !isAdmin;
 
     if (!hasEntries) {
+        document.getElementById('ct-activity-empty-msg').textContent =
+            ACTIVITY_EMPTY_MSG[filter] || ACTIVITY_EMPTY_MSG.all;
         table.classList.add('hidden');
         empty.classList.remove('hidden');
         return;

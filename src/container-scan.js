@@ -13,6 +13,8 @@
 
 let csProc           = null;
 let currentCsHistory = [];
+let csScanTimer      = null;
+let csScanStart      = null;
 let csTimestamp   = null;
 let csResultsDir  = null;
 let csReportPath  = null;
@@ -48,15 +50,17 @@ function initContainerScan() {
     document.getElementById('cs-view-report-btn')
         .addEventListener('click', () => viewReportFromPath(csReportPath));
     document.getElementById('cs-download-report-btn')
-        .addEventListener('click', () => downloadArtifact(
+        .addEventListener('click', e => downloadArtifact(
             csReportPath,
             'container-report-' + csTimestamp + '.html',
-            'text/html'));
+            'text/html',
+            e.currentTarget));
     document.getElementById('cs-download-xml-btn')
-        .addEventListener('click', () => downloadArtifact(
+        .addEventListener('click', e => downloadArtifact(
             csResultsDir + 'results.xml',
             'container-results-' + csTimestamp + '.xml',
-            'application/xml'
+            'application/xml',
+            e.currentTarget
         ));
     document.getElementById('cs-selective-rem-btn')
         .addEventListener('click', () => openCsRemPanel(csResultsDir));
@@ -536,6 +540,8 @@ function csLoadScanFromHistory(manifest) {
 }
 
 function csShowResults(manifest) {
+    clearInterval(csScanTimer);
+    csScanTimer = null;
     csCurrentManifest = manifest;
     const { counts, score, profile_title, image_name, timestamp } = manifest;
 
@@ -781,6 +787,8 @@ function onCsViewGuideClick() {
         console.error('Popup blocked — cannot open guide');
         return;
     }
+    win.document.write('<html><body style="font-family:RedHatText,sans-serif;padding:48px;color:#151515">' +
+        '<p>Generating compliance guide… this may take 15–20 seconds.</p></body></html>');
     cockpit.spawn(args, { err: 'message' })
         .then(html => storeReportInDB(html))
         .then(() => {
@@ -878,10 +886,22 @@ function csShowProgress() {
     document.getElementById('cs-scan-row').classList.add('hidden');
     document.getElementById('cs-progress').classList.remove('hidden');
     document.getElementById('cs-results').classList.add('hidden');
+    csScanStart = Date.now();
+    const elapsedEl = document.getElementById('cs-scan-elapsed');
+    elapsedEl.textContent = '';
+    csScanTimer = setInterval(() => {
+        const s = Math.floor((Date.now() - csScanStart) / 1000);
+        const m = Math.floor(s / 60);
+        elapsedEl.textContent = m > 0
+            ? m + 'm ' + (s % 60) + 's'
+            : s + 's';
+    }, 1000);
     csLoadHistory();
 }
 
 function csShowSetup() {
+    clearInterval(csScanTimer);
+    csScanTimer = null;
     const adminAllowed = !adminPermission || adminPermission.allowed !== false;
     if (!adminAllowed) {
         csShowPrereq('Administrative access required', [
@@ -1024,7 +1044,7 @@ function renderCsRemRules(rules) {
         if (!list || !list.length) return;
 
         const details = document.createElement('details');
-        details.open = (sev === 'high');
+        details.open = false;
         details.className = 'ct-rem-group';
 
         const summary = document.createElement('summary');
@@ -1149,6 +1169,7 @@ function generateCsSelectiveFix(fixType) {
     const mime    = fixType === 'bash' ? 'text/x-shellscript' : 'text/yaml';
     const ts      = csRemDir.replace(/\/$/, '').split('/').pop();
     const fname   = 'container-selective-remediation-' + ts + ext;
+    const btn     = document.getElementById(fixType === 'bash' ? 'cs-rem-bash-btn' : 'cs-rem-ansible-btn');
 
     cockpit.spawn(
         ['python3', '-c', PY_FILTER_FIX, remFile, fixType, JSON.stringify(selected)],
@@ -1162,6 +1183,11 @@ function generateCsSelectiveFix(fixType) {
         a.download = fname;
         a.click();
         URL.revokeObjectURL(url);
+        if (btn) {
+            const orig = btn.textContent;
+            btn.textContent = '✓ Downloaded';
+            setTimeout(() => { btn.textContent = orig; }, 2000);
+        }
         appendActivityLog({ type: 'remediate_download', tab: 'container',
             fix_type: fixType, rules_selected: selected.length });
     })
