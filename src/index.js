@@ -329,6 +329,13 @@ document.addEventListener('DOMContentLoaded', () => {
             'application/xml',
             e.currentTarget
         ));
+    document.getElementById('ct-export-report-default')
+        .addEventListener('click', e => downloadArtifact(
+            currentReportPath,
+            'scap-report-' + currentTimestamp + '.html',
+            'text/html',
+            e.currentTarget
+        ));
     document.getElementById('ct-export-toggle')
         .addEventListener('click', e => {
             e.stopPropagation();

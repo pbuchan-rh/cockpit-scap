@@ -875,6 +875,12 @@ code {
   cursor: not-allowed;
 }
 
+.ct-split-btn-default {
+  font-size: 0.75rem;
+  opacity: 0.55;
+  margin-left: 0.25rem;
+}
+
 /* ---- Failing rules summary ---------------------------------- */
 
 .ct-failing-summary {

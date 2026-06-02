@@ -81,6 +81,13 @@ function initContainerScan() {
             'application/xml',
             e.currentTarget
         ));
+    document.getElementById('cs-export-report-default')
+        .addEventListener('click', e => downloadArtifact(
+            csReportPath,
+            'container-report-' + csTimestamp + '.html',
+            'text/html',
+            e.currentTarget
+        ));
     document.getElementById('cs-export-toggle')
         .addEventListener('click', e => {
             e.stopPropagation();
