@@ -1099,11 +1099,6 @@
             </div>
           </div>
 
-          <div class="ct-settings-disk-row">
-            <span class="ct-settings-disk-label">Results storage</span>
-            <span class="ct-settings-disk-value" id="ct-settings-disk-usage">—</span>
-          </div>
-
           <div class="pf-v6-c-alert pf-m-warning ct-settings-warn hidden" id="ct-settings-warn"
                aria-label="Retention reduction warning">
             <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
@@ -1114,6 +1109,19 @@
             <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
                     id="ct-settings-save-btn">Save</button>
             <span class="ct-settings-saved hidden" id="ct-settings-saved">&#10003; Settings saved</span>
+          </div>
+
+          <h3 class="ct-settings-section-title ct-settings-danger-title">Data Management</h3>
+          <div class="ct-settings-disk-row">
+            <span class="ct-settings-disk-label">Storage used</span>
+            <span class="ct-settings-disk-value" id="ct-settings-disk-usage">—</span>
+          </div>
+          <p class="ct-settings-desc">Permanently delete all scan results, tailoring files, uploaded SCAP content,
+            remediation audit logs, and activity history from this host. Module settings are preserved.</p>
+          <div class="ct-settings-footer">
+            <button class="pf-v6-c-button pf-m-danger ct-requires-admin" type="button"
+                    id="ct-clear-all-btn" disabled
+                    title="Administrative access required">Clear All Data</button>
           </div>
         </div>
       </div>
@@ -1219,6 +1227,29 @@
     <pre class="ct-log-modal-content" id="ct-log-modal-content"></pre>
     <div class="ct-confirm-footer">
       <button class="pf-v6-c-button pf-m-primary" type="button" id="ct-log-modal-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clear All Data modal -->
+<div class="ct-confirm-backdrop hidden" id="ct-clear-all-modal"
+     role="dialog" aria-modal="true" aria-labelledby="ct-clear-all-title">
+  <div class="ct-confirm-dialog">
+    <p class="ct-confirm-title" id="ct-clear-all-title">Clear All Module Data?</p>
+    <div class="ct-confirm-body">
+      <p>This will permanently delete:</p>
+      <ul class="ct-clear-all-list">
+        <li>All host and container scan results</li>
+        <li>All tailoring files</li>
+        <li>All uploaded SCAP content</li>
+        <li>All remediation audit logs</li>
+        <li>The activity log</li>
+      </ul>
+      <p>Module settings are preserved. This cannot be undone.</p>
+    </div>
+    <div class="ct-confirm-footer">
+      <button class="pf-v6-c-button pf-m-danger" type="button" id="ct-clear-all-ok">Clear All Data</button>
+      <button class="pf-v6-c-button pf-m-link" type="button" id="ct-clear-all-cancel">Cancel</button>
     </div>
   </div>
 </div>

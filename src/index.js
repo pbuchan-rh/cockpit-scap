@@ -3129,6 +3129,17 @@ function initSettings() {
         .addEventListener('input', onRetentionInput);
     document.getElementById('ct-setting-container-retention')
         .addEventListener('input', onRetentionInput);
+    document.getElementById('ct-clear-all-btn')
+        .addEventListener('click', () =>
+            document.getElementById('ct-clear-all-modal').classList.remove('hidden'));
+    document.getElementById('ct-clear-all-ok')
+        .addEventListener('click', () => {
+            document.getElementById('ct-clear-all-modal').classList.add('hidden');
+            clearAllData();
+        });
+    document.getElementById('ct-clear-all-cancel')
+        .addEventListener('click', () =>
+            document.getElementById('ct-clear-all-modal').classList.add('hidden'));
 }
 
 function onSettingsTabOpen() {
@@ -3144,9 +3155,34 @@ function onSettingsTabOpen() {
 function fetchDiskUsage() {
     const el = document.getElementById('ct-settings-disk-usage');
     el.textContent = '…';
-    cockpit.spawn(['du', '-sh', '/var/lib/cockpit-scap/results/'], { err: 'message' })
+    cockpit.spawn(['du', '-sh', '/var/lib/cockpit-scap/'], { err: 'message' })
         .then(out => { el.textContent = out.split('\t')[0].trim(); })
         .catch(() => { el.textContent = '—'; });
+}
+
+function clearAllData() {
+    const dirs = [
+        '/var/lib/cockpit-scap/results/',
+        TAILORING_BASE,
+        CONTENT_BASE,
+        REMEDIATION_LOG_BASE,
+    ];
+    Promise.all(dirs.map(dir =>
+        cockpit.spawn(['find', dir, '-mindepth', '1', '-delete'],
+            { superuser: 'require', err: 'message' })
+            .catch(err => console.error('clearAllData: failed for ' + dir, err.message || err))
+    ))
+    .then(() => cockpit.file(ACTIVITY_LOG, { superuser: 'require' }).replace(''))
+    .then(() => {
+        appendActivityLog({ type: 'data_clear', tab: 'settings' });
+        loadHistory();
+        csLoadHistory();
+        renderContentTab();
+        detectContent();
+        loadActivityLog();
+        fetchDiskUsage();
+    })
+    .catch(err => console.error('clearAllData failed:', err.message || err));
 }
 
 function onRetentionInput() {
@@ -3258,6 +3294,8 @@ function buildJournalMessage(e) {
             return 'Settings updated — ' + (e.detail || '?');
         case 'activity_clear':
             return 'Activity log cleared';
+        case 'data_clear':
+            return 'All module data cleared';
         default:
             return null;
     }
@@ -3285,6 +3323,7 @@ const ACTIVITY_TYPE_LABELS = {
     remediate_download:  'Remediation Downloaded',
     settings_change:     'Settings Updated',
     remediate_apply:     'Remediation Applied',
+    data_clear:          'All Data Cleared',
 };
 
 const ACTIVITY_BADGE_CLASS = {
@@ -3305,6 +3344,7 @@ const ACTIVITY_BADGE_CLASS = {
     remediate_download:  'ct-activity-remediate',
     settings_change:     'ct-activity-validate',
     remediate_apply:     'ct-activity-danger',
+    data_clear:          'ct-activity-danger',
 };
 
 const ACTIVITY_FILTER_MAP = {
