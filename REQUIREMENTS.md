@@ -369,19 +369,19 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 - **REQ-179:** ✅ The results card MUST include an Action Board section showing CRITICAL / HIGH / MEDIUM failure counts immediately from manifest data (no async required), with automatable count filled in progressively once `PY_EXTRACT_FAILING_RULES` completes
 
-- **REQ-180:** ⬜ The Action Board MUST include a "Quick Fix" button that opens the remediation panel with only automatable CRITICAL+HIGH rules pre-selected, sorted by XCCDF rule weight descending; when zero such rules exist the button MUST be hidden and replaced with "No automated fixes available for critical/high failures"
+- **REQ-180:** ✅ The Action Board MUST include a "Quick Fix" button that opens the remediation panel with only automatable CRITICAL+HIGH rules pre-selected, sorted by XCCDF rule weight descending; when zero such rules exist the button MUST be hidden and replaced with "No automated fixes available for critical/high failures"
 
-- **REQ-181:** ⬜ `PY_EXTRACT_FAILING_RULES` MUST extract the XCCDF `weight` attribute for each failing rule; weight MUST be included in the returned JSON and used to sort the recommended rule set
+- **REQ-181:** ✅ `PY_EXTRACT_FAILING_RULES` MUST extract the XCCDF `weight` attribute for each failing rule; weight MUST be included in the returned JSON and used to sort the recommended rule set
 
-- **REQ-182:** ⬜ The remediation panel MUST include a "Recommended Fixes" section above the severity groups showing the automatable CRITICAL+HIGH rule count with its own Download Bash, Download Ansible, and Apply Now buttons (host only) that act on that subset regardless of checkbox state; container panel shows Download Bash/Ansible only
+- **REQ-182:** ✅ ~~Recommended Fixes section inside panel~~ — superseded. Automatable critical/high rules are surfaced via Action Board Quick Fix (drawer) + Dashboard Priority Fixes, which is cleaner. In-panel Recommended section was removed after UAT found it confusing with duplicate buttons. The intent is fully met. above the severity groups showing the automatable CRITICAL+HIGH rule count with its own Download Bash, Download Ansible, and Apply Now buttons (host only) that act on that subset regardless of checkbox state; container panel shows Download Bash/Ansible only
 
-- **REQ-183:** ⬜ The scan history table Score column MUST show an inline delta vs the previous same-profile scan — `↑ +7%` (green) or `↓ -3%` (red) — computed at render time from in-memory manifests; no new column required
+- **REQ-183:** ✅ The scan history table Score column MUST show an inline delta vs the previous same-profile scan — `↑ +7%` (green) or `↓ -3%` (red) — computed at render time from in-memory manifests; no new column required
 
-- **REQ-184:** ⬜ A shared `buildRemPanelDOM(container, rules)` function MUST be extracted from the near-identical `renderRemediationRules()` and `renderCsRemRules()` implementations before adding the Recommended section — this extraction is a prerequisite for REQ-182
+- **REQ-184:** ✅ A shared `buildRemPanelDOM(container, rules)` function MUST be extracted from the near-identical `renderRemediationRules()` and `renderCsRemRules()` implementations before adding the Recommended section — this extraction is a prerequisite for REQ-182
 
-- **REQ-185:** ⬜ Settings tab MUST include a "Manual Scheduling" section showing the exact `oscap xccdf eval` command for the most recently used content + profile, with a Copy to Clipboard button — provides a cron-paste path without requiring systemd units
+- **REQ-185:** ✅ Settings tab MUST include a "Manual Scheduling" section showing the exact `oscap xccdf eval` command for the most recently used content + profile, with a Copy to Clipboard button — provides a cron-paste path without requiring systemd units
 
-- **REQ-186:** ⬜ All v3.7 UI additions MUST use PatternFly v6 tokens exclusively — no hardcoded hex values, no custom colors outside `--ct-` custom property definitions; Cockpit native aesthetic is a hard requirement; dark mode MUST work on all new elements without additional effort (token-only colors guarantee this automatically)
+- **REQ-186:** ✅ All v3.7 UI additions MUST use PatternFly v6 tokens exclusively — no hardcoded hex values, no custom colors outside `--ct-` custom property definitions; Cockpit native aesthetic is a hard requirement; dark mode MUST work on all new elements without additional effort (token-only colors guarantee this automatically)
 
 ---
 
