@@ -4,9 +4,9 @@
 
 ## Current State
 
-**Version:** v3.8-dev (feature complete, pending code review + release)
+**Version:** v3.8-dev (code review complete, Playwright rerun needed before release)
 **Last session:** 2026-06-02
-**Last commit:** 544eb90 (ux: action board label + button rename; settings grid responsive stack)
+**Last commit:** e2720c1 (fix: address 10 code review findings before v3.8 release)
 **Git tag:** v3.6 on both remotes — v3.7 and v3.8 not yet tagged
 **Deployed to:** rhel10cis.beastmode.localdomain — user-space install at `~/.local/share/cockpit/cockpit-scap/`
 **Published:** COPR build 10534383 (v3.6, el10)
@@ -14,7 +14,7 @@
 **GitHub release:** https://github.com/pbuchan-rh/cockpit-scap/releases/tag/v3.6
 **Gitea release:** http://git.beastmode.localdomain:3000/admin/cockpit-scap/releases/tag/v3.6
 
-**Status:** v3.8 feature complete and deployed to rhel10cis. Full UAT pass done, UX report generated. Requires code review before release. MODULE_VERSION still says v3.6 — bump before tagging.
+**Status:** Code review complete — 10 findings fixed and committed. Version bump and spec changelog are UNCOMMITTED (in working tree). README screenshots are stale and need replacement. Run Playwright suite before tagging.
 
 **rhel10cis state:**
 - PCI-DSS partial remediation still applied (sysctl hardening, sudoers fixed)
@@ -92,25 +92,21 @@
 
 ## What Is NOT Done (Next Session Priority)
 
-### 1. Code Review
+### 1. v3.8 Release Sequence
 
-Required before tagging v3.8. Volume of changes is significant — two full feature sessions since v3.6. Focus areas:
-- Remediation drawer open/close state management across all three drawers
-- Action board button state (disabled when no results, auto count loading)
-- Export dropdown event handling (close-on-outside-click, menu item wiring)
-- ARF button disabled state for pre-v3.8 scans
-- SSG version extraction error handling (files that don't parse or time out)
-- Accessibility: drawer `aria-hidden` when closed — identified in UX audit, not yet fixed
-
-### 2. v3.8 Release Sequence
-
-- ⬜ Code review (see above)
-- ⬜ Fix accessibility: `aria-hidden="true"` on all drawers when closed
-- ⬜ Bump `MODULE_VERSION` to v3.8 in `src/index.js`
-- ⬜ Add v3.8 changelog entry to `cockpit-scap.spec`
-- ⬜ Update README current release line
-- ⬜ Build RPM on rhel10cis → COPR → test on 10.0.0.214
+- ✅ Code review — 10 findings fixed (e2720c1)
+- ⬜ Run full Playwright test suite — regression check after code review fixes
+- ⬜ Replace stale README screenshots (or remove section and add back post-release)
+- ⬜ Commit version bump: `MODULE_VERSION` → v3.8 in `src/index.js` (already in working tree)
+- ⬜ Commit spec: version → 3.8, changelog entry (already in working tree)
+- ⬜ Update README current release line (v3.6 → v3.8)
+- ⬜ Push to both remotes (Gitea + GitHub)
 - ⬜ Tag v3.8 on both remotes + GitHub release
+- ⬜ On rhel10cis: git pull, rpmbuild -bs → el10 SRPM
+- ⬜ From local Fedora: copr-cli submit SRPM
+- ⬜ Test RPM install on 10.0.0.214
+
+### 2. v3.9 Candidates
 
 ### 3. v3.9 Candidates
 
@@ -125,6 +121,10 @@ Required before tagging v3.8. Volume of changes is significant — two full feat
 | **Scheduled scanning** | Deliberately deferred; systemd units + helper script; changes operating model |
 | **Ansible Apply Now** | Deferred; requires ansible-playbook dependency |
 | **ScanID surfacing** | ID generated and stored; not yet shown in history table or activity log |
+| **buildScoreChart NaN guard** | `m.score != null` doesn't catch NaN; add `!isNaN(parseFloat(m.score))` to filter |
+| **dbInsightTs dead state** | Set but never read in dashboard.js; likely a staleness guard that was never wired |
+| **README troubleshooting section** | Common first-use questions: tab not showing, ARF greyed out, no content detected |
+| **README screenshots** | All stale as of v3.8 — take fresh after RPM install on 10.0.0.214 |
 
 ### 4. Architecture Notes Added This Session
 
@@ -156,6 +156,7 @@ Required before tagging v3.8. Volume of changes is significant — two full feat
 | 2026-06-02 | v3.7-dev | Feature | Action Board, weight field, shared renderer, history score delta, Content Library → Settings, Manual Scheduling, dry-run preview, better scan errors |
 | 2026-06-02 | v3.8-dev | UX + Feature | Drawer remediation, action bar, donut animation, keyboard shortcuts, failing rules search, scan duration+ScanID, dashboard score chart, rule detail drawer, scan ETA, settings 2-card layout, full profile remediation on all tabs |
 | 2026-06-02 | v3.8-dev cont. | UAT + UX | Full UAT pass, UX audit, Playwright test suite updated; ARF export, Not applicable badge, SSG version in Content Library, export split button, action board label + button rename (Critical Rules / All Failures), Profile Remediation button rename, settings responsive stack, container+dashboard off by default |
+| 2026-06-02 | v3.8-dev | Code Review | 9-angle multi-agent review; 12 findings; 10 fixed (e2720c1): severity_counts bug, container Quick Fix automated flag, backdrop handler, cs-export-menu, tailoringFilesMap, diff-btn listeners, pendingQuickFix reset, --results-arf preview, rBtn disabled, inline style |
 
 ---
 
