@@ -7,19 +7,23 @@ no context switching.
 
 ## Features
 
-- **Failing rules summary** — collapsible HIGH/MEDIUM/LOW groups; each rule shows title, CCE identifier, Automated/Manual annotation, and expandable description and rationale inline
-- **Regression and improvement detection** — banner fires when failure count changes vs the previous scan of the same profile; "See what changed" shows exactly which rules were Fixed, Regressed, or are New failures
+- **Scan results action bar** — severity breakdown (HIGH/MEDIUM/LOW counts) appears immediately on scan complete alongside the compliance score; automatable rule count loads asynchronously; **Quick Fix** opens the remediation panel pre-filtered to automatable critical/high rules; **Review All** opens the full panel
+- **Failing rules summary** — collapsible HIGH/MEDIUM/LOW groups with search by rule title or CCE; each rule shows title, CCE identifier, Automated/Manual annotation, and expandable description and rationale inline
+- **Regression and improvement detection** — banner fires when failure count changes vs the previous scan of the same profile; "See what changed" shows which rules were fixed, regressed, or are new failures; score delta shown inline in scan history
+- **Drawer remediation** — the selective remediation panel slides in from the right; scan results remain visible behind it; close with the Close button, Esc, or clicking outside
 - **Selective Remediation Builder** — search and select individual failing rules; download filtered bash or Ansible scripts; or **Apply Now** directly on the host with two-gate confirmation and live streaming output; host-only, admin-gated
 - **Profile tailoring** — rule tree editor with enable/disable, variable value adjustment, search, and expand/collapse; saves XCCDF tailoring XML; upload/download/edit/delete; edit files in place or save as a new copy
-- **Container image scanning** — scan images via `oscap-podman`; enumerates from the root Podman store; per-image scan history; selective remediation download for use in image build pipelines
-- **Scan history** — configurable retention per scan type; **View Scan** loads any historical result into the full results card; Run Again pre-fills from any history entry; Export CSV
+- **Container image scanning** — scan images via `oscap-podman`; enumerates from the root Podman store; per-image scan history and action bar; selective remediation download for use in image build pipelines
+- **Scan history** — configurable retention per scan type; **View Scan** loads any historical result; **Remediate** from history loads the scan and opens the drawer; score delta shown inline; Export CSV
+- **Scan timing** — elapsed time shown during active scans; estimated time remaining computed from the most recent matching scan; scan duration and stable scan ID stored in each result manifest
+- **Dry-run command preview** — the full `oscap xccdf eval` command for the current selection is shown before scanning; Copy to clipboard
 - **Content Library** — upload SDS files directly via browser; RHEL 6–10 SDS supported; auto-filters to version-compatible content; validate with `oscap ds sds-validate`
 - **Report and results export** — full oscap HTML report opens in a new tab; raw XCCDF results.xml download for auditor archives
 - **View Compliance Guide** — generate and view the full oscap security guide for the selected profile on any scan tab
-- **Compliance Dashboard** *(preview)* — host compliance hero card with score, weighted risk score, severity breakdown, and HIGH severity failures linked to scan results; compact per-image container cards below
+- **Compliance Dashboard** *(preview)* — host compliance hero card with score, score trend chart, severity breakdown, risk score, and unified critical findings with automatable annotations and Quick Fix; rule detail drawer for any listed finding; compact per-image container cards
 - **Activity log** — timestamped record of all user actions; filterable by type; exportable as CSV
-- **Settings tab** — scan result retention, tab visibility, Clear All Data; system-wide, admin-gated, audit-logged
-- **Admin gate** — Run Scan, Apply Now, upload, and delete are visually disabled with tooltip in limited Cockpit sessions; no error popup after the fact
+- **Settings tab** — scan result retention, tab visibility, Clear All Data; Content Library management (system and uploaded SDS); manual scheduling command (cron-paste); all admin-gated and audit-logged
+- **Keyboard shortcuts** — `/` focuses the failing rules search; `Q` triggers Quick Fix when results are loaded; `Esc` closes any open drawer
 
 ## Screenshots
 
@@ -84,12 +88,13 @@ Reload Cockpit and navigate to **SCAP Compliance** in the sidebar.
 ### Scan tab
 
 1. Select a content file (auto-detected from the SSG directory)
-2. Select a profile — the profile description is displayed to the right
+2. Select a profile — the profile description is displayed to the right; the full `oscap` command is shown below the form
 3. Optionally select a saved tailoring file to customize the profile
-4. Click **Run Scan** (requires administrative access)
-5. When complete, review the compliance score, failing rules summary, and regression/improvement detection
-6. Click **Remediate** to open the Selective Remediation Builder — search and select failing rules, expand each rule to review its description and rationale, then download a filtered bash or Ansible script or click **Apply Now** to remediate directly on the host
-7. All completed scans appear in the Scan History table; **View Scan** reloads any historical result
+4. Click **Run Scan** (requires administrative access); elapsed time and estimated remaining time are shown during the scan
+5. When complete, review the compliance score, severity action bar, failing rules summary, and regression/improvement detection
+6. Click **Quick Fix** to open the remediation drawer pre-filtered to automatable critical/high rules, or **Review All** to open it with all rules loaded; the drawer slides in from the right while scan results remain visible
+7. In the drawer: search and select rules, then download a bash or Ansible script, or click **Apply Now** to remediate directly on the host
+8. All completed scans appear in the Scan History table; **View Scan** reloads any result; **Remediate** loads a historical scan and opens the drawer directly
 
 ### Policy Tailoring tab
 
@@ -108,6 +113,8 @@ Reload Cockpit and navigate to **SCAP Compliance** in the sidebar.
 
 - **Scan result retention** — set how many completed scans to keep per scan type; older results are removed automatically after each scan when the limit is reached
 - **Module features** — disable the Container Scan or Dashboard tabs for environments where they are not relevant
+- **Content Library** — view system-installed SDS files; upload additional SDS files for other RHEL versions; validate or delete uploaded content
+- **Manual Scheduling** — the exact `oscap xccdf eval` command for the most recent scan is shown for use in cron jobs; Copy to clipboard
 - **Clear All Data** — wipe all scan results, tailoring files, uploaded content, and logs in one admin-gated action
 
 ## Storage
@@ -118,7 +125,7 @@ All runtime data is written to `/var/lib/cockpit-scap/`:
 /var/lib/cockpit-scap/
 ├── results/
 │   └── <TIMESTAMP>/          # One directory per scan
-│       ├── manifest.json     # Profile, SDS, counts, score
+│       ├── manifest.json     # Profile, SDS, counts, score, scan_id, scan_duration_s
 │       ├── report.html       # oscap HTML report
 │       ├── results.xml       # oscap XML results
 │       ├── remediation.sh    # Bash remediation script
@@ -155,7 +162,7 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 ## Development status
 
-**Current version:** v3.6
+**Current release:** v3.6 — available via COPR
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
@@ -165,9 +172,11 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 | Version | Theme |
 |---|---|
 | **v1** | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
-| **v2** | Multi-version SDS content management — RHEL 6–9 SDS staging, CPE OS detection, Content tab |
+| **v2** | Multi-version SDS content management — RHEL 6–9 SDS staging, CPE OS detection |
 | **v3** | Container image scanning — `oscap-podman`, root Podman store, per-image history |
-| **v3.3** | Selective Remediation Builder, Activity log, Compliance Dashboard (preview), tailoring update-in-place |
+| **v3.3** | Selective Remediation Builder, Activity log, Compliance Dashboard (preview) |
 | **v3.4** | Failing rules with CCE and inline description, regression detection, scan diff, SDS upload, admin gate |
 | **v3.5** | Apply Now with two-gate confirmation and audit trail; Settings tab; container scan parity |
-| **v3.6** *(current)* | UX refinements — scan timer, download feedback, Clear All Data, improved remediation gate, contextual activity log |
+| **v3.6** *(current release)* | UX refinements — scan timer, download feedback, Clear All Data, improved remediation gate |
+| **v3.7** | Action Board, score delta in history, dry-run command preview, Content Library in Settings |
+| **v3.8** | Drawer remediation, dashboard score trend chart and rule detail, scan ETA, keyboard shortcuts, failing rules search |
