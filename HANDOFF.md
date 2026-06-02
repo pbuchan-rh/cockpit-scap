@@ -4,15 +4,21 @@
 
 ## Current State
 
-**Version:** v3.4 (v3.5 feature-complete, not yet tagged)
+**Version:** v3.5 (released 2026-06-01)
 **Last session:** 2026-06-01
-**Last commit:** see git log
-**Git tag:** v3.4 on both remotes (github + origin/Gitea)
+**Last commit:** daaf6ef (docs: update screenshots and README for v3.5)
+**Git tag:** v3.5 on both remotes (github + origin/Gitea)
 **Deployed to:** rhel10cis.beastmode.localdomain — user-space install at `~/.local/share/cockpit/cockpit-scap/` (takes precedence over system install — always deploy here, no sudo)
-**Published:** COPR build 10529631 (v3.4, el10)
-**RPM test host:** 10.0.0.214 upgraded to v3.4 — clean install confirmed
-**GitHub release:** https://github.com/pbuchan-rh/cockpit-scap/releases/tag/v3.4
-**Gitea release:** http://git.beastmode.localdomain:3000/admin/cockpit-scap/releases/tag/v3.4
+**Published:** COPR build 10533906 (v3.5, el10)
+**RPM test host:** 10.0.0.214 upgraded to v3.5 — clean install confirmed, SELinux enforcing, all dirs correct
+**GitHub release:** https://github.com/pbuchan-rh/cockpit-scap/releases/tag/v3.5
+**Gitea release:** http://git.beastmode.localdomain:3000/admin/cockpit-scap/releases/tag/v3.5
+
+**NOTE: rhel10cis state (2026-06-01):**
+- PCI-DSS partial remediation applied during screenshot capture (16 rules, exit 0)
+- Sudoers fixed: use_pty commented out, NOPASSWD restored
+- Remaining sysctl changes (network hardening) left in place — machine healthy
+- Machine rebooted and confirmed stable post-remediation
 
 ---
 
@@ -169,6 +175,7 @@ COPR build 10529631, GitHub + Gitea tagged v3.4, 10.0.0.214 confirmed clean upgr
 | **Per-user settings** | Currently all settings (retention, tab visibility) are system-wide via `/var/lib/cockpit-scap/settings.json`. If a multi-user environment needs personal preferences (e.g. one user wants container scan hidden, another doesn't), per-user settings in `~/.config/cockpit-scap/` would be the path. Compliance policy settings (retention) should stay system-wide; only UI preferences would be per-user. Scope carefully before implementing. |
 | **Cockpit applications page listing** | `jelly` from the cockpit team replied to the GitHub issue on 2026-06-01: "if you want to be featured on the cockpit website's application page make a PR to cockpit-project/cockpit-project.github.io". Hold until module is production-ready and polished enough to represent well in the enterprise Linux ecosystem. Pre-requisites: EPEL 10 listed, Dashboard Preview badge removed, sparkline polish complete, no known UX rough edges. |
 | **External API / integration** | No outward-facing REST API story today — Cockpit is WebSocket/bridge, not HTTP. File-based data at `/var/lib/cockpit-scap/` is already an implicit API (manifests are JSON, results are standard XCCDF). Near-term: companion query script (`cockpit-scap-query --format json`) ships with RPM, ~2-3h work. Medium-term: D-Bus interface for Ansible/Prometheus/systemd integration. Long-term: REST microservice as separate systemd unit (changes operating model — same concern as scheduled scanning). Scope when a concrete integration request arrives. |
+| **Clear all data button** | Settings tab — single button to wipe all scan results, tailoring files, uploaded content, remediation logs, and activity log in one operation. Useful for fresh starts, lab resets, or pre-deployment cleanup. Needs confirmation modal, admin gate, activity log entry (journal only, since log is cleared), and a "what will be deleted" summary before confirming. |
 | **Activity log user field — extend to manifests** | `user` field added to activity log entries (v3.5). Natural follow-on: add `user` to scan manifest JSON at scan completion so history table and dashboard can show "run by pbuchan". Deferred — history table already dense. Revisit when multi-user display is explicitly requested. |
 | **Admin gate / activity log audit** | ✓ Fixed in 2026-06-01 session — tailoring save/update, Run Again (both tabs), activity clear all properly gated. |
 | **Stale cache after delete/add operations** | ✓ Fixed in 2026-06-01 session — all 6 one-liners applied. |
