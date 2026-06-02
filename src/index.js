@@ -331,6 +331,10 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', showScanSetup);
     document.getElementById('ct-scan-error-close')
         .addEventListener('click', hideScanError);
+    document.getElementById('ct-profile-rem-bash')
+        .addEventListener('click', e => downloadProfileRemediation('bash', e.currentTarget));
+    document.getElementById('ct-profile-rem-ansible')
+        .addEventListener('click', e => downloadProfileRemediation('ansible', e.currentTarget));
     document.getElementById('ct-scan-cmd-copy')
         .addEventListener('click', () => {
             const cmd = document.getElementById('ct-scan-cmd').textContent;
@@ -504,6 +508,10 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', onViewGuideClick);
     document.getElementById('ct-tailor-guide-btn')
         .addEventListener('click', onTailorViewGuideClick);
+    document.getElementById('ct-tailor-profile-rem-bash')
+        .addEventListener('click', e => downloadTailorProfileRemediation('bash', e.currentTarget));
+    document.getElementById('ct-tailor-profile-rem-ansible')
+        .addEventListener('click', e => downloadTailorProfileRemediation('ansible', e.currentTarget));
 
     /* CSV export */
     document.getElementById('ct-export-csv-btn')
@@ -2096,6 +2104,10 @@ function updateHostScanCmd() {
         profileId = profileSelect.value;
     }
 
+    const remEnabled = !!(currentSdsPath && profileId);
+    document.getElementById('ct-profile-rem-bash').disabled    = !remEnabled;
+    document.getElementById('ct-profile-rem-ansible').disabled = !remEnabled;
+
     if (!currentSdsPath || !profileId) {
         details.classList.add('hidden');
         return;
@@ -2109,6 +2121,52 @@ function updateHostScanCmd() {
 
     cmdEl.textContent = cmd;
     details.classList.remove('hidden');
+}
+
+function downloadProfileRemediation(fixType, btnEl) {
+    const tailorSelect  = document.getElementById('ct-tailor-file-select');
+    const tailoringPath = tailorSelect ? tailorSelect.value : '';
+    let profileId;
+    if (tailoringPath && tailoringFilesMap[tailoringPath]) {
+        profileId = tailoringFilesMap[tailoringPath].profile_id;
+    } else {
+        profileId = (document.getElementById('ct-profile-select') || {}).value || '';
+    }
+    if (!currentSdsPath || !profileId) return;
+
+    const args = ['oscap', 'xccdf', 'generate', 'fix', '--fix-type', fixType,
+                  '--profile', profileId];
+    if (tailoringPath) args.push('--tailoring-file', tailoringPath);
+    args.push(currentSdsPath);
+
+    const ext         = fixType === 'bash' ? '.sh' : '.yml';
+    const profileSel  = document.getElementById('ct-profile-select');
+    const profileText = profileSel && profileSel.selectedIndex >= 0
+        ? profileSel.options[profileSel.selectedIndex].text : profileId;
+    const safeName = profileText.toLowerCase()
+        .replace(/[()]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const fname    = 'profile-remediation-' + safeName + ext;
+    const mime     = 'text/plain';
+    const origText = btnEl.textContent;
+    btnEl.disabled = true;
+    btnEl.textContent = 'Generating…';
+
+    cockpit.spawn(args, { err: 'message' })
+        .then(output => {
+            const blob = new Blob([output], { type: mime });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url; a.download = fname; a.click();
+            URL.revokeObjectURL(url);
+            btnEl.textContent = '✓ Downloaded';
+            setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 2000);
+            appendActivityLog({ type: 'profile_rem_download', tab: 'host',
+                fix_type: fixType, profile_id: profileId });
+        })
+        .catch(() => {
+            btnEl.textContent = 'Failed';
+            setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 2000);
+        });
 }
 
 function updateGuideButton() {
@@ -2576,10 +2634,54 @@ function onTailorProfileChange() {
 }
 
 function updateTailorLoadBtn() {
+    const profileId  = document.getElementById('ct-tailor-profile-select').value;
+    const name       = document.getElementById('ct-tailor-name-input').value.trim();
+    const remEnabled = !!(profileId && tailorSdsPath);
+    document.getElementById('ct-tailor-load-btn').disabled          = !profileId || !name;
+    document.getElementById('ct-tailor-guide-btn').disabled          = !remEnabled;
+    document.getElementById('ct-tailor-profile-rem-bash').disabled   = !remEnabled;
+    document.getElementById('ct-tailor-profile-rem-ansible').disabled = !remEnabled;
+}
+
+function downloadTailorProfileRemediation(fixType, btnEl) {
     const profileId = document.getElementById('ct-tailor-profile-select').value;
-    const name      = document.getElementById('ct-tailor-name-input').value.trim();
-    document.getElementById('ct-tailor-load-btn').disabled  = !profileId || !name;
-    document.getElementById('ct-tailor-guide-btn').disabled = !profileId || !tailorSdsPath;
+    if (!profileId || !tailorSdsPath) return;
+
+    const args = ['oscap', 'xccdf', 'generate', 'fix', '--fix-type', fixType,
+                  '--profile', profileId];
+    if (tailorEditingSidecar && tailorEditingSidecar.path) {
+        args.push('--tailoring-file', tailorEditingSidecar.path);
+    }
+    args.push(tailorSdsPath);
+
+    const ext        = fixType === 'bash' ? '.sh' : '.yml';
+    const profileSel = document.getElementById('ct-tailor-profile-select');
+    const profileText = profileSel && profileSel.selectedIndex >= 0
+        ? profileSel.options[profileSel.selectedIndex].text : profileId;
+    const safeName = profileText.toLowerCase()
+        .replace(/[()]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const tailorTag  = tailorEditingSidecar ? '-tailored' : '';
+    const fname      = 'profile-remediation-' + safeName + tailorTag + ext;
+    const origText   = btnEl.textContent;
+    btnEl.disabled   = true;
+    btnEl.textContent = 'Generating…';
+
+    cockpit.spawn(args, { err: 'message' })
+        .then(output => {
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url; a.download = fname; a.click();
+            URL.revokeObjectURL(url);
+            btnEl.textContent = '✓ Downloaded';
+            setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 2000);
+            appendActivityLog({ type: 'profile_rem_download', tab: 'tailoring',
+                fix_type: fixType, profile_id: profileId });
+        })
+        .catch(() => {
+            btnEl.textContent = 'Failed';
+            setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 2000);
+        });
 }
 
 function onTailorLoadClick() {

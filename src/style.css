@@ -1078,6 +1078,21 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
   flex: 1;
 }
 
+.ct-profile-rem-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--pf-v6-global--BorderColor--100, rgba(0,0,0,0.1));
+}
+
+.ct-profile-rem-label {
+  font-size: 0.8rem;
+  color: var(--ct-color-text-secondary);
+  flex-shrink: 0;
+}
+
 .ct-scan-error-summary {
   font-size: 0.8125rem;
   cursor: pointer;

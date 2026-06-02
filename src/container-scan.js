@@ -113,6 +113,10 @@ function initContainerScan() {
         .addEventListener('click', csShowSetup);
     document.getElementById('cs-scan-error-close')
         .addEventListener('click', csClearError);
+    document.getElementById('cs-profile-rem-bash')
+        .addEventListener('click', e => downloadCsProfileRemediation('bash', e.currentTarget));
+    document.getElementById('cs-profile-rem-ansible')
+        .addEventListener('click', e => downloadCsProfileRemediation('ansible', e.currentTarget));
     document.getElementById('cs-scan-cmd-copy')
         .addEventListener('click', () => {
             const cmd = document.getElementById('cs-scan-cmd').textContent;
@@ -387,15 +391,62 @@ function onCsTailorFileChange() {
     csUpdateScanBtn();
 }
 
+function downloadCsProfileRemediation(fixType, btnEl) {
+    const tailorSelect  = document.getElementById('cs-tailor-file-select');
+    const tailoringPath = tailorSelect ? tailorSelect.value : '';
+    let profileId;
+    if (tailoringPath && csTailoringMap[tailoringPath]) {
+        profileId = csTailoringMap[tailoringPath].profile_id;
+    } else {
+        profileId = (document.getElementById('cs-profile-select') || {}).value || '';
+    }
+    if (!csSdsPath || !profileId) return;
+
+    const args = ['oscap', 'xccdf', 'generate', 'fix', '--fix-type', fixType,
+                  '--profile', profileId];
+    if (tailoringPath) args.push('--tailoring-file', tailoringPath);
+    args.push(csSdsPath);
+
+    const ext         = fixType === 'bash' ? '.sh' : '.yml';
+    const profileSel  = document.getElementById('cs-profile-select');
+    const profileText = profileSel && profileSel.selectedIndex >= 0
+        ? profileSel.options[profileSel.selectedIndex].text : profileId;
+    const safeName = profileText.toLowerCase()
+        .replace(/[()]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const fname    = 'profile-remediation-' + safeName + ext;
+    const origText = btnEl.textContent;
+    btnEl.disabled = true;
+    btnEl.textContent = 'Generating…';
+
+    cockpit.spawn(args, { err: 'message' })
+        .then(output => {
+            const blob = new Blob([output], { type: 'text/plain' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url; a.download = fname; a.click();
+            URL.revokeObjectURL(url);
+            btnEl.textContent = '✓ Downloaded';
+            setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 2000);
+            appendActivityLog({ type: 'profile_rem_download', tab: 'container',
+                fix_type: fixType, profile_id: profileId });
+        })
+        .catch(() => {
+            btnEl.textContent = 'Failed';
+            setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 2000);
+        });
+}
+
 function csUpdateScanBtn() {
     const imageVal     = document.getElementById('cs-image-select').value;
     const profileId    = document.getElementById('cs-profile-select').value;
     const tailoring    = document.getElementById('cs-tailor-file-select').value;
     const adminAllowed = !adminPermission || adminPermission.allowed !== false;
+    const csRemEnabled = !!csSdsPath && !!(profileId || tailoring);
     document.getElementById('cs-scan-btn').disabled =
         !imageVal || (!profileId && !tailoring) || csVersionBlocked || !adminAllowed;
-    document.getElementById('cs-guide-btn').disabled =
-        !csSdsPath || (!profileId && !tailoring);
+    document.getElementById('cs-guide-btn').disabled          = !csRemEnabled;
+    document.getElementById('cs-profile-rem-bash').disabled   = !csRemEnabled;
+    document.getElementById('cs-profile-rem-ansible').disabled = !csRemEnabled;
     updateCsScanCmd();
 }
 

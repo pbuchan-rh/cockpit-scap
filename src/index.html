@@ -188,10 +188,20 @@
                     id="ct-scan-btn" disabled>
               Run Scan
             </button>
-            <button class="pf-v6-c-button pf-m-link" type="button"
+            <button class="pf-v6-c-button pf-m-secondary" type="button"
                     id="ct-guide-btn" disabled
                     title="Generate and view the full oscap security guide for the selected profile">
               View Compliance Guide
+            </button>
+            <button class="pf-v6-c-button pf-m-secondary" type="button"
+                    id="ct-profile-rem-bash" disabled
+                    title="Generate remediation script for all rules in the selected profile">
+              Full Profile — Bash
+            </button>
+            <button class="pf-v6-c-button pf-m-secondary" type="button"
+                    id="ct-profile-rem-ansible" disabled
+                    title="Generate Ansible playbook for all rules in the selected profile">
+              Full Profile — Ansible
             </button>
           </div>
         </div>
@@ -590,9 +600,19 @@
             <div class="pf-v6-c-card__footer ct-scan-actions">
               <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
                       id="cs-scan-btn" disabled>Run Scan</button>
-              <button class="pf-v6-c-button pf-m-link" type="button"
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
                       id="cs-guide-btn" disabled
                       title="Generate and view the full oscap security guide for the selected profile">View Compliance Guide</button>
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="cs-profile-rem-bash" disabled
+                      title="Generate remediation script for all rules in the selected profile">
+                Full Profile — Bash
+              </button>
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="cs-profile-rem-ansible" disabled
+                      title="Generate Ansible playbook for all rules in the selected profile">
+                Full Profile — Ansible
+              </button>
             </div>
           </div>
         </div>
@@ -909,9 +929,15 @@
         <div class="pf-v6-c-card__footer ct-scan-actions">
           <button class="pf-v6-c-button pf-m-primary" type="button"
                   id="ct-tailor-load-btn" disabled>Load Profile</button>
-          <button class="pf-v6-c-button pf-m-link" type="button"
+          <button class="pf-v6-c-button pf-m-secondary" type="button"
                   id="ct-tailor-guide-btn" disabled
                   title="Generate and view the full oscap security guide for the selected profile">View Compliance Guide</button>
+          <button class="pf-v6-c-button pf-m-secondary" type="button"
+                  id="ct-tailor-profile-rem-bash" disabled
+                  title="Generate bash remediation for all rules in the selected profile">Full Profile — Bash</button>
+          <button class="pf-v6-c-button pf-m-secondary" type="button"
+                  id="ct-tailor-profile-rem-ansible" disabled
+                  title="Generate Ansible playbook for all rules in the selected profile">Full Profile — Ansible</button>
         </div>
       </div>
 
