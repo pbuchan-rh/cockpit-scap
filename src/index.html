@@ -248,9 +248,10 @@
               </div>
               <div class="ct-action-board-actions">
                 <button class="pf-v6-c-button pf-m-secondary" type="button"
-                        id="ct-quick-fix-btn" disabled>Quick Fix</button>
+                        id="ct-quick-fix-btn" disabled>Remediation Builder</button>
                 <button class="pf-v6-c-button pf-m-secondary" type="button"
-                        id="ct-review-all-btn">Review all failures</button>
+                        id="ct-review-all-btn"
+                        title="Opens the remediation builder with all failing rules. Review, select, and generate a bash or Ansible fix script — nothing is applied until you confirm.">Remediation Builder</button>
               </div>
             </div>
             <!-- Shown only when scan used uploaded (not system-package) content -->
@@ -309,15 +310,17 @@
             <div class="ct-result-actions">
               <button class="pf-v6-c-button pf-m-primary" type="button"
                       id="ct-view-report-btn">View Full Report</button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="ct-download-report-btn">Download Report</button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="ct-download-xml-btn">Download Results XML</button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="ct-download-arf-btn"
-                      title="Asset Reporting Format — full bundle of XCCDF results, OVAL data, and asset identity">Download ARF</button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="ct-selective-rem-btn">Remediate</button>
+              <div class="ct-split-btn">
+                <button class="pf-v6-c-button pf-m-secondary ct-split-btn-main" type="button"
+                        id="ct-download-report-btn">Download Report</button>
+                <button class="pf-v6-c-button pf-m-secondary ct-split-btn-toggle" type="button"
+                        id="ct-export-toggle" title="More export options" aria-haspopup="true" aria-expanded="false">&#9660;</button>
+                <div class="ct-split-btn-menu hidden" id="ct-export-menu">
+                  <button type="button" id="ct-download-xml-btn">Download Results XML</button>
+                  <button type="button" id="ct-download-arf-btn"
+                          title="Asset Reporting Format — full bundle of XCCDF results, OVAL data, and asset identity">Download ARF</button>
+                </div>
+              </div>
               <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn ct-requires-admin" type="button"
                       id="ct-new-scan-btn">Run Again</button>
               <button class="pf-v6-c-button pf-m-secondary ct-results-close" type="button"
@@ -661,9 +664,10 @@
                 </div>
                 <div class="ct-action-board-actions">
                   <button class="pf-v6-c-button pf-m-secondary" type="button"
-                          id="cs-quick-fix-btn" disabled>Quick Fix</button>
+                          id="cs-quick-fix-btn" disabled>Remediation Builder</button>
                   <button class="pf-v6-c-button pf-m-secondary" type="button"
-                          id="cs-review-all-btn">Review all failures</button>
+                          id="cs-review-all-btn"
+                          title="Opens the remediation builder with all failing rules. Review, select, and generate a bash or Ansible fix script — nothing is applied until you confirm.">Remediation Builder</button>
                 </div>
               </div>
               <!-- notapplicable context note — always shown for container scans -->
@@ -722,15 +726,17 @@
               <div class="ct-result-actions">
                 <button class="pf-v6-c-button pf-m-primary" type="button"
                         id="cs-view-report-btn">View Full Report</button>
-                <button class="pf-v6-c-button pf-m-secondary" type="button"
-                        id="cs-download-report-btn">Download Report</button>
-                <button class="pf-v6-c-button pf-m-secondary" type="button"
-                        id="cs-download-xml-btn">Download Results XML</button>
-                <button class="pf-v6-c-button pf-m-secondary" type="button"
-                        id="cs-download-arf-btn"
-                        title="Asset Reporting Format — full bundle of XCCDF results, OVAL data, and asset identity">Download ARF</button>
-                <button class="pf-v6-c-button pf-m-secondary" type="button"
-                        id="cs-selective-rem-btn">Remediate</button>
+                <div class="ct-split-btn">
+                  <button class="pf-v6-c-button pf-m-secondary ct-split-btn-main" type="button"
+                          id="cs-download-report-btn">Download Report</button>
+                  <button class="pf-v6-c-button pf-m-secondary ct-split-btn-toggle" type="button"
+                          id="cs-export-toggle" title="More export options" aria-haspopup="true" aria-expanded="false">&#9660;</button>
+                  <div class="ct-split-btn-menu hidden" id="cs-export-menu">
+                    <button type="button" id="cs-download-xml-btn">Download Results XML</button>
+                    <button type="button" id="cs-download-arf-btn"
+                            title="Asset Reporting Format — full bundle of XCCDF results, OVAL data, and asset identity">Download ARF</button>
+                  </div>
+                </div>
                 <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn ct-requires-admin" type="button"
                         id="cs-new-scan-btn">Run Again</button>
                 <button class="pf-v6-c-button pf-m-secondary ct-results-close" type="button"

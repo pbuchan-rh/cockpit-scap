@@ -813,6 +813,68 @@ code {
   margin-left: auto;
 }
 
+/* ---- Split button (Export dropdown) ----------------------- */
+
+.ct-split-btn {
+  position: relative;
+  display: inline-flex;
+}
+
+.ct-split-btn .ct-split-btn-main {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-right: none !important;
+}
+
+.ct-split-btn .ct-split-btn-toggle {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  padding: 0 0.6rem !important;
+  min-width: unset !important;
+  border-left: 1px solid currentColor !important;
+  font-size: 0.65rem;
+}
+
+.ct-split-btn-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 150;
+  background: var(--ct-color-bg-card);
+  border: var(--ct-border);
+  border-radius: var(--ct-border-radius-sm, 4px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.ct-split-btn-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: var(--ct-border);
+  cursor: pointer;
+  font-size: var(--ct-font-size-sm);
+  color: var(--ct-color-text);
+  font-family: inherit;
+}
+
+.ct-split-btn-menu button:last-child {
+  border-bottom: none;
+}
+
+.ct-split-btn-menu button:hover:not(:disabled) {
+  background: var(--ct-color-border);
+}
+
+.ct-split-btn-menu button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ---- Failing rules summary ---------------------------------- */
 
 .ct-failing-summary {

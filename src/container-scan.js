@@ -81,8 +81,18 @@ function initContainerScan() {
             'application/xml',
             e.currentTarget
         ));
-    document.getElementById('cs-selective-rem-btn')
-        .addEventListener('click', () => openCsRemPanel(csResultsDir));
+    document.getElementById('cs-export-toggle')
+        .addEventListener('click', e => {
+            e.stopPropagation();
+            const menu = document.getElementById('cs-export-menu');
+            const open = menu.classList.toggle('hidden') === false;
+            e.currentTarget.setAttribute('aria-expanded', String(open));
+        });
+    document.getElementById('cs-export-menu')
+        .addEventListener('click', () => {
+            document.getElementById('cs-export-menu').classList.add('hidden');
+            document.getElementById('cs-export-toggle').setAttribute('aria-expanded', 'false');
+        });
     document.getElementById('cs-quick-fix-btn')
         .addEventListener('click', () => { csPendingQuickFix = true; openCsRemPanel(csResultsDir); });
     document.getElementById('cs-review-all-btn')
@@ -681,18 +691,23 @@ function updateCsActionBoard(sev, totalFail, autoCount) {
     if (autoCount === null) {
         autoEl.textContent = 'Checking for auto-remediable rules…';
         qBtn.disabled = true;
-        qBtn.textContent = 'Quick Fix';
+        qBtn.textContent = 'Remediation Builder';
+        qBtn.title = '';
     } else if (autoCount === 0) {
         autoEl.textContent = 'No automated fixes available for critical/high failures';
         qBtn.disabled = true;
-        qBtn.textContent = 'Quick Fix';
+        qBtn.textContent = 'Remediation Builder';
+        qBtn.title = '';
     } else {
         autoEl.textContent = autoCount + ' critical/high rule' + (autoCount !== 1 ? 's' : '') + ' can be auto-remediated';
         qBtn.disabled = false;
-        qBtn.textContent = 'Quick Fix — ' + autoCount + ' rule' + (autoCount !== 1 ? 's' : '');
+        qBtn.textContent = 'Remediation Builder (' + autoCount + ' auto)';
+        qBtn.title = 'Opens the remediation builder pre-filtered to ' + autoCount +
+            ' automatable high/critical rule' + (autoCount !== 1 ? 's' : '') +
+            '. Review the selection, then download or apply a fix script — nothing is applied until you confirm.';
     }
 
-    rBtn.textContent = 'Review all ' + totalFail + ' failure' + (totalFail !== 1 ? 's' : '') + ' ↓';
+    rBtn.textContent = 'Remediation Builder';
     board.classList.remove('hidden');
 }
 
@@ -789,10 +804,6 @@ function csShowResults(manifest) {
         csRegressionAlert.classList.add('hidden');
     }
 
-    const remFailed = !csBashPath;
-    const remBtn = document.getElementById('cs-selective-rem-btn');
-    remBtn.disabled = remFailed;
-    remBtn.title    = remFailed ? 'Remediation generation failed' : '';
 
     document.getElementById('cs-progress').classList.add('hidden');
     document.getElementById('cs-results').classList.remove('hidden');

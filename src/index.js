@@ -26,7 +26,7 @@ const RETENTION_MIN      = 1;
 const RETENTION_MAX      = 50;
 let   hostRetention        = RETENTION_DEFAULT;
 let   containerRetention   = RETENTION_DEFAULT;
-let   containerScanEnabled = true;
+let   containerScanEnabled = false;
 let   dashboardEnabled     = false;
 
 const ACTIVITY_LOG   = '/var/lib/cockpit-scap/activity.log';
@@ -329,6 +329,27 @@ document.addEventListener('DOMContentLoaded', () => {
             'application/xml',
             e.currentTarget
         ));
+    document.getElementById('ct-export-toggle')
+        .addEventListener('click', e => {
+            e.stopPropagation();
+            const menu = document.getElementById('ct-export-menu');
+            const toggle = e.currentTarget;
+            const open = menu.classList.toggle('hidden') === false;
+            toggle.setAttribute('aria-expanded', String(open));
+        });
+    document.getElementById('ct-export-menu')
+        .addEventListener('click', () => {
+            document.getElementById('ct-export-menu').classList.add('hidden');
+            document.getElementById('ct-export-toggle').setAttribute('aria-expanded', 'false');
+        });
+    document.addEventListener('click', e => {
+        const menu = document.getElementById('ct-export-menu');
+        if (menu && !menu.classList.contains('hidden') &&
+            !e.target.closest('#ct-export-toggle') && !e.target.closest('#ct-export-menu')) {
+            menu.classList.add('hidden');
+            document.getElementById('ct-export-toggle').setAttribute('aria-expanded', 'false');
+        }
+    });
     document.getElementById('ct-new-scan-btn')
         .addEventListener('click', () => {
             if (currentManifest) rerunHostScan(currentManifest);
@@ -352,8 +373,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => { btn.textContent = orig; }, 2000);
             }).catch(() => {});
         });
-    document.getElementById('ct-selective-rem-btn')
-        .addEventListener('click', () => openRemediationPanel(currentResultsDir));
     document.getElementById('ct-quick-fix-btn')
         .addEventListener('click', onQuickFixClick);
     document.getElementById('ct-review-all-btn')
@@ -1784,18 +1803,23 @@ function updateActionBoard(sev, totalFail, autoCount) {
     if (autoCount === null) {
         autoEl.textContent = 'Checking for auto-remediable rules…';
         qBtn.disabled = true;
-        qBtn.textContent = 'Quick Fix';
+        qBtn.textContent = 'Remediation Builder';
+        qBtn.title = '';
     } else if (autoCount === 0) {
         autoEl.textContent = 'No automated fixes available for critical/high failures';
         qBtn.disabled = true;
-        qBtn.textContent = 'Quick Fix';
+        qBtn.textContent = 'Remediation Builder';
+        qBtn.title = '';
     } else {
         autoEl.textContent = autoCount + ' critical/high rule' + (autoCount !== 1 ? 's' : '') + ' can be auto-remediated';
         qBtn.disabled = false;
-        qBtn.textContent = 'Quick Fix — ' + autoCount + ' rule' + (autoCount !== 1 ? 's' : '');
+        qBtn.textContent = 'Remediation Builder (' + autoCount + ' auto)';
+        qBtn.title = 'Opens the remediation builder pre-filtered to ' + autoCount +
+            ' automatable high/critical rule' + (autoCount !== 1 ? 's' : '') +
+            '. Review the selection, then download or apply a fix script — nothing is applied until you confirm.';
     }
 
-    rBtn.textContent = 'Review all ' + totalFail + ' failure' + (totalFail !== 1 ? 's' : '') + ' ↓';
+    rBtn.textContent = 'Remediation Builder';
     board.classList.remove('hidden');
 }
 
@@ -1931,10 +1955,6 @@ function showResults(manifest) {
         regressionAlert.classList.add('hidden');
     }
 
-    const remBtn = document.getElementById('ct-selective-rem-btn');
-    const remFailed = !currentRemBashPath;
-    remBtn.disabled = remFailed;
-    remBtn.title    = remFailed ? 'Remediation scripts were not generated for this scan' : '';
 
     document.getElementById('ct-scan-progress').classList.add('hidden');
     document.getElementById('ct-results').classList.remove('hidden');
