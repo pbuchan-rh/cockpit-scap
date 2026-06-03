@@ -111,6 +111,7 @@ test.describe('Host Scan', () => {
     });
 
     test('run scan, results appear with score and action board', async ({ page }) => {
+        test.setTimeout(600000); // PCI-DSS on hardened host can exceed global 10 min default
         const frame = await getModuleFrame(page);
         await frame.locator('#ct-content-select').selectOption({ value: HOST_SDS });
         await expect(frame.locator('#ct-profile-select')).toBeEnabled({ timeout: 45000 });
