@@ -613,7 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', () => document.getElementById('ct-log-modal').classList.add('hidden'));
 
     document.getElementById('ct-apply-goto-activity')
-        .addEventListener('click', () => document.getElementById('tab-btn-activity').click());
+        .addEventListener('click', () => { closeRemDrawer(); document.getElementById('tab-btn-activity').click(); });
 });
 
 /* ---- Tab wiring -------------------------------------------- */

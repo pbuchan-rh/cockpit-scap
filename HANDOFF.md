@@ -126,7 +126,9 @@
 
 | Item | Notes |
 |---|---|
+| **Drawer backdrop on activity link** | After remediation, clicking "View in Activity Log" switches tabs but leaves drawer backdrop visible — `closeRemDrawer()` not called; fix already in index.js, not yet deployed |
 | **Scan history table narrow-viewport** | Profile name truncates from left at 900px; needs ellipsis from right |
+| **Smarter Quick Fix recommendations** | Current filter is critical+high+automated only — on hardened systems this yields 1-2 rules; needs smarter logic (include medium, weight by impact, or configurable threshold) |
 | **CIS Level 1/2 weighting** | Group hierarchy traversal in XCCDF; more intelligent than weight alone |
 | **Compliance Debt** | Rules failing N+ consecutive scans; needs cross-scan XML analysis; non-trivial |
 | **Dashboard Preview badge** | Remove once user is genuinely impressed; don't remove without discussion |
