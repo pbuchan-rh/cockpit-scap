@@ -1,6 +1,6 @@
 'use strict';
 
-const MODULE_VERSION = 'v3.6';
+const MODULE_VERSION = 'v3.8';
 const SSG_CONTENT_DIR = '/usr/share/xml/scap/ssg/content/';
 const RESULTS_BASE    = '/var/lib/cockpit-scap/results/';
 const TAILORING_BASE  = '/var/lib/cockpit-scap/tailoring/';

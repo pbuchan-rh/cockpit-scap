@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="addon">
+  <id>org.cockpit_project.cockpit-scap</id>
+  <extends>org.cockpit_project.cockpit</extends>
+  <metadata_license>GPL-2.0-or-later</metadata_license>
+  <name>SCAP Compliance</name>
+  <summary>OpenSCAP compliance scanning and remediation for RHEL</summary>
+  <description>
+    <p>
+      cockpit-scap brings OpenSCAP compliance scanning, profile tailoring, and
+      selective remediation directly into the Cockpit browser console.
+    </p>
+    <ul>
+      <li>Host and container image scanning on demand with configurable history retention</li>
+      <li>Selective Remediation Builder: cherry-pick failing rules, download bash or Ansible scripts, or Apply Now with two-gate confirmation</li>
+      <li>Profile tailoring editor: enable/disable rules, adjust variables, save and upload XCCDF tailoring files</li>
+      <li>Compliance Dashboard: score trend chart, critical findings, and quick fix workflow</li>
+      <li>Full SELinux enforcing mode support</li>
+    </ul>
+  </description>
+  <launchable type="cockpit-manifest">cockpit-scap</launchable>
+  <url type="homepage">https://github.com/pbuchan-rh/cockpit-scap</url>
+  <url type="bugtracker">https://github.com/pbuchan-rh/cockpit-scap/issues</url>
+</component>

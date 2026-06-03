@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.6
+Version:        3.8
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -10,10 +10,10 @@ Source0:        https://github.com/pbuchan-rh/%{name}/archive/v%{version}/%{name
 BuildArch:      noarch
 
 Requires:       cockpit >= 344
+Requires:       openscap-scanner
+Requires:       scap-security-guide
+Requires:       openscap-utils
 Requires(post): policycoreutils-python-utils
-Recommends:     openscap-scanner
-Recommends:     scap-security-guide
-Recommends:     openscap-utils
 
 %description
 cockpit-scap is a native Cockpit module that brings OpenSCAP compliance
@@ -46,6 +46,11 @@ the browser console RHEL administrators already use.
 install -d -m 755 %{buildroot}%{_datadir}/cockpit/%{name}
 install -m 644 src/index.html src/index.js src/container-scan.js src/dashboard.js src/style.css src/manifest.json src/viewer.html \
     %{buildroot}%{_datadir}/cockpit/%{name}/
+
+# AppStream metadata
+install -d -m 755 %{buildroot}%{_datadir}/metainfo
+install -m 644 org.cockpit_project.cockpit-scap.metainfo.xml \
+    %{buildroot}%{_datadir}/metainfo/
 
 # SELinux file context definitions (shipped as a formal deliverable)
 install -d -m 755 %{buildroot}%{_datadir}/%{name}/selinux
@@ -81,6 +86,7 @@ fi
 %doc README.md
 %{_datadir}/cockpit/%{name}/
 %{_datadir}/%{name}/
+%{_datadir}/metainfo/org.cockpit_project.cockpit-scap.metainfo.xml
 %dir /var/lib/%{name}
 %dir /var/lib/%{name}/results
 %dir /var/lib/%{name}/tailoring
@@ -88,6 +94,30 @@ fi
 %dir /var/lib/%{name}/remediation-logs
 
 %changelog
+* Mon Jun 02 2026 Peter Buchan <pbuchan@redhat.com> - 3.8-1
+- Drawer remediation: remediation panel slides in from right; scan results
+  remain visible; close with Esc, backdrop click, or Close button
+- Action Board: severity counts (HIGH/MEDIUM/LOW) with automatable rule count;
+  Critical Rules pre-selects automatable rules; All Failures opens full drawer
+- Failing rules search: filter by rule title or CCE identifier
+- Score trend chart in Compliance Dashboard with hover tooltips
+- Rule detail drawer: click any HIGH finding in Dashboard for full description,
+  rationale, CCE, and View in Scan button
+- Scan ETA: estimated time remaining shown during active scans
+- Keyboard shortcuts: / focuses search, Q triggers Quick Fix, Esc closes drawers
+- ARF export: every scan generates Asset Reporting Format bundle; available in
+  export dropdown alongside HTML and Results XML
+- Not applicable badge: distinct outlined badge, shown only when count > 0
+- SSG benchmark version in Content Library replaces file modification date
+- Export split button: Download Report default with dropdown for HTML/XML/ARF
+- Full profile remediation: bash and Ansible scripts for entire profile without
+  a prior scan; available on Host Scan, Container Scan, and Policy Tailoring tabs
+- Settings 2-card layout: Settings and Content Library side by side; responsive
+  single-column below 900px
+- Container and Dashboard tabs disabled by default on fresh installs
+- Donut animation on scan complete; scan duration and scan ID in results header
+- Score delta shown inline in scan history table
+
 * Mon Jun 02 2026 Peter Buchan <pbuchan@redhat.com> - 3.6-1
 - Settings: Clear All Data wipes all scan results, tailoring files, uploaded
   content, and remediation logs in one admin-gated action with modal confirmation
