@@ -14,7 +14,10 @@ SELINUX_PATH  = /var/lib/cockpit-scap(/.*)?
 SRC_DIR       = src
 MODULE_FILES  = index.html index.js container-scan.js dashboard.js style.css manifest.json viewer.html
 
-.PHONY: help install uninstall
+DEV_HOST     ?= rhel10cis
+DEV_PATH      = ~/.local/share/cockpit/cockpit-scap
+
+.PHONY: help install uninstall deploy watch
 
 help:
 	@echo "cockpit-scap"
@@ -22,9 +25,20 @@ help:
 	@echo "Targets:"
 	@echo "  install     Install module and configure SELinux (requires root)"
 	@echo "  uninstall   Remove module files, preserve runtime data (requires root)"
+	@echo "  deploy      Rsync src/ to DEV_HOST user-space and restart Cockpit"
+	@echo "  watch       Watch src/ for changes and auto-deploy to DEV_HOST (requires: dnf install entr)"
 	@echo ""
 	@echo "Variables:"
 	@echo "  PREFIX      Installation prefix (default: /usr)"
+	@echo "  DEV_HOST    Target host for deploy/watch (default: rhel10cis)"
+
+deploy:
+	rsync -av $(SRC_DIR)/ $(DEV_HOST):$(DEV_PATH)/
+	ssh $(DEV_HOST) "sudo -n systemctl restart cockpit && echo 'Cockpit restarted'"
+
+watch:
+	@echo "Watching src/ — auto-deploying to $(DEV_HOST) on save. Ctrl-C to stop."
+	find $(SRC_DIR)/ | entr rsync -av $(SRC_DIR)/ $(DEV_HOST):$(DEV_PATH)/
 
 install:
 	@echo ">>> Installing cockpit-scap..."

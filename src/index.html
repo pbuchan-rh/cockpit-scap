@@ -272,6 +272,15 @@
                 <button class="pf-v6-c-button pf-m-secondary" type="button"
                         id="ct-review-all-btn"
                         title="Opens the remediation builder with all failing rules. Review, select, and generate a fix script — nothing is applied until you confirm.">All Failures</button>
+                <span class="ct-rem-generating-status hidden" id="ct-rem-generating-status"
+                      title="Remediation scripts are generated after each scan and may take several minutes on large profiles.">
+                  <span class="pf-v6-c-spinner pf-m-sm" role="progressbar" aria-label="Preparing scripts">
+                    <span class="pf-v6-c-spinner__clipper"></span>
+                    <span class="pf-v6-c-spinner__lead-ball"></span>
+                    <span class="pf-v6-c-spinner__tail-ball"></span>
+                  </span>
+                  Preparing scripts…
+                </span>
               </div>
             </div>
             <!-- Shown only when scan used uploaded (not system-package) content -->
@@ -1239,6 +1248,14 @@
                   <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
                           id="ct-settings-save-btn">Save</button>
                   <span class="ct-settings-saved hidden" id="ct-settings-saved">&#10003; Settings saved</span>
+                </div>
+                <div class="pf-v6-c-alert pf-m-danger hidden" id="ct-settings-save-error"
+                     aria-label="Settings save error">
+                  <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+                  <div><span class="pf-v6-c-alert__title">Settings could not be saved.</span>
+                  The file was not written. On hardened systems, add
+                  <code>Defaults!/usr/bin/cockpit-bridge !use_pty</code>
+                  to <code>/etc/sudoers.d/cockpit-bridge</code>.</div>
                 </div>
               </div>
 

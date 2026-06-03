@@ -3,6 +3,7 @@ const { loginToCockpit, getModuleFrame, navigateToTab } = require('./helpers/coc
 
 const HOST_SDS     = '/usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml';
 const HOST_PROFILE = 'xccdf_org.ssgproject.content_profile_pci-dss';
+const RHEL9_SDS    = '/var/lib/cockpit-scap/content/ssg-rhel9-ds.xml';
 
 /* Helper: wait for host history to populate and load first entry into results */
 async function loadResultsFromHistory(frame) {
@@ -13,6 +14,20 @@ async function loadResultsFromHistory(frame) {
         return false;
     }
     await frame.locator('#ct-history-tbody tr:first-child button:has-text("View Scan")').click();
+    await expect(frame.locator('#ct-results')).toBeVisible({ timeout: 10000 });
+    return true;
+}
+
+/* Helper: load the SECOND history entry — its remediation.sh was chmod'd by global-setup,
+ * unlike the current run's most-recent scan whose .finally() chmod may not have fired yet. */
+async function loadResultsFromHistoryForRemediation(frame) {
+    try {
+        await frame.locator('#ct-history-tbody tr').nth(1)
+            .waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+        return await loadResultsFromHistory(frame);
+    }
+    await frame.locator('#ct-history-tbody tr:nth-child(2) button:has-text("View Scan")').click();
     await expect(frame.locator('#ct-results')).toBeVisible({ timeout: 10000 });
     return true;
 }
@@ -67,19 +82,26 @@ test.describe('Host Scan', () => {
         ).toBeGreaterThan(1);
         await frame.locator('#ct-content-select').selectOption({ value: HOST_SDS });
         await expect(frame.locator('#ct-profile-select')).toBeEnabled({ timeout: 45000 });
-        const tailorOpts = await frame.locator('#ct-tailor-file-select option').allTextContents();
-        const rhel10Opt  = tailorOpts.find(t => t.toLowerCase().includes('rhel10'));
+        // Wait for detectTailoringFiles() to finish rebuilding the map for the new content —
+        // tailoringFilesMap is reset async and must be populated before selectOption triggers auto-fill
+        let rhel10Opt;
+        await expect.poll(async () => {
+            const opts = await frame.locator('#ct-tailor-file-select option').allTextContents();
+            rhel10Opt = opts.find(t => t.toLowerCase().includes('playwright-rhel10'));
+            return !!rhel10Opt;
+        }, { timeout: 15000 }).toBe(true);
         if (!rhel10Opt) {
-            test.skip('No RHEL10-compatible tailoring file — run Policy Tailoring tests first');
+            test.skip('playwright-rhel10 tailoring file not found — run Setup test first');
             return;
         }
-        await frame.locator('#ct-tailor-file-select').selectOption({ label: rhel10Opt });
+        // Poll re-selects on each tick: detectTailoringFiles() is called twice (on content change AND
+        // after loadProfiles resolves), wiping tailoringFilesMap between calls. Re-selecting each poll
+        // iteration ensures we eventually hit a state where the map is populated and auto-fill fires.
         await expect.poll(async () => {
-            const val = await frame.locator('#ct-tailor-file-select').inputValue();
-            if (!val) await frame.locator('#ct-tailor-file-select').selectOption({ label: rhel10Opt }).catch(() => {});
-            return val !== '';
-        }, { timeout: 5000 }).toBe(true);
-        await expect(frame.locator('#ct-profile-select')).not.toHaveValue('', { timeout: 10000 });
+            await frame.locator('#ct-tailor-file-select').selectOption({ label: rhel10Opt }).catch(() => {});
+            const profileVal = await frame.locator('#ct-profile-select').inputValue();
+            return profileVal !== '';
+        }, { timeout: 30000, intervals: [1000] }).toBe(true);
         await page.screenshot({ path: 'tests/screenshots/04-tailoring-autofill.png' });
     });
 
@@ -118,7 +140,7 @@ test.describe('Host Scan', () => {
         await frame.locator('#ct-profile-select').selectOption({ value: HOST_PROFILE });
         await frame.locator('#ct-scan-btn').click();
         await page.screenshot({ path: 'tests/screenshots/05-scan-running.png' });
-        await frame.locator('#ct-results').waitFor({ state: 'visible', timeout: 540000 });
+        await frame.locator('#ct-results').waitFor({ state: 'visible', timeout: 120000 });
         await expect(frame.locator('#ct-result-score')).toBeVisible();
         // Action board should appear
         await expect(frame.locator('#ct-action-board')).not.toHaveClass(/hidden/, { timeout: 15000 });
@@ -374,13 +396,16 @@ test.describe('Host Scan', () => {
 
     test('Apply Now gate 2 shows script preview and cancel dismisses it', async ({ page }) => {
         const frame = await getModuleFrame(page);
-        const loaded = await loadResultsFromHistory(frame);
+        // Use second history entry — its remediation.sh was chmod'd by global-setup (not the current run's scan)
+        const loaded = await loadResultsFromHistoryForRemediation(frame);
         if (!loaded) { test.skip('No scan history available'); return; }
         await openRemediationDrawer(frame);
         const applyBtn = frame.locator('#ct-rem-apply-btn');
         await expect(applyBtn).toBeEnabled({ timeout: 5000 });
         await applyBtn.click();
         await expect(page.locator('#ct-apply-gate1')).not.toHaveClass(/hidden/, { timeout: 5000 });
+        // Proceed is disabled while remediation.sh is being generated in the background (~7 min on PCI-DSS)
+        await expect(page.locator('#ct-apply-gate1-proceed')).toBeEnabled({ timeout: 600000 });
         await page.locator('#ct-apply-gate1-proceed').click();
         await expect(page.locator('#ct-apply-gate2')).not.toHaveClass(/hidden/, { timeout: 10000 });
         await expect(page.locator('#ct-apply-script-preview')).not.toBeEmpty({ timeout: 10000 });

@@ -300,10 +300,11 @@ let currentScanProc       = null;
 let currentTimestamp      = null;
 let currentResultsDir     = null;
 let currentReportPath     = null;
-let currentRemBashPath    = null;
-let currentRemAnsiblePath = null;
-let currentManifest       = null;
-let scanCancelledByUser   = false;
+let currentRemBashPath      = null;
+let currentRemAnsiblePath   = null;
+let currentManifest         = null;
+let scanCancelledByUser     = false;
+let remediationGenerating   = false;
 
 /* Module state — selective remediation */
 let remediationDir   = null;   /* full path to scan results dir, trailing slash */
@@ -1131,23 +1132,33 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 .replace(JSON.stringify(manifest, null, 2))
                 .then(() => manifest);
         })
-        .then(manifest => generateRemediation(manifest.result_id, resultsXmlPath, tailoringPath)
-            .catch(err => {
-                console.error('Remediation generation failed:', err.message || err);
-                currentRemBashPath    = null;
-                currentRemAnsiblePath = null;
-            })
-            .then(() => manifest))
-        .then(manifest => pruneHistoryByType('host').then(() => manifest))
-        .then(manifest => relaxResultsPerms().then(() => manifest))
         .then(manifest => {
             buildPersistenceCache(manifest); // fire-and-forget; errors logged internally
             appendActivityLog({ type: 'scan_complete', tab: 'host',
                 content: manifest.sds_file.split('/').pop(), profile: manifest.profile_title,
                 score: manifest.score.toFixed(1), pass: manifest.counts.pass, fail: manifest.counts.fail });
-            return manifest;
+            showResults(manifest);
+            // Remediation generation, pruning, and perms run in the background so results
+            // display immediately after the scan — not after 7-8 min of oscap generate fix.
+            remediationGenerating = true;
+            updateApplyGate1Btn();
+            generateRemediation(manifest.result_id, resultsXmlPath, tailoringPath)
+                .catch(err => {
+                    console.error('Remediation generation failed:', err.message || err);
+                    currentRemBashPath    = null;
+                    currentRemAnsiblePath = null;
+                })
+                .finally(() => {
+                    remediationGenerating = false;
+                    updateApplyGate1Btn();
+                    if (currentRemBashPath && currentRemAnsiblePath) {
+                        cockpit.spawn(['chmod', '644', currentRemBashPath, currentRemAnsiblePath],
+                            { superuser: 'require' }).catch(() => {});
+                    }
+                });
+            pruneHistoryByType('host').catch(() => {});
+            relaxResultsPerms().catch(() => {});
         })
-        .then(manifest => showResults(manifest))
         .catch(err => onScanError('Failed to process results: ' + (err.message || String(err))));
 }
 
@@ -1476,6 +1487,16 @@ function generateSelectiveFix(fixType, selectedIds, btnEl) {
 
 let pendingApplyRules  = [];
 let pendingApplyTitles = [];
+
+function updateApplyGate1Btn() {
+    const btn    = document.getElementById('ct-apply-gate1-proceed');
+    const status = document.getElementById('ct-rem-generating-status');
+    if (btn) {
+        btn.disabled = remediationGenerating;
+        btn.title    = remediationGenerating ? 'Generating remediation script, please wait…' : '';
+    }
+    if (status) status.classList.toggle('hidden', !remediationGenerating);
+}
 
 function onApplyNowClick() {
     const all = document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox');
@@ -2297,6 +2318,7 @@ function showScanSetup() {
     currentScanProc       = null;
     currentRemBashPath    = null;
     currentRemAnsiblePath = null;
+    remediationGenerating = false;
 }
 
 /* ---- UI helpers -------------------------------------------- */
@@ -3477,7 +3499,12 @@ function onTailorSaveClick() {
             cockpit.file(jsonPath, { superuser: 'require' }).replace(JSON.stringify(sidecar, null, 2)),
         ]))
         .then(() => cockpit.spawn(['chmod', '644', xmlPath, jsonPath], { superuser: 'require' }))
-        .then(() => {
+        .then(() => cockpit.file(xmlPath).read())
+        .then(written => {
+            if (written !== xml) throw new Error(
+                'File not written — on hardened systems, add ' +
+                'Defaults!/usr/bin/cockpit-bridge !use_pty to /etc/sudoers.d/cockpit-bridge'
+            );
             appendActivityLog({ type: 'tailor_save', tab: 'tailoring', file: filename + '.xml', profile: newProfileTitle });
             saveBtn.disabled = false;
             detectTailoringFiles();
@@ -4135,6 +4162,7 @@ function onSettingsTabOpen() {
     document.getElementById('ct-setting-dashboard-enabled').checked     = dashboardEnabled;
     document.getElementById('ct-settings-warn').classList.add('hidden');
     document.getElementById('ct-settings-saved').classList.add('hidden');
+    document.getElementById('ct-settings-save-error').classList.add('hidden');
     fetchDiskUsage();
     renderContentTab();
     detectContent();
@@ -4199,14 +4227,18 @@ function saveSettings() {
     const prevCe        = containerScanEnabled;
     const prevDe        = dashboardEnabled;
 
+    const newSettings = JSON.stringify({
+        host_retention:         hVal,
+        container_retention:    cVal,
+        container_scan_enabled: ceVal,
+        dashboard_enabled:      deVal,
+    }, null, 2);
+
     cockpit.file(SETTINGS_PATH, { superuser: 'require' })
-        .replace(JSON.stringify({
-            host_retention:        hVal,
-            container_retention:   cVal,
-            container_scan_enabled: ceVal,
-            dashboard_enabled:     deVal,
-        }, null, 2))
-        .then(() => {
+        .replace(newSettings)
+        .then(() => cockpit.file(SETTINGS_PATH).read())
+        .then(written => {
+            if (written !== newSettings) throw new Error('File not written');
             hostRetention        = hVal;
             containerRetention   = cVal;
             containerScanEnabled = ceVal;
@@ -4228,10 +4260,14 @@ function saveSettings() {
                                     detail: parts.join(', ') });
 
             document.getElementById('ct-settings-warn').classList.add('hidden');
+            document.getElementById('ct-settings-save-error').classList.add('hidden');
             document.getElementById('ct-settings-saved').classList.remove('hidden');
             fetchDiskUsage();
         })
-        .catch(err => console.error('Settings save failed:', err.message || err));
+        .catch(err => {
+            console.error('Settings save failed:', err.message || err);
+            document.getElementById('ct-settings-save-error').classList.remove('hidden');
+        });
 }
 
 function appendActivityLog(entry) {

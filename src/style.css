@@ -848,6 +848,14 @@ code {
   margin-right: 0.25rem;
 }
 
+.ct-rem-generating-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--ct-font-size-sm);
+  color: var(--ct-color-text-secondary);
+}
+
 .ct-result-score {
   display: flex;
   align-items: center;
