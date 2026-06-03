@@ -1739,7 +1739,7 @@ function loadScanDiff(newXml, oldXml, containerId) {
 }
 
 function buildScoreDonut(score, failCount, animate) {
-    const r     = 40;
+    const r     = 52;
     const circ  = 2 * Math.PI * r;
     const offset = circ * (1 - score / 100);
     const color  = failCount === 0  ? 'var(--ct-color-success)'
@@ -1748,33 +1748,33 @@ function buildScoreDonut(score, failCount, animate) {
     const NS = 'http://www.w3.org/2000/svg';
 
     const svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('width', '96');
-    svg.setAttribute('height', '96');
-    svg.setAttribute('viewBox', '0 0 96 96');
+    svg.setAttribute('width', '128');
+    svg.setAttribute('height', '128');
+    svg.setAttribute('viewBox', '0 0 128 128');
     svg.classList.add('ct-score-donut');
 
     const track = document.createElementNS(NS, 'circle');
-    track.setAttribute('cx', '48'); track.setAttribute('cy', '48');
+    track.setAttribute('cx', '64'); track.setAttribute('cy', '64');
     track.setAttribute('r', String(r)); track.setAttribute('fill', 'none');
     track.setAttribute('stroke-width', '8');
     track.style.stroke = 'var(--ct-color-border)';
     svg.appendChild(track);
 
     const arc = document.createElementNS(NS, 'circle');
-    arc.setAttribute('cx', '48'); arc.setAttribute('cy', '48');
+    arc.setAttribute('cx', '64'); arc.setAttribute('cy', '64');
     arc.setAttribute('r', String(r)); arc.setAttribute('fill', 'none');
     arc.setAttribute('stroke-width', '8');
     arc.setAttribute('stroke-linecap', 'round');
     arc.setAttribute('stroke-dasharray', String(circ));
     arc.setAttribute('stroke-dashoffset', String(offset));
-    arc.setAttribute('transform', 'rotate(-90 48 48)');
+    arc.setAttribute('transform', 'rotate(-90 64 64)');
     arc.style.stroke = color;
     svg.appendChild(arc);
 
     const text = document.createElementNS(NS, 'text');
-    text.setAttribute('x', '48'); text.setAttribute('y', '54');
+    text.setAttribute('x', '64'); text.setAttribute('y', '70');
     text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('font-size', '15');
+    text.setAttribute('font-size', '18');
     text.setAttribute('font-weight', '700');
     text.setAttribute('fill', 'currentColor');
     text.textContent = score.toFixed(1) + '%';
@@ -2072,6 +2072,16 @@ function showResults(manifest) {
     }
 
     const prev = findPreviousScan(manifest, currentHostHistory);
+    const deltaEl = document.getElementById('ct-result-score-delta');
+    if (prev) {
+        const scoreDiff = score - prev.score;
+        const sign = scoreDiff > 0 ? '+' : '';
+        deltaEl.textContent = sign + scoreDiff.toFixed(1) + ' pts';
+        deltaEl.className = 'ct-result-score-delta ' +
+            (scoreDiff > 0.05 ? 'ct-delta-up' : scoreDiff < -0.05 ? 'ct-delta-down' : 'ct-delta-neutral');
+    } else {
+        deltaEl.className = 'ct-result-score-delta hidden';
+    }
     const improvementAlert = document.getElementById('ct-improvement-alert');
     const regressionAlert  = document.getElementById('ct-regression-alert');
     const diffContainer    = document.getElementById('ct-scan-diff');

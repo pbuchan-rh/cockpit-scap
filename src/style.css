@@ -726,10 +726,12 @@ code {
   overflow-y: auto;
 }
 
-.ct-results-profile {
-  font-size: var(--ct-font-size-sm);
+.ct-results-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--ct-color-text-secondary);
-  margin: var(--ct-space-xs) 0 0;
+  margin: 0 0 4px;
 }
 
 .ct-results-timestamp {
@@ -743,6 +745,38 @@ code {
   align-items: center;
   gap: var(--ct-space-lg);
   flex-wrap: wrap;
+}
+
+.ct-result-score-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ct-result-score-delta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.ct-delta-up      { color: var(--ct-color-success); }
+.ct-delta-down    { color: var(--ct-color-danger); }
+.ct-delta-neutral { color: var(--ct-color-text-secondary); }
+
+.ct-improvement-line {
+  display: flex;
+  align-items: center;
+  gap: var(--ct-space-sm);
+  font-size: var(--ct-font-size-sm);
+  color: var(--ct-color-success);
+  padding: var(--ct-space-xs) 0;
+}
+
+.ct-improvement-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
 }
 
 .ct-result-badges {

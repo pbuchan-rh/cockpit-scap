@@ -243,8 +243,8 @@
         <div class="pf-v6-c-card">
           <div class="pf-v6-c-card__title ct-results-title-row">
             <div>
-              <h2 class="pf-v6-c-card__title-text">Host Scan Results</h2>
-              <p class="ct-results-profile" id="ct-results-profile-title"></p>
+              <p class="ct-results-label">Host Scan Results</p>
+              <h2 class="pf-v6-c-card__title-text" id="ct-results-profile-title"></h2>
               <p class="ct-results-timestamp" id="ct-results-timestamp"></p>
             </div>
             <div class="ct-results-meta">
@@ -254,8 +254,11 @@
           </div>
           <div class="pf-v6-c-card__body">
             <div class="ct-result-summary-row">
+              <div class="ct-result-score-wrap">
+                <div class="ct-result-score" id="ct-result-score"></div>
+                <div class="ct-result-score-delta hidden" id="ct-result-score-delta"></div>
+              </div>
               <div class="ct-result-badges" id="ct-result-badges"></div>
-              <div class="ct-result-score" id="ct-result-score"></div>
             </div>
             <div class="ct-action-board hidden" id="ct-action-board">
               <div class="ct-action-board-left">
@@ -285,15 +288,11 @@
               </div>
             </div>
             <!-- Improvement — shown when fail count decreased vs previous scan -->
-            <div class="pf-v6-c-alert pf-m-success hidden"
-                 id="ct-improvement-alert" aria-label="Improvement detected">
-              <div class="pf-v6-c-alert__icon" aria-hidden="true">&#10003;</div>
-              <div>
-                <h4 class="pf-v6-c-alert__title">Improvement</h4>
-                <div class="pf-v6-c-alert__description" id="ct-improvement-msg"></div>
-                <button class="pf-v6-c-button pf-m-link ct-diff-trigger" type="button"
-                        id="ct-diff-btn">See what changed</button>
-              </div>
+            <div class="ct-improvement-line hidden" id="ct-improvement-alert">
+              <span class="ct-improvement-icon">&#10003;</span>
+              <span id="ct-improvement-msg"></span>
+              <button class="pf-v6-c-button pf-m-link ct-diff-trigger" type="button"
+                      id="ct-diff-btn">See what changed</button>
             </div>
             <!-- Regression warning — shown when fail count increased vs previous scan -->
             <div class="pf-v6-c-alert pf-m-warning hidden"
@@ -677,8 +676,8 @@
           <div class="pf-v6-c-card">
             <div class="pf-v6-c-card__title ct-results-title-row">
               <div>
-                <h2 class="pf-v6-c-card__title-text">Container Scan Results</h2>
-                <p class="ct-results-profile" id="cs-results-profile-title"></p>
+                <p class="ct-results-label">Container Scan Results</p>
+                <h2 class="pf-v6-c-card__title-text" id="cs-results-profile-title"></h2>
                 <p class="ct-results-timestamp" id="cs-results-timestamp"></p>
               </div>
               <div class="ct-results-meta">
@@ -688,8 +687,11 @@
             </div>
             <div class="pf-v6-c-card__body">
               <div class="ct-result-summary-row">
-                <div class="ct-result-badges" id="cs-result-badges"></div>
+                <div class="ct-result-score-wrap">
                 <div class="ct-result-score" id="cs-result-score"></div>
+                <div class="ct-result-score-delta hidden" id="cs-result-score-delta"></div>
+              </div>
+              <div class="ct-result-badges" id="cs-result-badges"></div>
               </div>
               <div class="ct-action-board hidden" id="cs-action-board">
                 <div class="ct-action-board-left">
@@ -719,15 +721,11 @@
                 </div>
               </div>
             <!-- Improvement — shown when fail count decreased vs previous scan -->
-            <div class="pf-v6-c-alert pf-m-success hidden"
-                 id="cs-improvement-alert" aria-label="Improvement detected">
-              <div class="pf-v6-c-alert__icon" aria-hidden="true">&#10003;</div>
-              <div>
-                <h4 class="pf-v6-c-alert__title">Improvement</h4>
-                <div class="pf-v6-c-alert__description" id="cs-improvement-msg"></div>
-                <button class="pf-v6-c-button pf-m-link ct-diff-trigger" type="button"
-                        id="cs-diff-btn">See what changed</button>
-              </div>
+            <div class="ct-improvement-line hidden" id="cs-improvement-alert">
+              <span class="ct-improvement-icon">&#10003;</span>
+              <span id="cs-improvement-msg"></span>
+              <button class="pf-v6-c-button pf-m-link ct-diff-trigger" type="button"
+                      id="cs-diff-btn">See what changed</button>
             </div>
             <!-- Regression warning — shown when fail count increased vs previous scan -->
             <div class="pf-v6-c-alert pf-m-warning hidden"

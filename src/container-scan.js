@@ -819,6 +819,16 @@ function csShowResults(manifest) {
         m.sds_file   === manifest.sds_file &&
         m.image_id   === manifest.image_id
     ) || null;
+    const csDeltaEl = document.getElementById('cs-result-score-delta');
+    if (csPrev) {
+        const scoreDiff = score - csPrev.score;
+        const sign = scoreDiff > 0 ? '+' : '';
+        csDeltaEl.textContent = sign + scoreDiff.toFixed(1) + ' pts';
+        csDeltaEl.className = 'ct-result-score-delta ' +
+            (scoreDiff > 0.05 ? 'ct-delta-up' : scoreDiff < -0.05 ? 'ct-delta-down' : 'ct-delta-neutral');
+    } else {
+        csDeltaEl.className = 'ct-result-score-delta hidden';
+    }
     const csImprovementAlert = document.getElementById('cs-improvement-alert');
     const csRegressionAlert  = document.getElementById('cs-regression-alert');
     const csDiffContainer    = document.getElementById('cs-scan-diff');
