@@ -64,67 +64,63 @@ test.describe('Dashboard', () => {
     test('host hero card shows score and risk score', async ({ page }) => {
         const frame = await getModuleFrame(page);
         if (!await goToDashboard(page, frame)) { test.skip(true, 'Dashboard content did not load'); return; }
-        const hostCard = frame.locator('#db-content .db-host-card');
+        const hostCard = frame.locator('#db-host-section .db-timeline-card');
         if (!await hostCard.isVisible().catch(() => false)) {
-            test.skip('No host scan history — hero card not rendered');
+            test.skip(true, 'No host scan history — timeline card not rendered');
             return;
         }
-        await expect(hostCard.locator('.db-score-block')).toBeVisible();
-        const hasRisk = await hostCard.locator('.db-risk-block').isVisible().catch(() => false);
-        if (hasRisk) await expect(hostCard.locator('.db-risk-block')).toBeVisible();
+        await expect(hostCard.locator('.db-timeline-score')).toBeVisible();
+        await expect(hostCard.locator('.db-timeline-header')).toBeVisible();
         await page.screenshot({ path: 'tests/screenshots/28-dashboard-hero-card.png' });
     });
 
     test('score trend chart renders when multiple scans exist', async ({ page }) => {
         const frame = await getModuleFrame(page);
         if (!await goToDashboard(page, frame)) { test.skip(true, 'Dashboard content did not load'); return; }
-        const hostCard = frame.locator('#db-content .db-host-card');
+        const hostCard = frame.locator('#db-host-section .db-timeline-card');
         if (!await hostCard.isVisible().catch(() => false)) {
-            test.skip('No host scan history');
+            test.skip(true, 'No host scan history');
             return;
         }
-        // Chart section only renders when >= 2 same-profile scans exist
-        const chartSection = hostCard.locator('.db-chart-section');
-        const hasChart = await chartSection.isVisible().catch(() => false);
+        // Chart lives in the timeline card body — only renders when >= 1 scan exists
+        const chartBody = hostCard.locator('.db-timeline-body');
+        const hasChart = await chartBody.locator('svg.db-chart-svg').isVisible().catch(() => false);
         if (hasChart) {
-            await expect(chartSection.locator('svg.db-chart-svg')).toBeVisible();
-            // SVG should have at least one polyline (trend line)
-            const lineCount = await chartSection.locator('svg polyline, svg line').count();
+            await expect(chartBody.locator('svg.db-chart-svg')).toBeVisible();
+            const lineCount = await chartBody.locator('svg polyline, svg line').count();
             expect(lineCount).toBeGreaterThan(0);
         }
         await page.screenshot({ path: 'tests/screenshots/28b-score-chart.png' });
     });
 
-    test('critical findings loads and shows HIGH rules or clean state', async ({ page }) => {
+    test('critical findings loads and shows persistent failures or clean state', async ({ page }) => {
         const frame = await getModuleFrame(page);
         if (!await goToDashboard(page, frame)) { test.skip(true, 'Dashboard content did not load'); return; }
-        const criticalEl = frame.locator('#db-host-critical');
-        if (!await criticalEl.isVisible().catch(() => false)) {
-            test.skip('No host card rendered — no scan history');
+        const persistCard = frame.locator('#db-host-section .db-persist-card');
+        if (!await persistCard.isVisible().catch(() => false)) {
+            test.skip(true, 'No host scan history — persistent failures card not rendered');
             return;
         }
-        await expect(criticalEl).not.toContainText('Loading critical findings', { timeout: 30000 });
-        const text = await criticalEl.textContent();
-        const valid = text.includes('HIGH') || text.includes('No HIGH severity failures') || text.includes('No critical');
-        expect(valid).toBeTruthy();
+        await expect(persistCard.locator('.db-persist-title')).toBeVisible({ timeout: 10000 });
+        await expect(persistCard).not.toContainText('Loading');
         await page.screenshot({ path: 'tests/screenshots/29-dashboard-critical-loaded.png' });
     });
 
-    test('rule detail drawer opens when clicking HIGH rule and closes with Esc', async ({ page }) => {
+    test('rule detail drawer opens when clicking persistent failure rule and closes with Esc', async ({ page }) => {
         const frame = await getModuleFrame(page);
         if (!await goToDashboard(page, frame)) { test.skip(true, 'Dashboard content did not load'); return; }
-        const criticalEl = frame.locator('#db-host-critical');
-        if (!await criticalEl.isVisible().catch(() => false)) {
-            test.skip('No host card rendered');
+        const persistCard = frame.locator('#db-host-section .db-persist-card');
+        if (!await persistCard.isVisible().catch(() => false)) {
+            test.skip(true, 'No host card rendered');
             return;
         }
-        await expect(criticalEl).not.toContainText('Loading', { timeout: 30000 });
-        const highRule = criticalEl.locator('.db-critical-item').first();
-        if (!await highRule.isVisible().catch(() => false)) {
-            test.skip('No HIGH rule findings to click');
+        await expect(persistCard.locator('.db-persist-title')).toBeVisible({ timeout: 10000 });
+        const persistRule = persistCard.locator('.db-persist-rule').first();
+        if (!await persistRule.isVisible().catch(() => false)) {
+            test.skip(true, 'No persistent failure rules to click — need 3+ consecutive scans with same failure');
             return;
         }
-        await highRule.click();
+        await persistRule.click();
         const rddDrawer = frame.locator('#ct-rule-detail-drawer');
         await expect(rddDrawer).toHaveClass(/ct-drawer-open/, { timeout: 5000 });
         await expect(frame.locator('#ct-rdd-body')).toBeVisible();
