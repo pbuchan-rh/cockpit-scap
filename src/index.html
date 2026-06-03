@@ -210,20 +210,36 @@
       <!-- Scan in progress (hidden until scan starts) -->
       <div class="pf-v6-c-card ct-scan-progress hidden" id="ct-scan-progress">
         <div class="pf-v6-c-card__body ct-scan-progress-body">
-          <span class="pf-v6-c-spinner" aria-label="Scan in progress"
-                role="progressbar" aria-valuetext="Scanning&hellip;">
-            <span class="pf-v6-c-spinner__clipper"></span>
-            <span class="pf-v6-c-spinner__lead-ball"></span>
-            <span class="pf-v6-c-spinner__tail-ball"></span>
-          </span>
-          <p>Scan in progress&hellip; <span class="ct-scan-elapsed" id="ct-scan-elapsed"></span></p>
-          <button class="pf-v6-c-button pf-m-secondary" type="button"
-                  id="ct-cancel-btn">Cancel</button>
+          <div class="ct-progress-row">
+            <span class="pf-v6-c-spinner" aria-label="Scan in progress"
+                  role="progressbar" aria-valuetext="Scanning&hellip;">
+              <span class="pf-v6-c-spinner__clipper"></span>
+              <span class="pf-v6-c-spinner__lead-ball"></span>
+              <span class="pf-v6-c-spinner__tail-ball"></span>
+            </span>
+            <p>Scan in progress&hellip;</p>
+            <button class="pf-v6-c-button pf-m-secondary" type="button"
+                    id="ct-cancel-btn">Cancel</button>
+          </div>
+          <div class="ct-progress-bar-wrap">
+            <div class="ct-progress-track">
+              <div class="ct-progress-fill" id="ct-scan-progress-fill"></div>
+            </div>
+            <span class="ct-scan-elapsed" id="ct-scan-elapsed"></span>
+          </div>
+          <div class="ct-rule-feed hidden" id="ct-rule-feed">
+            <div class="ct-rule-tally" id="ct-rule-tally"></div>
+            <div class="ct-rule-feed-list" id="ct-rule-feed-list"></div>
+          </div>
         </div>
       </div>
 
       <!-- Results (hidden until scan complete) -->
       <div class="hidden" id="ct-results">
+        <div class="ct-prev-results-banner hidden" id="ct-prev-results-banner">
+          <span class="ct-prev-results-banner-icon">&#9432;</span>
+          Previous results — new scan in progress
+        </div>
         <div class="pf-v6-c-card">
           <div class="pf-v6-c-card__title ct-results-title-row">
             <div>
@@ -628,20 +644,36 @@
         <!-- Scan in progress -->
         <div class="pf-v6-c-card ct-scan-progress hidden" id="cs-progress">
           <div class="pf-v6-c-card__body ct-scan-progress-body">
-            <span class="pf-v6-c-spinner" aria-label="Scan in progress"
-                  role="progressbar" aria-valuetext="Scanning&hellip;">
-              <span class="pf-v6-c-spinner__clipper"></span>
-              <span class="pf-v6-c-spinner__lead-ball"></span>
-              <span class="pf-v6-c-spinner__tail-ball"></span>
-            </span>
-            <p>Container scan in progress&hellip; <span class="ct-scan-elapsed" id="cs-scan-elapsed"></span></p>
-            <button class="pf-v6-c-button pf-m-secondary" type="button"
-                    id="cs-cancel-btn">Cancel</button>
+            <div class="ct-progress-row">
+              <span class="pf-v6-c-spinner" aria-label="Scan in progress"
+                    role="progressbar" aria-valuetext="Scanning&hellip;">
+                <span class="pf-v6-c-spinner__clipper"></span>
+                <span class="pf-v6-c-spinner__lead-ball"></span>
+                <span class="pf-v6-c-spinner__tail-ball"></span>
+              </span>
+              <p>Container scan in progress&hellip;</p>
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="cs-cancel-btn">Cancel</button>
+            </div>
+            <div class="ct-progress-bar-wrap">
+              <div class="ct-progress-track">
+                <div class="ct-progress-fill" id="cs-scan-progress-fill"></div>
+              </div>
+              <span class="ct-scan-elapsed" id="cs-scan-elapsed"></span>
+            </div>
+            <div class="ct-rule-feed hidden" id="cs-rule-feed">
+              <div class="ct-rule-tally" id="cs-rule-tally"></div>
+              <div class="ct-rule-feed-list" id="cs-rule-feed-list"></div>
+            </div>
           </div>
         </div>
 
         <!-- Results -->
         <div class="hidden" id="cs-results">
+          <div class="ct-prev-results-banner hidden" id="cs-prev-results-banner">
+            <span class="ct-prev-results-banner-icon">&#9432;</span>
+            Previous results — new scan in progress
+          </div>
           <div class="pf-v6-c-card">
             <div class="pf-v6-c-card__title ct-results-title-row">
               <div>

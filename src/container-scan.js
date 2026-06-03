@@ -558,6 +558,7 @@ function onCsScanClick() {
             const args = ['oscap-podman', imageArg, 'xccdf', 'eval'];
             if (tailoringPath) args.push('--tailoring-file', tailoringPath);
             args.push(
+                '--progress',
                 '--profile',      profileId,
                 '--report',       csReportPath,
                 '--results',      resultsXmlPath,
@@ -566,8 +567,42 @@ function onCsScanClick() {
             );
 
             let csScanOutput = '';
+            let _csRuleBuf = '';
+            let _csChecked = 0;
+            let _csFailed = 0;
+            const _csRecent = [];
+            const csFeedEl  = document.getElementById('cs-rule-feed');
+            const csTallyEl = document.getElementById('cs-rule-tally');
+            const csListEl  = document.getElementById('cs-rule-feed-list');
+            const CS_RULE_RE = /^(xccdf_\S+):(pass|fail|error|notchecked|notapplicable|informational|fixed)$/;
+
             csProc = cockpit.spawn(args, { superuser: 'require', err: 'out' });
-            csProc.stream(data => { csScanOutput += data; });
+            csProc.stream(data => {
+                csScanOutput += data;
+                _csRuleBuf += data;
+                const lines = _csRuleBuf.split('\n');
+                _csRuleBuf = lines.pop();
+                for (const line of lines) {
+                    const m = line.trim().match(CS_RULE_RE);
+                    if (!m) continue;
+                    const [, ruleId, result] = m;
+                    _csChecked++;
+                    if (result === 'fail' || result === 'error') _csFailed++;
+                    const name = ruleId.replace(/^.*content_rule_/, '').replace(/_/g, ' ');
+                    _csRecent.unshift({ name, result });
+                    if (_csRecent.length > 5) _csRecent.pop();
+                    csFeedEl.classList.remove('hidden');
+                    csTallyEl.textContent = _csChecked + ' checked' +
+                        (_csFailed ? ' · ' + _csFailed + ' failing' : '');
+                    csListEl.innerHTML = _csRecent.map(r =>
+                        '<div class="ct-rule-feed-item">' +
+                        '<span class="ct-rule-feed-dot ' + r.result + '"></span>' +
+                        '<span class="ct-rule-feed-name">' + r.name + '</span>' +
+                        '<span class="ct-rule-feed-result ' + r.result + '">' + r.result + '</span>' +
+                        '</div>'
+                    ).join('');
+                }
+            });
             csProc
                 .then(() => csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath))
                 .catch(err => {
@@ -822,6 +857,7 @@ function csShowResults(manifest) {
 
 
     document.getElementById('cs-progress').classList.add('hidden');
+    document.getElementById('cs-prev-results-banner').classList.add('hidden');
     document.getElementById('cs-results').classList.remove('hidden');
     renderFailingSummary(csResultsDir + 'results.xml',
                          'cs-failing-summary-groups', 'cs-failing-summary-loading',
@@ -1104,30 +1140,46 @@ function csHidePrereq() {
 function csShowProgress() {
     document.getElementById('cs-scan-row').classList.add('hidden');
     document.getElementById('cs-progress').classList.remove('hidden');
-    document.getElementById('cs-results').classList.add('hidden');
+    if (csCurrentManifest) {
+        document.getElementById('cs-results').classList.remove('hidden');
+        document.getElementById('cs-prev-results-banner').classList.remove('hidden');
+    } else {
+        document.getElementById('cs-results').classList.add('hidden');
+    }
     csScanStart = Date.now();
-    const elapsedEl = document.getElementById('cs-scan-elapsed');
-    elapsedEl.textContent = '';
+    const csFillEl  = document.getElementById('cs-scan-progress-fill');
+    const csLabelEl = document.getElementById('cs-scan-elapsed');
+    csFillEl.style.width = '0%';
+    csFillEl.classList.remove('ct-indeterminate');
+    csLabelEl.textContent = '';
+    document.getElementById('cs-rule-feed').classList.add('hidden');
+    document.getElementById('cs-rule-feed-list').innerHTML = '';
+    document.getElementById('cs-rule-tally').textContent = '';
     const _csProfileId = (document.getElementById('cs-profile-select') || {}).value || null;
     const _csPrevScan  = currentCsHistory.find(m =>
         m.profile_id === _csProfileId && m.sds_file === csSdsPath &&
         m.image_id   === csImageId    && m.scan_duration_s != null
     );
     const _csEstSecs = _csPrevScan ? _csPrevScan.scan_duration_s : null;
+    if (!_csEstSecs) csFillEl.classList.add('ct-indeterminate');
     csScanTimer = setInterval(() => {
         const s = Math.floor((Date.now() - csScanStart) / 1000);
-        const m = Math.floor(s / 60);
-        const elapsedStr = m > 0 ? m + 'm ' + (s % 60) + 's' : s + 's';
-        if (_csEstSecs && s < _csEstSecs * 1.5) {
-            const rem = Math.max(0, _csEstSecs - s);
-            const rm  = Math.floor(rem / 60);
-            const rs  = rem % 60;
-            const remStr = rem === 0 ? 'finishing…'
-                : rm > 0 ? '∼' + rm + 'm ' + String(rs).padStart(2, '0') + 's remaining'
-                : '∼' + rs + 's remaining';
-            elapsedEl.textContent = elapsedStr + ' · ' + remStr;
+        if (_csEstSecs) {
+            csFillEl.style.width = Math.min(100, Math.round((s / _csEstSecs) * 100)) + '%';
+            if (s >= _csEstSecs * 1.5) {
+                const m = Math.floor(s / 60);
+                csLabelEl.textContent = m > 0 ? m + 'm ' + (s % 60) + 's' : s + 's';
+            } else {
+                const rem = Math.max(0, _csEstSecs - s);
+                const rm  = Math.floor(rem / 60);
+                const rs  = rem % 60;
+                csLabelEl.textContent = rem === 0 ? 'finishing…'
+                    : rm > 0 ? '~' + rm + 'm ' + String(rs).padStart(2, '0') + 's remaining'
+                    : '~' + rs + 's remaining';
+            }
         } else {
-            elapsedEl.textContent = elapsedStr;
+            const m = Math.floor(s / 60);
+            csLabelEl.textContent = m > 0 ? m + 'm ' + (s % 60) + 's' : s + 's';
         }
     }, 1000);
     csLoadHistory();
@@ -1146,6 +1198,7 @@ function csShowSetup() {
     }
     document.getElementById('cs-scan-row').classList.remove('hidden');
     document.getElementById('cs-progress').classList.add('hidden');
+    document.getElementById('cs-prev-results-banner').classList.add('hidden');
     document.getElementById('cs-results').classList.add('hidden');
     document.getElementById('cs-failing-summary-groups').innerHTML = '';
     document.getElementById('cs-failing-summary-loading').classList.add('hidden');

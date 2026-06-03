@@ -1009,6 +1009,7 @@ function runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath) {
         args.push('--tailoring-file', tailoringPath);
     }
     args.push(
+        '--progress',
         '--profile',      profileId,
         '--report',       currentReportPath,
         '--results',      resultsXmlPath,
@@ -1017,8 +1018,42 @@ function runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath) {
     );
 
     let scanOutput = '';
+    let _ruleBuf = '';
+    let _ruleChecked = 0;
+    let _ruleFailed = 0;
+    const _recent = [];
+    const feedEl  = document.getElementById('ct-rule-feed');
+    const tallyEl = document.getElementById('ct-rule-tally');
+    const listEl  = document.getElementById('ct-rule-feed-list');
+    const RULE_RE = /^(xccdf_\S+):(pass|fail|error|notchecked|notapplicable|informational|fixed)$/;
+
     currentScanProc = cockpit.spawn(args, { superuser: 'require', err: 'out' });
-    currentScanProc.stream(data => { scanOutput += data; });
+    currentScanProc.stream(data => {
+        scanOutput += data;
+        _ruleBuf += data;
+        const lines = _ruleBuf.split('\n');
+        _ruleBuf = lines.pop();
+        for (const line of lines) {
+            const m = line.trim().match(RULE_RE);
+            if (!m) continue;
+            const [, ruleId, result] = m;
+            _ruleChecked++;
+            if (result === 'fail' || result === 'error') _ruleFailed++;
+            const name = ruleId.replace(/^.*content_rule_/, '').replace(/_/g, ' ');
+            _recent.unshift({ name, result });
+            if (_recent.length > 5) _recent.pop();
+            feedEl.classList.remove('hidden');
+            tallyEl.textContent = _ruleChecked + ' checked' +
+                (_ruleFailed ? ' · ' + _ruleFailed + ' failing' : '');
+            listEl.innerHTML = _recent.map(r =>
+                '<div class="ct-rule-feed-item">' +
+                '<span class="ct-rule-feed-dot ' + r.result + '"></span>' +
+                '<span class="ct-rule-feed-name">' + r.name + '</span>' +
+                '<span class="ct-rule-feed-result ' + r.result + '">' + r.result + '</span>' +
+                '</div>'
+            ).join('');
+        }
+    });
 
     currentScanProc
         .then(() => onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath))
@@ -2075,6 +2110,7 @@ function showResults(manifest) {
 
 
     document.getElementById('ct-scan-progress').classList.add('hidden');
+    document.getElementById('ct-prev-results-banner').classList.add('hidden');
     document.getElementById('ct-results').classList.remove('hidden');
     renderFailingSummary(currentResultsDir + 'results.xml',
                          'ct-failing-summary-groups', 'ct-failing-summary-loading',
@@ -2161,29 +2197,45 @@ function downloadArtifact(filePath, filename, mimeType, btn) {
 function showScanProgress() {
     document.getElementById('ct-scan-row').classList.add('hidden');
     document.getElementById('ct-scan-progress').classList.remove('hidden');
-    document.getElementById('ct-results').classList.add('hidden');
+    if (currentManifest) {
+        document.getElementById('ct-results').classList.remove('hidden');
+        document.getElementById('ct-prev-results-banner').classList.remove('hidden');
+    } else {
+        document.getElementById('ct-results').classList.add('hidden');
+    }
     hostScanStart = Date.now();
-    const elapsedEl = document.getElementById('ct-scan-elapsed');
-    elapsedEl.textContent = '';
+    const fillEl   = document.getElementById('ct-scan-progress-fill');
+    const labelEl  = document.getElementById('ct-scan-elapsed');
+    fillEl.style.width = '0%';
+    fillEl.classList.remove('ct-indeterminate');
+    labelEl.textContent = '';
+    document.getElementById('ct-rule-feed').classList.add('hidden');
+    document.getElementById('ct-rule-feed-list').innerHTML = '';
+    document.getElementById('ct-rule-tally').textContent = '';
     const _profileId = (document.getElementById('ct-profile-select') || {}).value || null;
     const _prevScan  = currentHostHistory.find(m =>
         m.profile_id === _profileId && m.sds_file === currentSdsPath && m.scan_duration_s != null
     );
     const _estSecs = _prevScan ? _prevScan.scan_duration_s : null;
+    if (!_estSecs) fillEl.classList.add('ct-indeterminate');
     hostScanTimer = setInterval(() => {
         const s = Math.floor((Date.now() - hostScanStart) / 1000);
-        const m = Math.floor(s / 60);
-        const elapsedStr = m > 0 ? m + 'm ' + (s % 60) + 's' : s + 's';
-        if (_estSecs && s < _estSecs * 1.5) {
-            const rem = Math.max(0, _estSecs - s);
-            const rm  = Math.floor(rem / 60);
-            const rs  = rem % 60;
-            const remStr = rem === 0 ? 'finishing…'
-                : rm > 0 ? '∼' + rm + 'm ' + String(rs).padStart(2, '0') + 's remaining'
-                : '∼' + rs + 's remaining';
-            elapsedEl.textContent = elapsedStr + ' · ' + remStr;
+        if (_estSecs) {
+            fillEl.style.width = Math.min(100, Math.round((s / _estSecs) * 100)) + '%';
+            if (s >= _estSecs * 1.5) {
+                const m = Math.floor(s / 60);
+                labelEl.textContent = m > 0 ? m + 'm ' + (s % 60) + 's' : s + 's';
+            } else {
+                const rem = Math.max(0, _estSecs - s);
+                const rm  = Math.floor(rem / 60);
+                const rs  = rem % 60;
+                labelEl.textContent = rem === 0 ? 'finishing…'
+                    : rm > 0 ? '~' + rm + 'm ' + String(rs).padStart(2, '0') + 's remaining'
+                    : '~' + rs + 's remaining';
+            }
         } else {
-            elapsedEl.textContent = elapsedStr;
+            const m = Math.floor(s / 60);
+            labelEl.textContent = m > 0 ? m + 'm ' + (s % 60) + 's' : s + 's';
         }
     }, 1000);
     loadHistory();
@@ -2194,6 +2246,7 @@ function showScanSetup() {
     hostScanTimer = null;
     document.getElementById('ct-scan-row').classList.remove('hidden');
     document.getElementById('ct-scan-progress').classList.add('hidden');
+    document.getElementById('ct-prev-results-banner').classList.add('hidden');
     document.getElementById('ct-results').classList.add('hidden');
     document.getElementById('ct-failing-summary-groups').innerHTML = '';
     document.getElementById('ct-failing-summary-loading').classList.add('hidden');
