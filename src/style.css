@@ -1858,6 +1858,7 @@ details.ct-tailor-group .ct-tailor-rule {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 0;
 }
 
 .ct-score-delta-up {
