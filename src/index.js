@@ -3977,8 +3977,9 @@ function renderActivityTable(entries, filter) {
     clearBtn.disabled  = !hasEntries || !isAdmin;
 
     if (!hasEntries) {
-        document.getElementById('ct-activity-empty-msg').textContent =
-            ACTIVITY_EMPTY_MSG[filter] || ACTIVITY_EMPTY_MSG.all;
+        document.getElementById('ct-activity-empty-msg').textContent = !isAdmin
+            ? 'Administrative access required. Click "Limited access" in the page header to elevate privileges before viewing activity.'
+            : (ACTIVITY_EMPTY_MSG[filter] || ACTIVITY_EMPTY_MSG.all);
         table.classList.add('hidden');
         empty.classList.remove('hidden');
         return;
