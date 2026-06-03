@@ -29,6 +29,7 @@ let   containerRetention   = RETENTION_DEFAULT;
 let   containerScanEnabled = false;
 let   dashboardEnabled     = false;
 
+const PERSISTENCE_CACHE_PATH = '/var/lib/cockpit-scap/persistence-cache.json';
 const ACTIVITY_LOG   = '/var/lib/cockpit-scap/activity.log';
 const ACTIVITY_MAX   = 1000;
 const ACTIVITY_TRIM  = 500;
@@ -152,6 +153,45 @@ const PY_EXTRACT_FAILING_RULES = [
 /* Python script: diff two results.xml files.
  * Args: sys.argv[1]=newer results.xml  sys.argv[2]=older results.xml
  * Output: JSON {fixed:[...], regressed:[...], new_failures:[...]} */
+/* Python script: compute persistent failures across N results.xml files.
+ * Args: sys.argv[1..N] = results.xml paths, newest first.
+ * Output: JSON array of rules failing in most recent scan, with consecutive_scans count. */
+const PY_BUILD_PERSISTENCE = [
+    'import sys, json, xml.etree.ElementTree as ET',
+    'NS = "http://checklists.nist.gov/xccdf/1.2"',
+    'paths = sys.argv[1:]',
+    'scan_fails = []',
+    'rule_info = {}',
+    'for i, path in enumerate(paths):',
+    '    try:',
+    '        tree = ET.parse(path)',
+    '        root = tree.getroot()',
+    '        if i == 0:',
+    '            for rule in root.iter("{%s}Rule" % NS):',
+    '                rid = rule.get("id", "")',
+    '                t = rule.find("{%s}title" % NS)',
+    '                ci = next((x for x in rule.findall("{%s}ident" % NS) if "cce" in (x.get("system","")).lower()), None)',
+    '                rule_info[rid] = {"title": t.text.strip() if t is not None else rid, "severity": rule.get("severity","unknown"), "cce": ci.text.strip() if ci is not None else ""}',
+    '        fails = set()',
+    '        for rr in root.iter("{%s}rule-result" % NS):',
+    '            r = rr.find("{%s}result" % NS)',
+    '            if r is not None and r.text == "fail": fails.add(rr.get("idref",""))',
+    '        scan_fails.append(fails)',
+    '    except: scan_fails.append(set())',
+    'if not scan_fails: print(json.dumps([])); sys.exit(0)',
+    'results = []',
+    'for rid in scan_fails[0]:',
+    '    consecutive = 0',
+    '    for s in scan_fails:',
+    '        if rid in s: consecutive += 1',
+    '        else: break',
+    '    info = rule_info.get(rid, {"title": rid, "severity": "unknown", "cce": ""})',
+    '    results.append({"id": rid, "title": info["title"], "severity": info["severity"], "cce": info["cce"], "consecutive_scans": consecutive})',
+    'order = {"high":0,"critical":0,"medium":1,"low":2}',
+    'results.sort(key=lambda x: (-x["consecutive_scans"], order.get(x["severity"],3), x["title"].lower()))',
+    'print(json.dumps(results))',
+].join('\n');
+
 /* Python script: extract XCCDF benchmark version + file size from an SDS file.
  * Uses iterparse with early break — stops reading as soon as xccdf:version found.
  * Output: "<bytes> <version_string>"  e.g.  "35123456 0.1.73" */
@@ -1042,6 +1082,7 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
         .then(manifest => pruneHistoryByType('host').then(() => manifest))
         .then(manifest => relaxResultsPerms().then(() => manifest))
         .then(manifest => {
+            buildPersistenceCache(manifest); // fire-and-forget; errors logged internally
             appendActivityLog({ type: 'scan_complete', tab: 'host',
                 content: manifest.sds_file.split('/').pop(), profile: manifest.profile_title,
                 score: manifest.score.toFixed(1), pass: manifest.counts.pass, fail: manifest.counts.fail });
@@ -1049,6 +1090,47 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
         })
         .then(manifest => showResults(manifest))
         .catch(err => onScanError('Failed to process results: ' + (err.message || String(err))));
+}
+
+function buildPersistenceCache(manifest) {
+    return cockpit.spawn(['ls', RESULTS_BASE], { err: 'message' })
+        .then(output => {
+            const dirs = output.trim().split('\n').filter(d => TIMESTAMP_RE.test(d));
+            return Promise.all(
+                dirs.map(dir =>
+                    cockpit.file(RESULTS_BASE + dir + '/manifest.json').read()
+                        .then(c => JSON.parse(c))
+                        .catch(() => null)
+                )
+            ).then(manifests => {
+                const relevant = manifests
+                    .filter(m => m && m.scan_type !== 'container' &&
+                                 m.profile_id === manifest.profile_id &&
+                                 m.sds_file   === manifest.sds_file)
+                    .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+                    .slice(0, 15);
+                if (relevant.length < 2) return;
+                const xmlPaths = relevant.map(m => RESULTS_BASE + m.timestamp + '/results.xml');
+                return cockpit.spawn(['python3', '-c', PY_BUILD_PERSISTENCE, ...xmlPaths], { err: 'message' })
+                    .then(output => {
+                        const failures = JSON.parse(output);
+                        return cockpit.file(PERSISTENCE_CACHE_PATH).read()
+                            .then(data => {
+                                const cache = (data && data.trim()) ? JSON.parse(data) : { profiles: {} };
+                                cache.profiles[manifest.profile_id] = {
+                                    computed_at:   manifest.timestamp,
+                                    profile_title: manifest.profile_title,
+                                    sds_file:      manifest.sds_file,
+                                    scan_count:    relevant.length,
+                                    failures,
+                                };
+                                return cockpit.file(PERSISTENCE_CACHE_PATH, { superuser: 'require' })
+                                    .replace(JSON.stringify(cache, null, 2));
+                            });
+                    });
+            });
+        })
+        .catch(err => console.error('buildPersistenceCache:', err.message || err));
 }
 
 function generateRemediation(resultId, resultsXmlPath, tailoringPath) {
