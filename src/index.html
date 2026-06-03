@@ -1022,6 +1022,7 @@
                      id="ct-tailor-editor-name" spellcheck="false" placeholder="Policy name">
             </div>
             <div class="ct-tailor-save-row">
+              <span class="ct-tailor-change-count" id="ct-tailor-change-count"></span>
               <button class="pf-v6-c-button pf-m-primary hidden ct-requires-admin" type="button"
                       id="ct-tailor-update-btn">Update</button>
               <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
@@ -1045,6 +1046,20 @@
                       id="ct-tailor-expand-all">Expand All</button>
               <button class="pf-v6-c-button pf-m-link" type="button"
                       id="ct-tailor-collapse-all">Collapse All</button>
+            </div>
+          </div>
+          <div class="ct-tailor-filter-bar" id="ct-tailor-filter-bar">
+            <div class="ct-tailor-filter-group">
+              <button class="ct-tailor-filter-btn active" data-filter-status="all">All</button>
+              <button class="ct-tailor-filter-btn" data-filter-status="disabled">Disabled</button>
+              <button class="ct-tailor-filter-btn" data-filter-status="modified">Modified</button>
+            </div>
+            <div class="ct-tailor-filter-sep"></div>
+            <div class="ct-tailor-filter-group">
+              <button class="ct-tailor-filter-btn active" data-filter-sev="all">All</button>
+              <button class="ct-tailor-filter-btn ct-filter-high" data-filter-sev="high">HIGH</button>
+              <button class="ct-tailor-filter-btn ct-filter-medium" data-filter-sev="medium">MED</button>
+              <button class="ct-tailor-filter-btn ct-filter-low" data-filter-sev="low">LOW</button>
             </div>
           </div>
           <div class="ct-tailor-search-wrap">
@@ -1074,6 +1089,29 @@
             </span>
           </div>
           <div class="ct-tailor-values-grid" id="ct-tailor-values-grid"></div>
+        </div>
+
+        <!-- Deviations summary -->
+        <hr class="ct-tailor-section-divider" id="ct-tailor-summary-divider">
+        <div class="pf-v6-c-card__body ct-tailor-editor-section" id="ct-tailor-summary-section">
+          <div class="ct-tailor-rules-header">
+            <div>
+              <h3 class="ct-tailor-section-title">Deviations from Base Profile</h3>
+              <p class="ct-tailor-editor-hint" id="ct-tailor-summary-hint">No changes from the base profile yet.</p>
+            </div>
+            <button class="pf-v6-c-button pf-m-link hidden" type="button"
+                    id="ct-tailor-export-btn">Copy Summary</button>
+          </div>
+          <div class="ct-tailor-summary-content hidden" id="ct-tailor-summary-content">
+            <div class="ct-tailor-summary-sub hidden" id="ct-tailor-summary-rules-section">
+              <div class="ct-tailor-summary-sub-title">Rules</div>
+              <div id="ct-tailor-summary-rules-list"></div>
+            </div>
+            <div class="ct-tailor-summary-sub hidden" id="ct-tailor-summary-values-section">
+              <div class="ct-tailor-summary-sub-title">Variables</div>
+              <div id="ct-tailor-summary-values-list"></div>
+            </div>
+          </div>
         </div>
 
       </div>

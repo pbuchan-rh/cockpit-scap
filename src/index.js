@@ -85,7 +85,9 @@ const PY_EXTRACT_PROFILE = [
     'def proc_rule(el):',
     '    rid = el.get("id", ""); t = el.find(tag("title"))',
     '    d = el.get("selected", "true").lower() == "true"',
-    '    return {"id": rid, "title": text(t), "severity": el.get("severity", "unknown"), "selected": is_sel(rid, d)}',
+    '    d_el = el.find(tag("description"))',
+    '    desc = " ".join("".join(d_el.itertext()).split()) if d_el is not None else ""',
+    '    return {"id": rid, "title": text(t), "severity": el.get("severity", "unknown"), "selected": is_sel(rid, d), "description": desc}',
     'def proc_group(el):',
     '    t = el.find(tag("title"))',
     '    r = {"id": el.get("id", ""), "title": text(t), "groups": [], "rules": []}',
@@ -316,6 +318,8 @@ let tailorData            = null;
 let tailorRuleChanges     = {};
 let tailorValueChanges    = {};
 let tailorEditingSidecar  = null;
+let tailorFilterStatus    = 'all';
+let tailorFilterSev       = 'all';
 let tailoringFilesMap   = {};
 
 /* Module state — content */
@@ -527,6 +531,25 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', onTailorSaveClick);
     document.getElementById('ct-tailor-cancel-btn')
         .addEventListener('click', resetTailorForm);
+    document.getElementById('ct-tailor-export-btn')
+        .addEventListener('click', exportTailorSummary);
+    document.getElementById('ct-tailor-filter-bar')
+        .addEventListener('click', e => {
+            const btn = e.target.closest('.ct-tailor-filter-btn');
+            if (!btn) return;
+            if (btn.dataset.filterStatus) {
+                tailorFilterStatus = btn.dataset.filterStatus;
+                btn.closest('.ct-tailor-filter-group')
+                    .querySelectorAll('.ct-tailor-filter-btn')
+                    .forEach(b => b.classList.toggle('active', b === btn));
+            } else if (btn.dataset.filterSev) {
+                tailorFilterSev = btn.dataset.filterSev;
+                btn.closest('.ct-tailor-filter-group')
+                    .querySelectorAll('.ct-tailor-filter-btn')
+                    .forEach(b => b.classList.toggle('active', b === btn));
+            }
+            applyTailorFilter();
+        });
     document.getElementById('ct-tailor-expand-all')
         .addEventListener('click', expandAllGroups);
     document.getElementById('ct-tailor-collapse-all')
@@ -2959,64 +2982,127 @@ function renderTailorEditor(data) {
     }
     nameInput._editorSyncHandler = () => { editorName.value = nameInput.value; };
     nameInput.addEventListener('input', nameInput._editorSyncHandler);
-    document.getElementById('ct-tailor-values-grid').classList.remove('hidden');
+    document.getElementById('ct-tailor-values-grid').classList.add('hidden');
     document.getElementById('ct-tailor-values-search')
-        .closest('.ct-tailor-search-wrap').classList.remove('hidden');
-    document.getElementById('ct-tailor-values-collapse').textContent = 'Collapse';
+        .closest('.ct-tailor-search-wrap').classList.add('hidden');
+    document.getElementById('ct-tailor-values-collapse').textContent = 'Expand';
     renderTailorTree(data);
     renderTailorValues(data.values || []);
     const statusEl = document.getElementById('ct-tailor-save-status');
     statusEl.textContent = '';
     statusEl.className   = 'ct-tailor-save-status hidden';
     document.getElementById('ct-tailor-editor').classList.remove('hidden');
+    updateTailorSummary();
 }
 
 function renderTailorTree(data) {
     const container = document.getElementById('ct-tailor-tree');
     container.innerHTML = '';
+    tailorFilterStatus = 'all';
+    tailorFilterSev    = 'all';
+    document.querySelectorAll('#ct-tailor-filter-bar .ct-tailor-filter-btn').forEach(b => {
+        const isAll = b.dataset.filterStatus === 'all' || b.dataset.filterSev === 'all';
+        b.classList.toggle('active', isAll);
+    });
+
+    function countGroup(group) {
+        let total = (group.rules || []).length;
+        let modified = (group.rules || []).filter(r => r.id in tailorRuleChanges).length;
+        (group.groups || []).forEach(sg => {
+            const c = countGroup(sg);
+            total += c.total; modified += c.modified;
+        });
+        return { total, modified };
+    }
 
     function buildRule(rule) {
-        const div   = document.createElement('div');
+        const div = document.createElement('div');
         div.className = 'ct-tailor-rule';
+        div.dataset.ruleId = rule.id;
+        div.dataset.sev    = rule.severity || 'unknown';
 
         const label = document.createElement('label');
         label.className = 'ct-tailor-rule-label';
 
-        const cb        = document.createElement('input');
-        cb.type         = 'checkbox';
-        cb.className    = 'ct-tailor-rule-check';
-        const origSel   = rule.selected;
-        cb.checked      = (rule.id in tailorRuleChanges) ? tailorRuleChanges[rule.id] : origSel;
+        const cb      = document.createElement('input');
+        cb.type       = 'checkbox';
+        cb.className  = 'ct-tailor-rule-check';
+        const origSel = rule.selected;
+        cb.checked    = (rule.id in tailorRuleChanges) ? tailorRuleChanges[rule.id] : origSel;
         cb.addEventListener('change', () => {
             if (cb.checked === origSel) {
                 delete tailorRuleChanges[rule.id];
             } else {
                 tailorRuleChanges[rule.id] = cb.checked;
             }
+            updateTailorSummary();
+            applyTailorFilter();
         });
 
-        const titleSpan       = document.createElement('span');
-        titleSpan.className   = 'ct-tailor-rule-title';
-        titleSpan.textContent = rule.title || rule.id;
+        const titleSpan     = document.createElement('span');
+        titleSpan.className = 'ct-tailor-rule-title' + (rule.description ? ' ct-tailor-rule-title-expandable' : '');
 
         const sevSpan       = document.createElement('span');
         sevSpan.className   = 'ct-tailor-rule-sev ct-sev-' + (rule.severity || 'unknown');
         sevSpan.textContent = rule.severity || '';
 
-        label.appendChild(cb);
-        label.appendChild(titleSpan);
-        label.appendChild(sevSpan);
-        div.appendChild(label);
+        if (rule.description) {
+            const arrow = document.createElement('span');
+            arrow.className   = 'ct-tailor-rule-arrow';
+            arrow.textContent = '▸';
+            titleSpan.appendChild(arrow);
+
+            const titleText       = document.createElement('span');
+            titleText.textContent = rule.title || rule.id;
+            titleSpan.appendChild(titleText);
+
+            const descDiv = document.createElement('div');
+            descDiv.className = 'ct-tailor-rule-desc hidden';
+            descDiv.textContent = rule.description;
+
+            titleSpan.addEventListener('click', e => {
+                e.preventDefault();
+                const open = descDiv.classList.toggle('hidden');
+                arrow.classList.toggle('ct-tailor-rule-arrow-open', !open);
+            });
+
+            label.appendChild(cb);
+            label.appendChild(titleSpan);
+            label.appendChild(sevSpan);
+            div.appendChild(label);
+            div.appendChild(descDiv);
+        } else {
+            titleSpan.textContent = rule.title || rule.id;
+            label.appendChild(cb);
+            label.appendChild(titleSpan);
+            label.appendChild(sevSpan);
+            div.appendChild(label);
+        }
+
         return div;
     }
 
     function buildGroup(group) {
         const details = document.createElement('details');
         details.className = 'ct-tailor-group';
+        details.dataset.groupId = group.id;
 
-        const summary       = document.createElement('summary');
-        summary.className   = 'ct-tailor-group-summary';
-        summary.textContent = group.title || group.id;
+        const summary     = document.createElement('summary');
+        summary.className = 'ct-tailor-group-summary';
+
+        const titleSpan       = document.createElement('span');
+        titleSpan.className   = 'ct-tailor-group-title';
+        titleSpan.textContent = group.title || group.id;
+
+        const countSpan       = document.createElement('span');
+        countSpan.className   = 'ct-tailor-group-count';
+        const { total, modified } = countGroup(group);
+        countSpan.textContent = total + ' rules' + (modified > 0 ? ' · ' + modified + ' modified' : '');
+        if (modified > 0) countSpan.classList.add('ct-tailor-group-count-modified');
+        countSpan.dataset.groupId = group.id;
+
+        summary.appendChild(titleSpan);
+        summary.appendChild(countSpan);
         details.appendChild(summary);
 
         (group.groups || []).forEach(sg => details.appendChild(buildGroup(sg)));
@@ -3043,13 +3129,25 @@ function renderTailorValues(values) {
     section.classList.remove('hidden');
     divider.classList.remove('hidden');
     values.forEach(val => {
-        const row     = document.createElement('div');
-        row.className = 'ct-tailor-value-row';
+        const isModified  = val.id in tailorValueChanges;
+        const row         = document.createElement('div');
+        row.className     = 'ct-tailor-value-row' + (isModified ? ' ct-tailor-val-modified' : '');
+        row.dataset.valId = val.id;
 
         const lbl         = document.createElement('label');
         lbl.className     = 'ct-tailor-value-label';
-        lbl.textContent   = val.title || val.id;
         lbl.htmlFor       = 'ct-val-' + val.id;
+
+        const labelText       = document.createElement('span');
+        labelText.textContent = val.title || val.id;
+        lbl.appendChild(labelText);
+
+        if (isModified) {
+            const badge       = document.createElement('span');
+            badge.className   = 'ct-tailor-val-modified-badge';
+            badge.textContent = 'Modified';
+            lbl.appendChild(badge);
+        }
 
         let input;
         const baseValue   = val.current || val.default || '';
@@ -3060,7 +3158,7 @@ function renderTailorValues(values) {
             val.options.forEach(opt => {
                 const o       = document.createElement('option');
                 o.value       = opt.value;
-                o.textContent = opt.selector + ': ' + opt.value;
+                o.textContent = opt.selector === opt.value ? opt.value : opt.selector + ': ' + opt.value;
                 o.selected    = (opt.value === activeValue);
                 input.appendChild(o);
             });
@@ -3086,12 +3184,191 @@ function renderTailorValues(values) {
             } else {
                 tailorValueChanges[val.id] = input.value;
             }
+            updateTailorSummary();
         });
 
         row.appendChild(lbl);
         row.appendChild(input);
         grid.appendChild(row);
     });
+}
+
+function applyTailorFilter() {
+    const container = document.getElementById('ct-tailor-tree');
+    if (!container) return;
+
+    container.querySelectorAll('.ct-tailor-rule').forEach(ruleDiv => {
+        const ruleId  = ruleDiv.dataset.ruleId;
+        const ruleSev = ruleDiv.dataset.sev || 'unknown';
+        const cb      = ruleDiv.querySelector('input[type="checkbox"]');
+        const isDisabled = cb && !cb.checked;
+        const isModified = ruleId in tailorRuleChanges;
+
+        let show = true;
+        if (tailorFilterSev !== 'all' && ruleSev !== tailorFilterSev) show = false;
+        if (tailorFilterStatus === 'disabled' && !isDisabled) show = false;
+        if (tailorFilterStatus === 'modified' && !isModified) show = false;
+        ruleDiv.classList.toggle('ct-filter-hidden', !show);
+    });
+
+    container.querySelectorAll('.ct-tailor-group').forEach(group => {
+        const hasVisible = Array.from(group.querySelectorAll('.ct-tailor-rule'))
+            .some(r => !r.classList.contains('ct-filter-hidden'));
+        group.classList.toggle('ct-filter-hidden', !hasVisible);
+    });
+}
+
+function flattenTailorRules() {
+    const out = [];
+    if (!tailorData) return out;
+    function walk(items) {
+        (items || []).forEach(item => {
+            if (item.groups || item.rules) {
+                walk(item.groups || []);
+                walk(item.rules  || []);
+            } else {
+                out.push(item);
+            }
+        });
+    }
+    walk(tailorData.groups || []);
+    walk(tailorData.rules  || []);
+    return out;
+}
+
+function updateTailorSummary() {
+    if (!tailorData) return;
+
+    const ruleCount  = Object.keys(tailorRuleChanges).length;
+    const valueCount = Object.keys(tailorValueChanges).length;
+    const total      = ruleCount + valueCount;
+
+    const countEl   = document.getElementById('ct-tailor-change-count');
+    const hintEl    = document.getElementById('ct-tailor-summary-hint');
+    const contentEl = document.getElementById('ct-tailor-summary-content');
+    const exportBtn = document.getElementById('ct-tailor-export-btn');
+    const rulesSec  = document.getElementById('ct-tailor-summary-rules-section');
+    const valuesSec = document.getElementById('ct-tailor-summary-values-section');
+    const rulesEl   = document.getElementById('ct-tailor-summary-rules-list');
+    const valuesEl  = document.getElementById('ct-tailor-summary-values-list');
+
+    if (total === 0) {
+        countEl.textContent = '';
+        countEl.className   = 'ct-tailor-change-count';
+        hintEl.textContent  = 'No changes from the base profile yet.';
+        hintEl.classList.remove('hidden');
+        contentEl.classList.add('hidden');
+        exportBtn.classList.add('hidden');
+        return;
+    }
+
+    const parts = [];
+    if (ruleCount)  parts.push(ruleCount  + ' rule'     + (ruleCount  === 1 ? '' : 's'));
+    if (valueCount) parts.push(valueCount + ' variable' + (valueCount === 1 ? '' : 's'));
+    countEl.textContent = parts.join(' · ') + ' changed';
+    countEl.className   = 'ct-tailor-change-count ct-tailor-change-count-active';
+    hintEl.textContent  = parts.join(', ') + ' deviate from the base profile.';
+    contentEl.classList.remove('hidden');
+    exportBtn.classList.remove('hidden');
+
+    const ruleMap = {};
+    flattenTailorRules().forEach(r => { ruleMap[r.id] = r; });
+
+    if (ruleCount > 0) {
+        rulesSec.classList.remove('hidden');
+        rulesEl.innerHTML = Object.entries(tailorRuleChanges)
+            .sort((a, b) => {
+                const sevOrder = { high: 0, medium: 1, low: 2, unknown: 3 };
+                const ra = ruleMap[a[0]] || {}; const rb = ruleMap[b[0]] || {};
+                return (sevOrder[ra.severity] || 3) - (sevOrder[rb.severity] || 3);
+            })
+            .map(([id, enabled]) => {
+                const rule   = ruleMap[id] || { title: id, severity: 'unknown' };
+                const sev    = rule.severity || 'unknown';
+                const action = enabled ? 'Enabled' : 'Disabled';
+                const cls    = enabled ? 'ct-tailor-sum-enabled' : 'ct-tailor-sum-disabled';
+                return '<div class="ct-tailor-sum-row">' +
+                    '<span class="ct-tailor-sum-action ' + cls + '">' + action + '</span>' +
+                    '<span class="ct-tailor-rule-sev ct-sev-' + sev + '">' + sev + '</span>' +
+                    '<span class="ct-tailor-sum-title">' + (rule.title || id) + '</span>' +
+                    '</div>';
+            }).join('');
+    } else {
+        rulesSec.classList.add('hidden');
+    }
+
+    const valMap = {};
+    (tailorData.values || []).forEach(v => { valMap[v.id] = v; });
+
+    if (valueCount > 0) {
+        valuesSec.classList.remove('hidden');
+        valuesEl.innerHTML = Object.entries(tailorValueChanges).map(([id, newVal]) => {
+            const val  = valMap[id] || { title: id, current: '?', default: '?' };
+            const from = val.current || val.default || '?';
+            return '<div class="ct-tailor-sum-row">' +
+                '<span class="ct-tailor-sum-val-title">' + (val.title || id) + '</span>' +
+                '<span class="ct-tailor-sum-val-change">' +
+                '<span class="ct-tailor-sum-val-from">' + from + '</span>' +
+                ' &rarr; ' +
+                '<span class="ct-tailor-sum-val-to">' + newVal + '</span>' +
+                '</span>' +
+                '</div>';
+        }).join('');
+    } else {
+        valuesSec.classList.add('hidden');
+    }
+
+    /* Update group count badges to reflect current tailorRuleChanges */
+    document.querySelectorAll('#ct-tailor-tree .ct-tailor-group-count').forEach(badge => {
+        const group = badge.closest('.ct-tailor-group');
+        if (!group) return;
+        const allRules  = Array.from(group.querySelectorAll('.ct-tailor-rule'));
+        const total     = allRules.length;
+        const modified  = allRules.filter(r => r.dataset.ruleId in tailorRuleChanges).length;
+        badge.textContent = total + ' rules' + (modified > 0 ? ' · ' + modified + ' modified' : '');
+        badge.classList.toggle('ct-tailor-group-count-modified', modified > 0);
+    });
+}
+
+function exportTailorSummary() {
+    if (!tailorData) return;
+    const name = document.getElementById('ct-tailor-editor-name').value.trim() || 'Tailoring';
+    const base = tailorData.profile.title || tailorData.profile.id || 'Base Profile';
+    const lines = [
+        'Policy Deviations: ' + name,
+        'Base Profile: ' + base,
+        'Generated: ' + new Date().toISOString().replace('T', ' ').slice(0, 19),
+        '',
+    ];
+    const ruleMap = {};
+    flattenTailorRules().forEach(r => { ruleMap[r.id] = r; });
+    const ruleEntries = Object.entries(tailorRuleChanges);
+    if (ruleEntries.length) {
+        lines.push('Rules changed (' + ruleEntries.length + '):');
+        ruleEntries.forEach(([id, enabled]) => {
+            const rule = ruleMap[id] || { title: id, severity: '?' };
+            const sev  = (rule.severity || '?').toUpperCase();
+            lines.push('  ' + (enabled ? '+ ENABLED ' : '- DISABLED') + ' [' + sev + '] ' + (rule.title || id));
+        });
+        lines.push('');
+    }
+    const valMap = {};
+    (tailorData.values || []).forEach(v => { valMap[v.id] = v; });
+    const valEntries = Object.entries(tailorValueChanges);
+    if (valEntries.length) {
+        lines.push('Variables changed (' + valEntries.length + '):');
+        valEntries.forEach(([id, newVal]) => {
+            const val  = valMap[id] || { title: id, current: '?', default: '?' };
+            const from = val.current || val.default || '?';
+            lines.push('  ' + (val.title || id) + ': ' + from + ' → ' + newVal);
+        });
+    }
+    const btn = document.getElementById('ct-tailor-export-btn');
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+    }).catch(() => {});
 }
 
 function doUpdateTailoringFile() {
