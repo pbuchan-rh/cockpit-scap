@@ -1043,13 +1043,12 @@ function runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath) {
             _recent.unshift({ name, result });
             if (_recent.length > 5) _recent.pop();
             feedEl.classList.remove('hidden');
-            tallyEl.textContent = _ruleChecked + ' checked' +
-                (_ruleFailed ? ' · ' + _ruleFailed + ' failing' : '');
+            tallyEl.innerHTML = _ruleChecked + ' checked' +
+                (_ruleFailed ? ' &middot; <span class="ct-tally-fail">' + _ruleFailed + ' failing</span>' : '');
             listEl.innerHTML = _recent.map(r =>
                 '<div class="ct-rule-feed-item">' +
                 '<span class="ct-rule-feed-dot ' + r.result + '"></span>' +
                 '<span class="ct-rule-feed-name">' + r.name + '</span>' +
-                '<span class="ct-rule-feed-result ' + r.result + '">' + r.result + '</span>' +
                 '</div>'
             ).join('');
         }

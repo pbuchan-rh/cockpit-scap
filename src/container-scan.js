@@ -592,13 +592,12 @@ function onCsScanClick() {
                     _csRecent.unshift({ name, result });
                     if (_csRecent.length > 5) _csRecent.pop();
                     csFeedEl.classList.remove('hidden');
-                    csTallyEl.textContent = _csChecked + ' checked' +
-                        (_csFailed ? ' · ' + _csFailed + ' failing' : '');
+                    csTallyEl.innerHTML = _csChecked + ' checked' +
+                        (_csFailed ? ' &middot; <span class="ct-tally-fail">' + _csFailed + ' failing</span>' : '');
                     csListEl.innerHTML = _csRecent.map(r =>
                         '<div class="ct-rule-feed-item">' +
                         '<span class="ct-rule-feed-dot ' + r.result + '"></span>' +
                         '<span class="ct-rule-feed-name">' + r.name + '</span>' +
-                        '<span class="ct-rule-feed-result ' + r.result + '">' + r.result + '</span>' +
                         '</div>'
                     ).join('');
                 }
