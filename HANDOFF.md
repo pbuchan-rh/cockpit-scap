@@ -4,17 +4,17 @@
 
 ## Current State
 
-**Version:** v3.8-dev (code review complete, Playwright rerun needed before release)
+**Version:** v3.8 (released)
 **Last session:** 2026-06-02
-**Last commit:** e2720c1 (fix: address 10 code review findings before v3.8 release)
-**Git tag:** v3.6 on both remotes — v3.7 and v3.8 not yet tagged
+**Last commit:** 65539e4 (docs: refresh screenshots, log v3.9 bugs)
+**Git tag:** v3.8 on both remotes
 **Deployed to:** rhel10cis.beastmode.localdomain — user-space install at `~/.local/share/cockpit/cockpit-scap/`
-**Published:** COPR build 10534383 (v3.6, el10)
-**RPM test host:** 10.0.0.214 on v3.6 — needs upgrade after v3.8 release
-**GitHub release:** https://github.com/pbuchan-rh/cockpit-scap/releases/tag/v3.6
-**Gitea release:** http://git.beastmode.localdomain:3000/admin/cockpit-scap/releases/tag/v3.6
+**Published:** COPR build 10550521 (v3.8, el10)
+**RPM test host:** 10.0.0.214 on v3.8 — SELinux enforcing confirmed, UAT passed
+**GitHub release:** https://github.com/pbuchan-rh/cockpit-scap/releases/tag/v3.8
+**Gitea release:** http://git.beastmode.localdomain:3000/admin/cockpit-scap/releases/tag/v3.8
 
-**Status:** Playwright suite run — 40/55 passing. 15 failures are all environmental (see below), no code regressions found. Ready to tag v3.8.
+**Status:** v3.8 fully released. AppStream metainfo confirmed working — SCAP Compliance appears on Cockpit Applications page. Next session starts v3.9.
 
 **rhel10cis state:**
 - PCI-DSS partial remediation still applied (sysctl hardening, sudoers fixed)
@@ -98,13 +98,11 @@
 - ✅ AppStream metainfo + dep promotion (6c8384a)
 - ✅ UI fixes: "Host Scan Results" title, activity log limited-access message (6f25fa8)
 - ✅ Playwright suite — 40/55 passing; 15 failures all environmental (see below)
-- ⬜ Update README current release line (v3.6 → v3.8)
-- ⬜ Push to both remotes (Gitea + GitHub) — already up to date as of 6f25fa8
-- ⬜ Tag v3.8 on both remotes + GitHub release
-- ⬜ On rhel10cis: git pull, rpmbuild -bs → el10 SRPM
-- ⬜ From local Fedora: copr-cli submit SRPM
-- ⬜ Test RPM install on 10.0.0.214
-- ⬜ README screenshots — stale, take fresh after RPM install on 10.0.0.214
+- ✅ Update README current release line (v3.6 → v3.8)
+- ✅ Tag v3.8 on both remotes + GitHub + Gitea releases with binaries
+- ✅ SRPM built on rhel10cis, COPR build 10550521 succeeded
+- ✅ RPM installed on 10.0.0.214 — UAT passed
+- ✅ README screenshots refreshed from 10.0.0.214
 
 ### 2. Playwright Test Harness — Known Issues (Fix in v3.9)
 
@@ -174,6 +172,7 @@
 | 2026-06-02 | v3.8-dev cont. | UAT + UX | Full UAT pass, UX audit, Playwright test suite updated; ARF export, Not applicable badge, SSG version in Content Library, export split button, action board label + button rename (Critical Rules / All Failures), Profile Remediation button rename, settings responsive stack, container+dashboard off by default |
 | 2026-06-02 | v3.8-dev | Code Review | 9-angle multi-agent review; 12 findings; 10 fixed (e2720c1): severity_counts bug, container Quick Fix automated flag, backdrop handler, cs-export-menu, tailoringFilesMap, diff-btn listeners, pendingQuickFix reset, --results-arf preview, rBtn disabled, inline style |
 | 2026-06-02 | v3.8 | Release Prep | AppStream metainfo, deps Requires, version bump, UI fixes (Host Scan Results title, activity log admin msg); Playwright 40/55 — 15 env failures documented; harness bugs noted for v3.9 |
+| 2026-06-02 | v3.8 | Release | Tagged + COPR build 10550521 + installed on 10.0.0.214 + screenshots refreshed + binaries on GitHub + Gitea; AppStream confirmed working; drawer backdrop bug + Quick Fix weighting noted for v3.9 |
 
 ---
 
