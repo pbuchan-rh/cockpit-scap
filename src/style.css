@@ -276,7 +276,7 @@ code {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--pf-v6-c-card--BackgroundColor, var(--pf-v6-global--BackgroundColor--100, #fff));
+  background: var(--ct-color-bg-table-header);
 }
 
 .pf-v6-c-card__title-text {
@@ -1913,11 +1913,6 @@ html.pf-v6-theme-dark .ct-badge-error {
   padding-left: 40px;
 }
 
-.ct-settings-scheduling {
-  border-top: 1px solid var(--pf-v6-global--BorderColor--100, rgba(0,0,0,0.12));
-  margin-top: 24px;
-  padding-top: 20px;
-}
 
 .ct-content-section-sep {
   border-top: 1px solid var(--pf-v6-global--BorderColor--100, rgba(0,0,0,0.12));

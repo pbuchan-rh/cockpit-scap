@@ -3776,16 +3776,6 @@ function initSettings() {
     document.getElementById('ct-clear-all-cancel')
         .addEventListener('click', () =>
             document.getElementById('ct-clear-all-modal').classList.add('hidden'));
-    document.getElementById('ct-cron-copy-btn')
-        .addEventListener('click', () => {
-            const cmd = document.getElementById('ct-cron-cmd').textContent;
-            navigator.clipboard.writeText(cmd).then(() => {
-                const btn = document.getElementById('ct-cron-copy-btn');
-                const orig = btn.textContent;
-                btn.textContent = '✓ Copied';
-                setTimeout(() => { btn.textContent = orig; }, 2000);
-            }).catch(() => {});
-        });
 }
 
 function onSettingsTabOpen() {
@@ -3796,38 +3786,10 @@ function onSettingsTabOpen() {
     document.getElementById('ct-settings-warn').classList.add('hidden');
     document.getElementById('ct-settings-saved').classList.add('hidden');
     fetchDiskUsage();
-    renderCronHint();
     renderContentTab();
     detectContent();
 }
 
-function renderCronHint() {
-    const hint    = document.getElementById('ct-cron-hint');
-    const noScan  = document.getElementById('ct-cron-no-scan');
-    const cmdEl   = document.getElementById('ct-cron-cmd');
-    const last    = currentHostHistory && currentHostHistory[0];
-
-    if (!last) {
-        hint.classList.add('hidden');
-        noScan.classList.remove('hidden');
-        return;
-    }
-
-    const sds      = last.sds_file || '';
-    const profile  = last.profile_id || '';
-    const tailoring = last.tailoring_file || '';
-    const outDir   = '/var/lib/cockpit-scap/results/$(date +%Y-%m-%dT%H-%M-%S)';
-    let cmd = 'mkdir -p ' + outDir + ' && oscap xccdf eval' +
-        ' --profile ' + profile +
-        ' --results ' + outDir + '/results.xml' +
-        ' --report ' + outDir + '/report.html';
-    if (tailoring) cmd += ' --tailoring-file ' + tailoring;
-    cmd += ' ' + sds;
-
-    cmdEl.textContent = cmd;
-    hint.classList.remove('hidden');
-    noScan.classList.add('hidden');
-}
 
 function fetchDiskUsage() {
     const el = document.getElementById('ct-settings-disk-usage');
