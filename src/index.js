@@ -307,7 +307,8 @@ let scanCancelledByUser   = false;
 let remediationDir   = null;   /* full path to scan results dir, trailing slash */
 let remediationRules = [];     /* [{id, title, severity}] from last load */
 let eagerRemRules    = null;   /* pre-loaded rules for Action Board / panel reuse */
-let pendingQuickFix  = false;  /* when true, renderRemediationRules pre-selects recommended only */
+let pendingQuickFix        = false;  /* when true, renderRemediationRules pre-selects recommended only */
+let pendingPersistentRuleIds = null; /* when set, renderRemediationRules pre-selects these rule IDs */
 
 /* Module state — tailoring */
 let tailorSdsPath         = null;
@@ -1308,6 +1309,15 @@ function renderRemediationRules(rules) {
             .map(r => r.id));
         document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox').forEach(cb => {
             cb.checked = recIds.has(cb.dataset.id);
+        });
+        updateRemediationCount();
+    }
+
+    if (pendingPersistentRuleIds) {
+        const ids = new Set(pendingPersistentRuleIds);
+        pendingPersistentRuleIds = null;
+        document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox').forEach(cb => {
+            cb.checked = ids.has(cb.dataset.id);
         });
         updateRemediationCount();
     }
@@ -3489,20 +3499,22 @@ function renderSystemContentList() {
             }
             const table = document.createElement('table');
             table.className = 'pf-v6-c-table pf-m-compact';
+            table.setAttribute('role', 'grid');
             table.setAttribute('aria-label', 'System SCAP content');
             const thead = table.createTHead();
             const hr = thead.insertRow();
-            ['Name', 'File', 'Version'].forEach(h => {
+            hr.setAttribute('role', 'row');
+            ['Name', 'File', 'Size', 'Version', 'Actions'].forEach(h => {
                 const th = document.createElement('th');
+                th.setAttribute('role', 'columnheader');
                 th.scope = 'col';
                 th.textContent = h;
                 hr.appendChild(th);
             });
             const tbody = table.createTBody();
-            const entries = files.map(f => ({ f, name: sdsDisplayName(f), path: SSG_CONTENT_DIR + f, version: '…' }));
+            const entries = files.map(f => ({ f, name: sdsDisplayName(f), path: SSG_CONTENT_DIR + f }));
             container.innerHTML = '';
             container.appendChild(table);
-            // Render rows immediately with placeholder versions, then fill async
             entries.forEach(e => {
                 const tr  = tbody.insertRow();
                 tr.insertCell().textContent = e.name;
@@ -3510,11 +3522,25 @@ function renderSystemContentList() {
                 const code = document.createElement('code');
                 code.textContent = e.f;
                 tdF.appendChild(code);
+                const tdS = tr.insertCell();
                 const tdV = tr.insertCell();
+                tdS.textContent = '…';
                 tdV.textContent = '…';
                 cockpit.spawn(['python3', '-c', PY_SDS_VERSION, e.path], { err: 'ignore' })
-                    .then(out => { tdV.textContent = (out.trim().split(' ')[1]) || '?'; })
-                    .catch(() => { tdV.textContent = '?'; });
+                    .then(out => {
+                        const parts = out.trim().split(' ');
+                        tdS.textContent = parts[0] ? (parseInt(parts[0], 10) / 1024 / 1024).toFixed(1) + ' MB' : '—';
+                        tdV.textContent = parts[1] || '?';
+                    })
+                    .catch(() => { tdS.textContent = '—'; tdV.textContent = '?'; });
+                const tdA    = tr.insertCell();
+                const valBtn = document.createElement('button');
+                valBtn.className   = 'pf-v6-c-button pf-m-link';
+                valBtn.type        = 'button';
+                valBtn.textContent = 'Validate';
+                valBtn.addEventListener('click', () => validateContent(
+                    { xmlPath: e.path, filename: e.f, name: e.name }, valBtn));
+                tdA.appendChild(valBtn);
             });
         })
         .catch(() => {
@@ -3551,11 +3577,14 @@ function renderUserContentList() {
             ).then(() => {
                 const table = document.createElement('table');
                 table.className = 'pf-v6-c-table pf-m-compact';
+                table.setAttribute('role', 'grid');
                 table.setAttribute('aria-label', 'Uploaded SCAP content');
                 const thead = table.createTHead();
                 const hr = thead.insertRow();
+                hr.setAttribute('role', 'row');
                 ['Name', 'File', 'Size', 'Version', 'Actions'].forEach(h => {
                     const th = document.createElement('th');
+                    th.setAttribute('role', 'columnheader');
                     th.scope = 'col';
                     th.textContent = h;
                     hr.appendChild(th);

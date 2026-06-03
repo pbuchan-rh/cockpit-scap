@@ -422,15 +422,15 @@
           <!-- History table -->
           <div class="ct-table-scroll-wrap">
             <table class="pf-v6-c-table pf-m-compact hidden" id="ct-history-table"
-                   aria-label="Scan history">
+                   role="grid" aria-label="Scan history">
               <thead>
-                <tr>
-                  <th scope="col">Date</th>
-                  <th scope="col">Profile</th>
-                  <th scope="col">Pass</th>
-                  <th scope="col">Fail</th>
-                  <th scope="col">Score</th>
-                  <th scope="col" class="ct-col-actions">Actions</th>
+                <tr role="row">
+                  <th role="columnheader" scope="col">Date</th>
+                  <th role="columnheader" scope="col">Profile</th>
+                  <th role="columnheader" scope="col">Pass</th>
+                  <th role="columnheader" scope="col">Fail</th>
+                  <th role="columnheader" scope="col">Score</th>
+                  <th role="columnheader" scope="col" class="ct-col-actions">Actions</th>
                 </tr>
               </thead>
               <tbody id="ct-history-tbody"></tbody>
@@ -841,17 +841,17 @@
 
           <div class="ct-table-scroll-wrap">
             <table class="pf-v6-c-table pf-m-compact hidden" id="cs-history-table"
-                   aria-label="Container scan history">
+                   role="grid" aria-label="Container scan history">
               <thead>
-                <tr>
-                  <th scope="col">Date</th>
-                  <th scope="col">Image</th>
-                  <th scope="col">Content</th>
-                  <th scope="col">Profile</th>
-                  <th scope="col">Pass</th>
-                  <th scope="col">Fail</th>
-                  <th scope="col">Score</th>
-                  <th scope="col">Actions</th>
+                <tr role="row">
+                  <th role="columnheader" scope="col">Date</th>
+                  <th role="columnheader" scope="col">Image</th>
+                  <th role="columnheader" scope="col">Content</th>
+                  <th role="columnheader" scope="col">Profile</th>
+                  <th role="columnheader" scope="col">Pass</th>
+                  <th role="columnheader" scope="col">Fail</th>
+                  <th role="columnheader" scope="col">Score</th>
+                  <th role="columnheader" scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody id="cs-history-tbody"></tbody>
@@ -1067,13 +1067,13 @@
           </p>
           <div class="ct-table-scroll-wrap">
             <table class="pf-v6-c-table pf-m-compact hidden" id="ct-tailor-list-table"
-                   aria-label="Saved tailoring files">
+                   role="grid" aria-label="Saved tailoring files">
               <thead>
-                <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">Base Profile</th>
-                  <th scope="col">Created</th>
-                  <th scope="col">Actions</th>
+                <tr role="row">
+                  <th role="columnheader" scope="col">Name</th>
+                  <th role="columnheader" scope="col">Base Profile</th>
+                  <th role="columnheader" scope="col">Created</th>
+                  <th role="columnheader" scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody id="ct-tailor-list-tbody"></tbody>
@@ -1096,11 +1096,6 @@
              role="tabpanel" aria-labelledby="tab-btn-dashboard">
 
       <div class="db-toolbar">
-        <div class="pf-v6-c-alert pf-m-info db-preview-banner" aria-label="Preview feature">
-          <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9432;</div>
-          <div><span class="pf-v6-c-alert__title">Dashboard — Preview.</span>
-          Score trends and priority fixes now shown. Compliance Debt and multi-scan analysis planned for a future release.</div>
-        </div>
         <button class="pf-v6-c-button pf-m-link" type="button" id="db-refresh-btn">Refresh</button>
       </div>
       <div id="db-content"></div>

@@ -5,7 +5,8 @@
    Entry point: initDashboard()
    ============================================================ */
 
-const DB_RESULTS_BASE = '/var/lib/cockpit-scap/results/';
+const DB_RESULTS_BASE      = '/var/lib/cockpit-scap/results/';
+const DB_PERSISTENCE_CACHE = '/var/lib/cockpit-scap/persistence-cache.json';
 
 const PY_EXTRACT_HIGH_FAILURES = [
     'import xml.etree.ElementTree as ET, json, sys',
@@ -63,6 +64,10 @@ function loadDashboard() {
     const el = document.getElementById('db-content');
     el.innerHTML = '<p class="db-loading">Loading&#8230;</p>';
 
+    const cacheRead = cockpit.file(DB_PERSISTENCE_CACHE).read()
+        .then(data => (data && data.trim()) ? JSON.parse(data) : { profiles: {} })
+        .catch(() => ({ profiles: {} }));
+
     cockpit.spawn(['ls', DB_RESULTS_BASE], { err: 'message' })
         .then(output => {
             const dirs = output.trim().split('\n')
@@ -74,20 +79,23 @@ function loadDashboard() {
                 return;
             }
 
-            return Promise.all(
-                dirs.map(dir =>
-                    cockpit.file(DB_RESULTS_BASE + dir + '/manifest.json').read()
-                        .then(content => JSON.parse(content))
-                        .catch(() => null)
-                )
-            ).then(manifests => {
+            return Promise.all([
+                Promise.all(
+                    dirs.map(dir =>
+                        cockpit.file(DB_RESULTS_BASE + dir + '/manifest.json').read()
+                            .then(content => JSON.parse(content))
+                            .catch(() => null)
+                    )
+                ),
+                cacheRead,
+            ]).then(([manifests, persistenceCache]) => {
                 dbManifests = manifests.filter(Boolean);
                 dbManifests.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
                 const hostMans = dbManifests.filter(m => m.scan_type !== 'container');
                 const csMans   = dbManifests.filter(m => m.scan_type === 'container');
 
-                renderDashboard(el, hostMans, csMans);
+                renderDashboard(el, hostMans, csMans, persistenceCache);
                 dbLoaded = true;
             });
         })
@@ -113,24 +121,50 @@ function renderEmpty(el) {
 const STALE_WARN_DAYS = 7;
 const STALE_ERR_DAYS  = 14;
 
-function renderDashboard(el, hostManifests, containerManifests) {
+function renderDashboard(el, hostManifests, containerManifests, persistenceCache) {
     if (!hostManifests.length && !containerManifests.length) {
         renderEmpty(el);
         return;
     }
 
-    const sections = [];
+    /* Build unique profile list sorted by most recently scanned */
+    const profileMap = {};
+    hostManifests.forEach(m => {
+        const key = m.profile_id + '|' + m.sds_file;
+        if (!profileMap[key]) profileMap[key] = m;
+    });
+    const profiles = Object.values(profileMap)
+        .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
-    if (hostManifests.length) {
-        const latest = hostManifests[0];
-        const prev   = hostManifests.find(m =>
-            m.timestamp < latest.timestamp &&
-            m.profile_id === latest.profile_id &&
-            m.sds_file   === latest.sds_file
-        ) || null;
-        sections.push(buildHostCard(latest, prev, hostManifests));
+    const selectedKey = profiles.length ? profiles[0].profile_id + '|' + profiles[0].sds_file : null;
+
+    /* Profile selector row (only shown when multiple profiles exist) */
+    let selectorHtml = '';
+    if (profiles.length > 1) {
+        const opts = profiles.map(p =>
+            '<option value="' + escHtml(p.profile_id + '|' + p.sds_file) + '">' +
+                escHtml(p.profile_title || p.profile_id) +
+            '</option>'
+        ).join('');
+        selectorHtml =
+            '<div class="db-profile-row">' +
+                '<label class="db-profile-label" for="db-profile-select">Profile</label>' +
+                '<select class="pf-v6-c-form-control db-profile-select" id="db-profile-select">' +
+                    opts +
+                '</select>' +
+            '</div>';
     }
 
+    /* Host timeline section */
+    let hostHtml = '';
+    if (hostManifests.length && selectedKey) {
+        hostHtml = '<div id="db-host-section">' +
+            renderHostSection(hostManifests, selectedKey, persistenceCache) +
+        '</div>';
+    }
+
+    /* Container section */
+    let containerHtml = '';
     if (containerManifests.length) {
         const csGroups = groupManifests(containerManifests,
             m => m.image_id || m.image_name || 'unknown');
@@ -144,43 +178,134 @@ function renderDashboard(el, hostManifests, containerManifests) {
                 scanType: 'container',
             })
         ).join('');
-        sections.push(
+        containerHtml =
             '<div class="db-section">' +
                 '<h3 class="db-section-title">Container Images</h3>' +
                 '<div class="db-cards">' + cards + '</div>' +
-            '</div>'
-        );
+            '</div>';
     }
 
-    el.innerHTML = sections.join('');
+    el.innerHTML = selectorHtml + hostHtml + containerHtml;
 
-    if (hostManifests.length) loadHostInsights(hostManifests[0]);
+    wireHostSectionEvents(el, hostManifests, selectedKey, persistenceCache);
 
-    el.querySelectorAll('[data-view-ts]').forEach(btn => {
+    /* Profile selector change */
+    const sel = document.getElementById('db-profile-select');
+    if (sel) {
+        sel.addEventListener('change', () => {
+            const key = sel.value;
+            const section = document.getElementById('db-host-section');
+            if (section) {
+                section.innerHTML = renderHostSection(hostManifests, key, persistenceCache);
+                wireHostSectionEvents(section, hostManifests, key, persistenceCache);
+            }
+        });
+    }
+
+    /* Container view/quick buttons */
+    el.querySelectorAll('[data-view-ts][data-scan-type="container"]').forEach(btn => {
         btn.addEventListener('click', () => {
             const m = dbManifests.find(x => x.timestamp === btn.dataset.viewTs);
             if (!m) return;
-            if (m.scan_type === 'container') {
-                document.getElementById('tab-btn-container-scan').click();
-                csLoadScanFromHistory(m);
-            } else {
-                document.getElementById('tab-btn-scan').click();
-                loadScanFromHistory(m);
+            document.getElementById('tab-btn-container-scan').click();
+            csLoadScanFromHistory(m);
+        });
+    });
+    el.querySelectorAll('[data-quick-ts][data-scan-type="container"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const m = dbManifests.find(x => x.timestamp === btn.dataset.quickTs);
+            if (m) csRerunScan(m, true);
+        });
+    });
+}
+
+function renderHostSection(hostManifests, profileKey, persistenceCache) {
+    const [profileId, sdsFile] = profileKey.split('|');
+    const filtered = hostManifests.filter(m =>
+        m.profile_id === profileId && m.sds_file === sdsFile
+    ).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+    if (!filtered.length) return '';
+
+    const latest = filtered[0];
+    const prev   = filtered[1] || null;
+    const profileData = (persistenceCache.profiles || {})[profileId] || null;
+
+    return buildHostTimeline(latest, prev, filtered, profileData);
+}
+
+function wireHostSectionEvents(root, hostManifests, profileKey, persistenceCache) {
+    const [profileId] = profileKey.split('|');
+    const profileData = (persistenceCache.profiles || {})[profileId] || null;
+
+    /* View last scan */
+    root.querySelectorAll('[data-view-ts][data-scan-type="host"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const m = dbManifests.find(x => x.timestamp === btn.dataset.viewTs);
+            if (!m) return;
+            document.getElementById('tab-btn-scan').click();
+            loadScanFromHistory(m);
+        });
+    });
+
+    /* Quick scan */
+    root.querySelectorAll('[data-quick-ts][data-scan-type="host"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const m = dbManifests.find(x => x.timestamp === btn.dataset.quickTs);
+            if (m) rerunHostScan(m, true);
+        });
+    });
+
+    /* Persistent failure row → rule detail drawer */
+    root.querySelectorAll('[data-persist-rule-id]').forEach(row => {
+        row.addEventListener('click', () => {
+            const rid  = row.dataset.persistRuleId;
+            const rule = dbInsightRules.find(r => r.id === rid);
+            const [pId, sFile] = profileKey.split('|');
+            const latest = hostManifests.filter(m =>
+                m.profile_id === pId && m.sds_file === sFile
+            ).sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0];
+            if (rule && latest) {
+                populateRuleDetailDrawer(rule, latest);
+                openRuleDetailDrawer();
+            } else if (latest) {
+                /* Rule metadata not yet loaded — show partial from cache */
+                const cached = profileData && profileData.failures
+                    ? profileData.failures.find(f => f.id === rid)
+                    : null;
+                if (cached) {
+                    populateRuleDetailDrawer({ id: cached.id, title: cached.title,
+                        severity: cached.severity, cce: cached.cce || '', automated: false,
+                        desc: '', rat: '' }, latest);
+                    openRuleDetailDrawer();
+                }
             }
         });
     });
 
-    el.querySelectorAll('[data-quick-ts]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const m = dbManifests.find(x => x.timestamp === btn.dataset.quickTs);
-            if (!m) return;
-            if (m.scan_type === 'container') {
-                csRerunScan(m, true);
-            } else {
-                rerunHostScan(m, true);
-            }
+    /* Open in Remediation — pre-selects all persistent rules in drawer */
+    const openRemBtn = root.querySelector('[data-open-persist-rem]');
+    if (openRemBtn && profileData && profileData.failures) {
+        openRemBtn.addEventListener('click', () => {
+            const ids = profileData.failures.map(f => f.id);
+            const [pId, sFile] = profileKey.split('|');
+            const latest = hostManifests.filter(m =>
+                m.profile_id === pId && m.sds_file === sFile
+            ).sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0];
+            if (!latest) return;
+            pendingPersistentRuleIds = ids;
+            document.getElementById('tab-btn-scan').click();
+            loadScanFromHistory(latest);
+            setTimeout(() => openRemDrawer(), 400);
         });
-    });
+    }
+
+    /* Load rule metadata for rule detail drawer */
+    const [pId, sFile] = profileKey.split('|');
+    const latest = hostManifests.filter(m =>
+        m.profile_id === pId && m.sds_file === sFile
+    ).sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0];
+    if (latest) loadHostInsights(latest);
 }
 
 function populateRuleDetailDrawer(rule, manifest) {
@@ -226,77 +351,9 @@ function loadHostInsights(manifest) {
     if (!manifest || !manifest.timestamp) return;
     const resultsXml = DB_RESULTS_BASE + manifest.timestamp + '/results.xml';
     const remBash    = DB_RESULTS_BASE + manifest.timestamp + '/remediation.sh';
-    const el = document.getElementById('db-host-critical');
-    if (!el) return;
-
     cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsXml, remBash], { err: 'message' })
-        .then(output => {
-            const all       = JSON.parse(output);
-            const highRules = all.filter(r => ['high', 'critical'].includes(r.severity));
-            const autoCount = highRules.filter(r => r.automated).length;
-            dbInsightRules  = all;
-
-            if (!highRules.length) {
-                el.innerHTML = '<p class="db-critical-clean">&#10003; No HIGH severity failures</p>';
-                return;
-            }
-
-            const MAX_SHOWN = 8;
-            const shown    = highRules.slice(0, MAX_SHOWN);
-            const overflow = highRules.length - shown.length;
-
-            const quickFixBtn = autoCount > 0
-                ? '<button class="pf-v6-c-button pf-m-link pf-m-sm db-quick-fix-link" type="button" ' +
-                      'data-fix-ts="' + escHtml(manifest.timestamp) + '">' +
-                      'Quick Fix &mdash; ' + autoCount + ' rule' + (autoCount !== 1 ? 's' : '') + ' &#8595;' +
-                  '</button>'
-                : '';
-
-            const items = shown.map(r =>
-                '<div class="db-critical-rule">' +
-                    '<button class="db-critical-item" type="button" ' +
-                        'data-rule-id="' + escHtml(r.id) + '">' +
-                        escHtml(r.title || r.id) +
-                    '</button>' +
-                    (r.automated ? '<span class="db-auto-tag">Automatable</span>' : '') +
-                '</div>'
-            ).join('');
-
-            const more = overflow > 0
-                ? '<p class="db-critical-more">+ ' + overflow + ' more</p>'
-                : '';
-
-            el.innerHTML =
-                '<div class="db-critical-header">' +
-                    '<p class="db-critical-label">Critical Findings &mdash; ' +
-                        highRules.length + ' HIGH Severity Failure' + (highRules.length > 1 ? 's' : '') +
-                    '</p>' +
-                    quickFixBtn +
-                '</div>' +
-                '<div class="db-critical-list">' + items + '</div>' +
-                more;
-
-            el.querySelectorAll('[data-rule-id]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const rule = dbInsightRules.find(r => r.id === btn.dataset.ruleId);
-                    if (!rule) return;
-                    populateRuleDetailDrawer(rule, manifest);
-                    openRuleDetailDrawer();
-                });
-            });
-
-            const fixBtn = el.querySelector('[data-fix-ts]');
-            if (fixBtn) {
-                fixBtn.addEventListener('click', () => {
-                    const m = dbManifests.find(x => x.timestamp === manifest.timestamp);
-                    if (!m) return;
-                    document.getElementById('tab-btn-scan').click();
-                    loadScanFromHistory(m);
-                    setTimeout(() => { if (typeof onQuickFixClick === 'function') onQuickFixClick(); }, 600);
-                });
-            }
-        })
-        .catch(() => { el.innerHTML = ''; });
+        .then(output => { dbInsightRules = JSON.parse(output); })
+        .catch(() => {});
 }
 
 let dbInsightRules  = [];
@@ -306,15 +363,15 @@ function buildScoreChart(hostManifests, latest) {
         .filter(m => m.profile_id === latest.profile_id &&
                      m.sds_file   === latest.sds_file   &&
                      m.score != null && !isNaN(parseFloat(m.score)))
-        .slice(0, 10)
+        .slice(0, 15)
         .reverse();
     if (relevant.length < 2) return '';
 
     const scores = relevant.map(m => parseFloat(m.score));
-    const lo     = Math.max(0,   Math.min(...scores) - 1.5);
-    const hi     = Math.min(100, Math.max(...scores) + 1.5);
+    const lo     = Math.max(0,   Math.min(...scores) - 3);
+    const hi     = Math.min(100, Math.max(...scores) + 3);
     const range  = hi - lo || 1;
-    const W = 500, H = 64, PX = 10, PY = 8;
+    const W = 600, H = 160, PX = 16, PY = 16;
 
     const pts = relevant.map((m, i) => ({
         x:     PX + (i / (relevant.length - 1)) * (W - PX * 2),
@@ -337,21 +394,11 @@ function buildScoreChart(hostManifests, latest) {
         '</circle>'
     ).join('');
 
-    const firstDate = relevant[0].timestamp.split('T')[0];
-    const lastDate  = relevant[relevant.length - 1].timestamp.split('T')[0];
-
-    return '<div class="db-chart-section">' +
-        '<div class="db-chart-header">' +
-            '<span class="db-chart-title">Score Trend</span>' +
-            '<span class="db-chart-range">' + escHtml(firstDate) + ' &rarr; ' + escHtml(lastDate) +
-                ' &nbsp;&middot;&nbsp; ' + relevant.length + ' scans</span>' +
-        '</div>' +
-        '<svg class="db-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
-            '<polyline points="' + linePts + '" fill="none" stroke="' + color +
-                '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
-            dots +
-        '</svg>' +
-    '</div>';
+    return '<svg class="db-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+        '<polyline points="' + linePts + '" fill="none" stroke="' + color +
+            '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+        dots +
+    '</svg>';
 }
 
 function calcRiskScore(sc) {
@@ -359,14 +406,13 @@ function calcRiskScore(sc) {
     return (sc.high || 0) * 10 + (sc.medium || 0) * 3 + (sc.low || 0);
 }
 
-function buildHostCard(manifest, prev, hostManifests) {
-    const score    = parseFloat(manifest.score);
+function buildHostTimeline(latest, prev, filteredManifests, profileData) {
+    const score    = parseFloat(latest.score);
     const hasScore = !isNaN(score);
-
-    const scoreClass = hasScore
+    const scoreDisplay = hasScore ? score.toFixed(1) + '%' : '—';
+    const scoreClass   = hasScore
         ? (score >= 80 ? 'db-score-green' : score >= 50 ? 'db-score-yellow' : 'db-score-red')
         : 'db-score-grey';
-    const scoreDisplay = hasScore ? score.toFixed(1) + '%' : '—';
 
     let deltaHtml = '';
     if (hasScore && prev && prev.score != null) {
@@ -375,91 +421,137 @@ function buildHostCard(manifest, prev, hostManifests) {
             const delta = score - prevScore;
             const sign  = delta > 0 ? '+' : '';
             const cls   = delta > 0 ? 'db-delta-up' : 'db-delta-down';
-            const arrow = delta > 0 ? '↑' : '↓';
             deltaHtml = '<span class="db-score-delta ' + cls + '">' +
-                arrow + ' ' + sign + delta.toFixed(1) + '%' +
+                (delta > 0 ? '↑' : '↓') + ' ' + sign + delta.toFixed(1) + ' pts vs prior scan' +
             '</span>';
         }
     }
 
-    const counts  = manifest.counts || {};
-    const pass    = counts.pass != null ? counts.pass : null;
-    const fail    = counts.fail != null ? counts.fail : null;
-    const sc      = manifest.severity_counts;
-    const risk    = calcRiskScore(sc);
-    const age     = manifest.timestamp ? dbRelativeTime(manifest.timestamp) : '—';
-    const ageDays = dbAgeDays(manifest.timestamp);
-
-    const riskClass = risk === null ? '' : risk === 0 ? 'db-risk-zero'
-                    : risk <= 30 ? 'db-risk-low' : risk <= 100 ? 'db-risk-med' : 'db-risk-high';
-
-    const passHtml = pass !== null
-        ? '<span class="db-stat-pass">' + pass + ' passed</span>' : '';
-    const failCls  = fail === 0 ? 'db-stat-fail db-stat-fail-zero' : 'db-stat-fail';
-    const failHtml = fail !== null
-        ? '<span class="' + failCls + '">' + fail + ' failed</span>' : '';
-
-    let sevHtml = '';
-    if (sc && (sc.high || sc.medium || sc.low)) {
-        const parts = [];
-        if (sc.high)   parts.push('<span class="db-sev-high">'   + sc.high   + ' high</span>');
-        if (sc.medium) parts.push('<span class="db-sev-medium">' + sc.medium + ' med</span>');
-        if (sc.low)    parts.push('<span class="db-sev-low">'    + sc.low    + ' low</span>');
-        sevHtml = '<div class="db-sev-row">' +
-            parts.join('<span class="db-sev-dot">·</span>') +
-        '</div>';
-    }
-
+    const sc      = latest.severity_counts || {};
+    const age     = latest.timestamp ? dbRelativeTime(latest.timestamp) : '—';
+    const ageDays = dbAgeDays(latest.timestamp);
     const ageStaleClass = ageDays !== null && ageDays >= STALE_ERR_DAYS  ? ' db-age-err'
                         : ageDays !== null && ageDays >= STALE_WARN_DAYS ? ' db-age-warn'
                         : '';
 
-    const riskHtml = risk !== null
-        ? '<div class="db-risk-block">' +
-              '<span class="db-risk-value ' + riskClass + '">' + risk + '</span>' +
-              '<span class="db-risk-label">risk score</span>' +
-              '<span class="db-risk-hint">high×10 + med×3 + low×1</span>' +
-          '</div>'
+    const sevParts = [];
+    if (sc.high)   sevParts.push('<span class="db-sev-high">'   + sc.high   + ' high</span>');
+    if (sc.medium) sevParts.push('<span class="db-sev-medium">' + sc.medium + ' med</span>');
+    if (sc.low)    sevParts.push('<span class="db-sev-low">'    + sc.low    + ' low</span>');
+    const sevHtml = sevParts.length
+        ? '<div class="db-sev-row">' + sevParts.join('<span class="db-sev-dot">·</span>') + '</div>'
+        : '';
+
+    const scanCount = filteredManifests.length;
+    const scanLabel = scanCount + ' scan' + (scanCount !== 1 ? 's' : '');
+
+    return (
+        /* Timeline chart card */
+        '<div class="pf-v6-c-card db-timeline-card">' +
+            '<div class="pf-v6-c-card__header db-timeline-header">' +
+                '<div class="db-timeline-score-wrap">' +
+                    '<span class="db-timeline-score ' + scoreClass + '">' + scoreDisplay + '</span>' +
+                    deltaHtml +
+                '</div>' +
+                '<div class="db-timeline-meta">' +
+                    '<span class="db-age' + ageStaleClass + '">Last scanned ' + escHtml(age) + '</span>' +
+                    '<span class="db-timeline-scan-count">' + scanLabel + ' on record</span>' +
+                '</div>' +
+            '</div>' +
+            '<div class="pf-v6-c-card__body db-timeline-body">' +
+                buildScoreChart(filteredManifests, latest) +
+            '</div>' +
+            '<div class="pf-v6-c-card__footer db-timeline-footer">' +
+                sevHtml +
+                '<div class="db-timeline-actions">' +
+                    '<button class="pf-v6-c-button pf-m-primary pf-m-sm" type="button" ' +
+                            'data-quick-ts="' + escHtml(latest.timestamp) + '" ' +
+                            'data-scan-type="host">Quick Scan</button>' +
+                    '<button class="pf-v6-c-button pf-m-link" type="button" ' +
+                            'data-view-ts="' + escHtml(latest.timestamp) + '" ' +
+                            'data-scan-type="host">View Last Scan</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>' +
+
+        /* Persistent failures card */
+        buildPersistentFailuresSection(profileData)
+    );
+}
+
+function buildPersistentFailuresSection(profileData) {
+    const MIN_CONSECUTIVE = 3;
+    const MAX_SHOWN       = 10;
+
+    if (!profileData || !profileData.failures || !profileData.failures.length) {
+        const msg = !profileData
+            ? 'Run more scans to identify persistent failures.'
+            : 'No rules have been failing for ' + MIN_CONSECUTIVE + '+ consecutive scans.';
+        return (
+            '<div class="pf-v6-c-card db-persist-card">' +
+                '<div class="pf-v6-c-card__header db-persist-header">' +
+                    '<h4 class="db-persist-title">Persistent Failures</h4>' +
+                '</div>' +
+                '<div class="pf-v6-c-card__body">' +
+                    '<p class="db-persist-empty">' + escHtml(msg) + '</p>' +
+                '</div>' +
+            '</div>'
+        );
+    }
+
+    const persistent = profileData.failures.filter(f => f.consecutive_scans >= MIN_CONSECUTIVE);
+    if (!persistent.length) {
+        return (
+            '<div class="pf-v6-c-card db-persist-card">' +
+                '<div class="pf-v6-c-card__header db-persist-header">' +
+                    '<h4 class="db-persist-title">Persistent Failures</h4>' +
+                '</div>' +
+                '<div class="pf-v6-c-card__body">' +
+                    '<p class="db-persist-empty">No rules failing ' + MIN_CONSECUTIVE + '+ scans in a row.</p>' +
+                '</div>' +
+            '</div>'
+        );
+    }
+
+    const shown    = persistent.slice(0, MAX_SHOWN);
+    const overflow = persistent.length - shown.length;
+
+    const rows = shown.map(f => {
+        const sevClass = f.severity === 'high' || f.severity === 'critical'
+            ? 'ct-sev-high' : f.severity === 'medium' ? 'ct-sev-medium' : 'ct-sev-low';
+        return (
+            '<div class="db-persist-rule" data-persist-rule-id="' + escHtml(f.id) + '" ' +
+                    'title="Click for details" tabindex="0" role="button">' +
+                '<span class="db-persist-count" title="' + f.consecutive_scans + ' consecutive scans">' +
+                    f.consecutive_scans +
+                '</span>' +
+                '<span class="ct-sev-badge ' + sevClass + '">' + escHtml(f.severity) + '</span>' +
+                '<span class="db-persist-rule-title">' + escHtml(f.title || f.id) + '</span>' +
+            '</div>'
+        );
+    }).join('');
+
+    const moreHtml = overflow > 0
+        ? '<p class="db-persist-more">+ ' + overflow + ' more</p>'
         : '';
 
     return (
-        '<div class="pf-v6-c-card db-host-card">' +
-            '<div class="pf-v6-c-card__header db-host-header">' +
+        '<div class="pf-v6-c-card db-persist-card">' +
+            '<div class="pf-v6-c-card__header db-persist-header">' +
                 '<div>' +
-                    '<h4 class="db-host-title">Host Compliance</h4>' +
-                    '<p class="db-host-subtitle">' +
-                        escHtml(manifest.profile_title || manifest.profile_id || 'Unknown Profile') +
-                        ' &nbsp;·&nbsp; ' +
-                        escHtml(dbHostname || 'This Host') +
-                    '</p>' +
+                    '<h4 class="db-persist-title">Persistent Failures</h4>' +
+                    '<p class="db-persist-subtitle">' + persistent.length + ' rule' +
+                        (persistent.length !== 1 ? 's' : '') +
+                        ' failing ' + MIN_CONSECUTIVE + '+ scans in a row</p>' +
                 '</div>' +
-                '<p class="db-age' + ageStaleClass + '">Last scanned ' + escHtml(age) + '</p>' +
+                '<button class="pf-v6-c-button pf-m-secondary pf-m-sm" type="button" ' +
+                        'data-open-persist-rem>' +
+                    'Open in Remediation' +
+                '</button>' +
             '</div>' +
-            '<div class="pf-v6-c-card__body db-host-body">' +
-                '<div class="db-host-score-col">' +
-                    '<div class="db-score-block ' + scoreClass + '">' +
-                        '<span class="db-score-value">' + scoreDisplay + '</span>' +
-                        deltaHtml +
-                    '</div>' +
-                    riskHtml +
-                '</div>' +
-                '<div class="db-host-detail-col">' +
-                    (passHtml || failHtml
-                        ? '<div class="db-stats-row db-host-counts">' + passHtml + failHtml + '</div>'
-                        : '') +
-                    sevHtml +
-                    buildScoreChart(hostManifests, manifest) +
-                    '<div id="db-host-critical" class="db-host-critical">' +
-                        '<span class="db-critical-loading">Loading…</span>' +
-                    '</div>' +
-                '</div>' +
-            '</div>' +
-            '<div class="pf-v6-c-card__footer db-card-footer">' +
-                '<button class="pf-v6-c-button pf-m-primary pf-m-sm" type="button" ' +
-                        'data-quick-ts="' + escHtml(manifest.timestamp) + '">Quick Scan</button>' +
-                '<button class="pf-v6-c-button pf-m-link" type="button" ' +
-                        'data-view-ts="' + escHtml(manifest.timestamp) + '" ' +
-                        'data-scan-type="host">View Last Scan</button>' +
+            '<div class="pf-v6-c-card__body db-persist-body">' +
+                '<div class="db-persist-list">' + rows + '</div>' +
+                moreHtml +
             '</div>' +
         '</div>'
     );

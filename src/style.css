@@ -105,6 +105,10 @@
   --ct-border-radius-sm:   6px;     /* pf-t--global--border--radius--small (200) */
   --ct-border-radius-pill: 999px;   /* pf-t--global--border--radius--pill (500) */
 
+  /* Surfaces */
+  --ct-color-bg-table-header: #f0f0f0;
+  --ct-color-bg-hover:        #e8e8e8;
+
   /* Border */
   --ct-border:    1px solid var(--ct-color-border);
   --ct-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -551,7 +555,7 @@ code {
 }
 
 .pf-v6-c-table thead {
-  background-color: var(--ct-color-bg-page);
+  background-color: var(--ct-color-bg-table-header);
 }
 
 .pf-v6-c-table th,
@@ -1762,6 +1766,8 @@ details.ct-tailor-group .ct-tailor-rule {
     --ct-color-border:            #444649;
     --ct-color-border-dark:       #a3a3a3;   /* pf border--color--default dark */
     --ct-shadow-sm:               0 1px 2px rgba(0, 0, 0, 0.3);
+    --ct-color-bg-table-header:   #363636;   /* lighter than card #292929 — proper dark header */
+    --ct-color-bg-hover:          #333333;
   }
 
   /* PF6 dark: primary button flips to light bg + dark text */
@@ -1882,7 +1888,7 @@ html.pf-v6-theme-dark .ct-badge-error {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (max-width: 900px) {
@@ -2634,6 +2640,154 @@ html.pf-v6-theme-dark .ct-badge-error {
 
 .db-attention-ok   { background: var(--ct-color-success-light); color: var(--ct-color-success); }
 .db-attention-warn { background: var(--ct-color-warning-light); color: var(--ct-color-warning); }
+
+/* Profile selector row */
+.db-profile-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: var(--ct-space-md);
+}
+.db-profile-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ct-color-text-secondary);
+    white-space: nowrap;
+}
+.db-profile-select {
+    max-width: 380px;
+}
+
+/* Timeline chart card */
+.db-timeline-card {
+    margin-bottom: var(--ct-space-md);
+}
+.db-timeline-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+.db-timeline-score-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.db-timeline-score {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 4px 12px;
+    border-radius: var(--ct-border-radius-sm);
+}
+.db-timeline-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: var(--ct-color-text-secondary);
+    text-align: right;
+}
+.db-timeline-scan-count {
+    font-size: 0.8rem;
+    color: var(--ct-color-text-secondary);
+}
+.db-timeline-body {
+    padding: 0 !important;
+}
+.db-timeline-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.db-timeline-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Persistent failures card */
+.db-persist-card {
+    margin-bottom: var(--ct-space-md);
+}
+.db-persist-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+.db-persist-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 2px;
+}
+.db-persist-subtitle {
+    font-size: 0.8rem;
+    color: var(--ct-color-text-secondary);
+    margin: 0;
+}
+.db-persist-body {
+    padding-top: 0 !important;
+}
+.db-persist-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.db-persist-rule {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--ct-border-radius-sm);
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.db-persist-rule:hover {
+    background: var(--ct-color-bg-hover);
+}
+.db-persist-count {
+    min-width: 28px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ct-color-bg-page);
+    border: 1px solid var(--ct-color-border);
+    border-radius: 11px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--ct-color-text);
+}
+.db-persist-rule-title {
+    font-size: 0.875rem;
+    color: var(--ct-color-text);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.db-persist-empty {
+    color: var(--ct-color-text-secondary);
+    font-size: 0.875rem;
+    margin: 0;
+}
+.db-persist-more {
+    font-size: 0.8rem;
+    color: var(--ct-color-text-secondary);
+    margin: 8px 0 0;
+}
+
+/* Bigger chart SVG */
+.db-chart-svg {
+    width: 100%;
+    height: 160px;
+    display: block;
+}
 
 /* ---- End Dashboard tab ------------------------------------ */
 
