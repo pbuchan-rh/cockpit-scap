@@ -235,7 +235,6 @@ function loadHostInsights(manifest) {
             const highRules = all.filter(r => ['high', 'critical'].includes(r.severity));
             const autoCount = highRules.filter(r => r.automated).length;
             dbInsightRules  = all;
-            dbInsightTs     = manifest.timestamp;
 
             if (!highRules.length) {
                 el.innerHTML = '<p class="db-critical-clean">&#10003; No HIGH severity failures</p>';
@@ -301,13 +300,12 @@ function loadHostInsights(manifest) {
 }
 
 let dbInsightRules  = [];
-let dbInsightTs     = null;
 
 function buildScoreChart(hostManifests, latest) {
     const relevant = hostManifests
         .filter(m => m.profile_id === latest.profile_id &&
                      m.sds_file   === latest.sds_file   &&
-                     m.score != null)
+                     m.score != null && !isNaN(parseFloat(m.score)))
         .slice(0, 10)
         .reverse();
     if (relevant.length < 2) return '';
