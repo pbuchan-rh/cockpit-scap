@@ -309,6 +309,7 @@ let scanCancelledByUser   = false;
 let remediationDir   = null;   /* full path to scan results dir, trailing slash */
 let remediationRules = [];     /* [{id, title, severity}] from last load */
 let eagerRemRules    = null;   /* pre-loaded rules for Action Board / panel reuse */
+let quickFixMode     = 'high'; /* 'high' or 'medium' — set when eagerRemRules loads */
 let pendingQuickFix        = false;  /* when true, renderRemediationRules pre-selects recommended only */
 let pendingPersistentRuleIds = null; /* when set, renderRemediationRules pre-selects these rule IDs */
 
@@ -1361,8 +1362,11 @@ function renderRemediationRules(rules) {
 
     if (pendingQuickFix) {
         pendingQuickFix = false;
-        const recIds = new Set(rules
+        const highCritIds = new Set(rules
             .filter(r => ['high', 'critical'].includes(r.severity) && r.automated)
+            .map(r => r.id));
+        const recIds = highCritIds.size > 0 ? highCritIds : new Set(rules
+            .filter(r => r.severity === 'medium' && r.automated)
             .map(r => r.id));
         document.querySelectorAll('#ct-remediation-rules .ct-rem-checkbox').forEach(cb => {
             cb.checked = recIds.has(cb.dataset.id);
@@ -1956,7 +1960,7 @@ function loadScanFromHistory(manifest) {
     document.getElementById('ct-results').scrollIntoView({ behavior: 'smooth' });
 }
 
-function updateActionBoard(sev, totalFail, autoCount) {
+function updateActionBoard(sev, totalFail, autoCount, mode) {
     const board = document.getElementById('ct-action-board');
     if (!board) return;
 
@@ -1981,15 +1985,16 @@ function updateActionBoard(sev, totalFail, autoCount) {
         qBtn.textContent = 'Critical Rules';
         qBtn.title = '';
     } else if (autoCount === 0) {
-        autoEl.textContent = 'No automated fixes available for critical/high failures';
+        autoEl.textContent = 'No automated fixes available';
         qBtn.disabled = true;
         qBtn.textContent = 'Critical Rules';
         qBtn.title = '';
     } else {
-        autoEl.textContent = autoCount + ' critical/high rule' + (autoCount !== 1 ? 's' : '') + ' can be auto-remediated';
+        const modeLabel = mode === 'medium' ? 'medium' : 'critical/high';
+        autoEl.textContent = autoCount + ' ' + modeLabel + ' rule' + (autoCount !== 1 ? 's' : '') + ' can be auto-remediated';
         qBtn.disabled = false;
         qBtn.textContent = 'Critical Rules (' + autoCount + ')';
-        qBtn.title = 'Pre-selects the ' + autoCount + ' automatable high/critical rule' +
+        qBtn.title = 'Pre-selects the ' + autoCount + ' automatable ' + modeLabel + ' rule' +
             (autoCount !== 1 ? 's' : '') + '. Review and confirm before anything is applied.';
     }
 
@@ -2157,8 +2162,11 @@ function showResults(manifest) {
     cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...eagerArgs], { err: 'message' })
         .then(output => {
             eagerRemRules = JSON.parse(output);
-            const recCount = eagerRemRules.filter(r => ['high','critical'].includes(r.severity) && r.automated).length;
-            updateActionBoard(sev, counts.fail, recCount);
+            const highCritRules = eagerRemRules.filter(r => ['high','critical'].includes(r.severity) && r.automated);
+            const medRules      = eagerRemRules.filter(r => r.severity === 'medium' && r.automated);
+            quickFixMode        = highCritRules.length > 0 ? 'high' : 'medium';
+            const recCount      = quickFixMode === 'high' ? highCritRules.length : medRules.length;
+            updateActionBoard(sev, counts.fail, recCount, quickFixMode);
         })
         .catch(() => updateActionBoard(sev, counts.fail, 0));
 
@@ -3287,9 +3295,12 @@ function updateTailorSummary() {
                 const sev    = rule.severity || 'unknown';
                 const action = enabled ? 'Enabled' : 'Disabled';
                 const cls    = enabled ? 'ct-tailor-sum-enabled' : 'ct-tailor-sum-disabled';
+                const sevBadge = sev !== 'unknown'
+                    ? '<span class="ct-tailor-rule-sev ct-sev-' + sev + '">' + sev + '</span>'
+                    : '';
                 return '<div class="ct-tailor-sum-row">' +
                     '<span class="ct-tailor-sum-action ' + cls + '">' + action + '</span>' +
-                    '<span class="ct-tailor-rule-sev ct-sev-' + sev + '">' + sev + '</span>' +
+                    sevBadge +
                     '<span class="ct-tailor-sum-title">' + (rule.title || id) + '</span>' +
                     '</div>';
             }).join('');

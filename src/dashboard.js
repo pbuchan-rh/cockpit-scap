@@ -296,7 +296,7 @@ function wireHostSectionEvents(root, hostManifests, profileKey, persistenceCache
             pendingPersistentRuleIds = ids;
             document.getElementById('tab-btn-scan').click();
             loadScanFromHistory(latest);
-            setTimeout(() => openRemDrawer(), 400);
+            setTimeout(() => openRemediationPanel(RESULTS_BASE + latest.timestamp + '/'), 500);
         });
     }
 
