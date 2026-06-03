@@ -29,7 +29,7 @@ async function loadContainerResultsFromHistory(frame) {
 /* Helper: open container remediation drawer and wait for rules to render */
 async function openContainerRemediationDrawer(frame) {
     await frame.locator('#cs-review-all-btn').click();
-    await expect(frame.locator('#cs-rem-drawer')).toHaveClass(/ct-drawer-open/, { timeout: 10000 });
+    await expect(frame.locator('#cs-remediation-panel')).toHaveClass(/ct-drawer-open/, { timeout: 10000 });
     await expect(frame.locator('#cs-remediation-content')).toBeVisible({ timeout: 20000 });
 }
 

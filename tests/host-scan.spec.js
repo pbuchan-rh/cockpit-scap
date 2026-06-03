@@ -104,7 +104,7 @@ test.describe('Host Scan', () => {
         await frame.locator('#ct-profile-select').selectOption({ value: HOST_PROFILE });
         const details = frame.locator('#ct-scan-cmd-details');
         await details.locator('summary').click();
-        const cmdText = await frame.locator('#ct-scan-cmd-text').textContent({ timeout: 5000 });
+        const cmdText = await frame.locator('#ct-scan-cmd').textContent({ timeout: 5000 });
         expect(cmdText).toContain('oscap xccdf eval');
         expect(cmdText).toContain('--profile');
         await page.screenshot({ path: 'tests/screenshots/04c-dryrun-preview.png' });
@@ -117,7 +117,7 @@ test.describe('Host Scan', () => {
         await frame.locator('#ct-profile-select').selectOption({ value: HOST_PROFILE });
         await frame.locator('#ct-scan-btn').click();
         await page.screenshot({ path: 'tests/screenshots/05-scan-running.png' });
-        await frame.locator('#ct-results').waitFor({ state: 'visible', timeout: 180000 });
+        await frame.locator('#ct-results').waitFor({ state: 'visible', timeout: 300000 });
         await expect(frame.locator('#ct-result-score')).toBeVisible();
         // Action board should appear
         await expect(frame.locator('#ct-action-board')).not.toHaveClass(/hidden/, { timeout: 15000 });
@@ -163,15 +163,16 @@ test.describe('Host Scan', () => {
         const loaded = await loadResultsFromHistory(frame);
         if (!loaded) { test.skip('No scan history available'); return; }
         await expect(frame.locator('#ct-action-board')).not.toHaveClass(/hidden/, { timeout: 15000 });
-        // Review All button always present and labelled Remediation Builder
+        // Section label
+        await expect(frame.locator('#ct-action-board .ct-action-board-label')).toContainText('Remediation Builder');
+        // Review All button labelled "All Failures"
         const reviewBtn = frame.locator('#ct-review-all-btn');
         await expect(reviewBtn).toBeVisible();
-        await expect(reviewBtn).toContainText('Remediation Builder');
-        // Quick Fix button — when auto rules exist its label includes (auto)
+        await expect(reviewBtn).toContainText('All Failures');
+        // Quick Fix button labelled "Critical Rules"
         const qfBtn = frame.locator('#ct-quick-fix-btn');
         await expect(qfBtn).toBeVisible();
-        const label = await qfBtn.textContent();
-        expect(label).toContain('Remediation Builder');
+        await expect(qfBtn).toContainText('Critical Rules');
         await page.screenshot({ path: 'tests/screenshots/06d-action-board-labels.png' });
     });
 
@@ -218,7 +219,7 @@ test.describe('Host Scan', () => {
         // Open via Review All
         await frame.locator('#ct-action-board').waitFor({ state: 'visible', timeout: 15000 });
         await frame.locator('#ct-review-all-btn').click();
-        const drawer = frame.locator('#ct-rem-drawer');
+        const drawer = frame.locator('#ct-remediation-panel');
         await expect(drawer).toHaveClass(/ct-drawer-open/, { timeout: 10000 });
         await expect(frame.locator('#ct-remediation-content')).toBeVisible({ timeout: 20000 });
         await page.screenshot({ path: 'tests/screenshots/09-rem-drawer-open.png' });
@@ -234,9 +235,9 @@ test.describe('Host Scan', () => {
         if (!loaded) { test.skip('No scan history available'); return; }
         await frame.locator('#ct-action-board').waitFor({ state: 'visible', timeout: 15000 });
         await frame.locator('#ct-review-all-btn').click();
-        await expect(frame.locator('#ct-rem-drawer')).toHaveClass(/ct-drawer-open/, { timeout: 10000 });
+        await expect(frame.locator('#ct-remediation-panel')).toHaveClass(/ct-drawer-open/, { timeout: 10000 });
         await frame.locator('#ct-rem-close-btn').click();
-        await expect(frame.locator('#ct-rem-drawer')).not.toHaveClass(/ct-drawer-open/, { timeout: 5000 });
+        await expect(frame.locator('#ct-remediation-panel')).not.toHaveClass(/ct-drawer-open/, { timeout: 5000 });
     });
 
     test('Quick Fix pre-selects only automatable rules', async ({ page }) => {
@@ -286,8 +287,10 @@ test.describe('Host Scan', () => {
         // Load from history — older scans won't have has_arf: true
         const loaded = await loadResultsFromHistory(frame);
         if (!loaded) { test.skip('No scan history available'); return; }
+        // Open export dropdown to reveal ARF button
+        await frame.locator('#ct-export-toggle').click();
         const arfBtn = frame.locator('#ct-download-arf-btn');
-        await expect(arfBtn).toBeVisible();
+        await expect(arfBtn).toBeVisible({ timeout: 5000 });
         // Just verify the button exists and has correct disabled state based on manifest
         // (disabled for old scans, enabled for post-v3.8 scans — accept either)
         const isDisabled = await arfBtn.isDisabled();

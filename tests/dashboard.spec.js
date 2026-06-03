@@ -112,7 +112,7 @@ test.describe('Dashboard', () => {
             return;
         }
         await expect(criticalEl).not.toContainText('Loading', { timeout: 30000 });
-        const highRule = criticalEl.locator('.db-critical-rule').first();
+        const highRule = criticalEl.locator('.db-critical-item').first();
         if (!await highRule.isVisible().catch(() => false)) {
             test.skip('No HIGH rule findings to click');
             return;
