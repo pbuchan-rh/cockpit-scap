@@ -166,7 +166,7 @@ No polkit action file, sudoers entry, or setuid binary is required.
 
 ## Development status
 
-**Current release:** v3.6 — available via COPR
+**Current release:** v3.8 — available via COPR
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
@@ -181,6 +181,6 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 | **v3.3** | Selective Remediation Builder, Activity log, Compliance Dashboard (preview) |
 | **v3.4** | Failing rules with CCE and inline description, regression detection, scan diff, SDS upload, admin gate |
 | **v3.5** | Apply Now with two-gate confirmation and audit trail; Settings tab; container scan parity |
-| **v3.6** *(current release)* | UX refinements — scan timer, download feedback, Clear All Data, improved remediation gate |
+| **v3.6** | UX refinements — scan timer, download feedback, Clear All Data, improved remediation gate |
 | **v3.7** | Action Board, score delta in history, dry-run command preview, Content Library in Settings |
-| **v3.8** | Drawer remediation, dashboard score trend chart and rule detail, scan ETA, keyboard shortcuts, failing rules search, full profile remediation export, ARF export, Not applicable badge, SSG version in Content Library, export split button, action board UX overhaul |
+| **v3.8** *(current release)* | Drawer remediation, dashboard score trend chart and rule detail, scan ETA, keyboard shortcuts, failing rules search, full profile remediation export, ARF export, Not applicable badge, SSG version in Content Library, export split button, action board UX overhaul |
