@@ -2391,6 +2391,11 @@ html.pf-v6-theme-dark .ct-badge-error {
   font-variant-numeric: tabular-nums;
 }
 
+.ct-storage-hint {
+  margin-top: 20px;
+  font-size: 0.8125rem;
+}
+
 .ct-settings-warn {
   margin-bottom: 20px;
 }
