@@ -3,7 +3,7 @@ Version:        3.8
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
-License:        GPL-2.0-or-later
+License:        LGPL-2.1-or-later
 URL:            https://github.com/pbuchan-rh/cockpit-scap
 Source0:        https://github.com/pbuchan-rh/%{name}/archive/v%{version}/%{name}-%{version}.tar.gz
 
