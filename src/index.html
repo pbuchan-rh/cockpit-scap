@@ -147,7 +147,7 @@
                 <div class="pf-v6-c-form__group" id="ct-tailor-file-group">
                   <div class="pf-v6-c-form__group-label">
                     <label class="pf-v6-c-form__label" for="ct-tailor-file-select">
-                      <span class="pf-v6-c-form__label-text">Tailoring File</span>
+                      <span class="pf-v6-c-form__label-text">Policy</span>
                     </label>
                   </div>
                   <div class="pf-v6-c-form__group-control">
@@ -156,7 +156,7 @@
                         <option value="">(No tailoring — use full profile)</option>
                       </select>
                     </span>
-                    <p class="pf-v6-c-form__helper-text">Apply a saved tailoring file to customize the selected profile.</p>
+                    <p class="pf-v6-c-form__helper-text">Apply a saved policy to customize the selected profile.</p>
                   </div>
                 </div>
 
@@ -414,7 +414,7 @@
       <!-- Scan history -->
       <div class="pf-v6-c-card" id="ct-history-card">
         <div class="pf-v6-c-card__title ct-history-title-row">
-          <h2 class="pf-v6-c-card__title-text">Scan History</h2>
+          <h2 class="pf-v6-c-card__title-text">History</h2>
           <button class="pf-v6-c-button pf-m-link" type="button"
                   id="ct-export-csv-btn" disabled>Export CSV</button>
         </div>
@@ -447,13 +447,23 @@
           <div class="ct-table-scroll-wrap">
             <table class="pf-v6-c-table pf-m-compact hidden" id="ct-history-table"
                    role="grid" aria-label="Scan history">
+              <colgroup>
+                <col style="width:14%">
+                <col style="width:13%">
+                <col>
+                <col style="width:5%">
+                <col style="width:5%">
+                <col style="width:7%">
+                <col style="width:28%">
+              </colgroup>
               <thead>
                 <tr role="row">
                   <th role="columnheader" scope="col">Date</th>
+                  <th role="columnheader" scope="col">Target</th>
                   <th role="columnheader" scope="col">Profile</th>
-                  <th role="columnheader" scope="col">Pass</th>
-                  <th role="columnheader" scope="col">Fail</th>
-                  <th role="columnheader" scope="col">Score</th>
+                  <th role="columnheader" scope="col" class="ct-col-num">Pass</th>
+                  <th role="columnheader" scope="col" class="ct-col-num">Fail</th>
+                  <th role="columnheader" scope="col" class="ct-col-num">Score</th>
                   <th role="columnheader" scope="col" class="ct-col-actions">Actions</th>
                 </tr>
               </thead>
@@ -594,7 +604,7 @@
                   <div class="pf-v6-c-form__group" id="cs-tailor-file-group">
                     <div class="pf-v6-c-form__group-label">
                       <label class="pf-v6-c-form__label" for="cs-tailor-file-select">
-                        <span class="pf-v6-c-form__label-text">Tailoring File</span>
+                        <span class="pf-v6-c-form__label-text">Policy</span>
                       </label>
                     </div>
                     <div class="pf-v6-c-form__group-control">
@@ -851,7 +861,7 @@
       <!-- Container scan history — outside cs-scan-section so it renders for limited users too -->
       <div class="pf-v6-c-card" id="cs-history-card">
         <div class="pf-v6-c-card__title ct-history-title-row">
-          <h2 class="pf-v6-c-card__title-text">Container Scan History</h2>
+          <h2 class="pf-v6-c-card__title-text">History</h2>
           <button class="pf-v6-c-button pf-m-link" type="button"
                   id="cs-export-csv-btn" disabled>Export CSV</button>
         </div>
@@ -881,16 +891,24 @@
           <div class="ct-table-scroll-wrap">
             <table class="pf-v6-c-table pf-m-compact hidden" id="cs-history-table"
                    role="grid" aria-label="Container scan history">
+              <colgroup>
+                <col style="width:14%">
+                <col style="width:13%">
+                <col>
+                <col style="width:5%">
+                <col style="width:5%">
+                <col style="width:7%">
+                <col style="width:28%">
+              </colgroup>
               <thead>
                 <tr role="row">
                   <th role="columnheader" scope="col">Date</th>
-                  <th role="columnheader" scope="col">Image</th>
-                  <th role="columnheader" scope="col">Content</th>
+                  <th role="columnheader" scope="col">Target</th>
                   <th role="columnheader" scope="col">Profile</th>
-                  <th role="columnheader" scope="col">Pass</th>
-                  <th role="columnheader" scope="col">Fail</th>
-                  <th role="columnheader" scope="col">Score</th>
-                  <th role="columnheader" scope="col">Actions</th>
+                  <th role="columnheader" scope="col" class="ct-col-num">Pass</th>
+                  <th role="columnheader" scope="col" class="ct-col-num">Fail</th>
+                  <th role="columnheader" scope="col" class="ct-col-num">Score</th>
+                  <th role="columnheader" scope="col" class="ct-col-actions">Actions</th>
                 </tr>
               </thead>
               <tbody id="cs-history-tbody"></tbody>
@@ -912,7 +930,7 @@
       <!-- Setup card: unified form + description -->
       <div class="pf-v6-c-card">
         <div class="pf-v6-c-card__title">
-          <h2 class="pf-v6-c-card__title-text">Create Tailoring Profile</h2>
+          <h2 class="pf-v6-c-card__title-text">Create Policy</h2>
         </div>
         <div class="pf-v6-c-card__body ct-scan-body-grid">
 
@@ -1035,7 +1053,7 @@
               <button class="pf-v6-c-button pf-m-primary hidden ct-requires-admin" type="button"
                       id="ct-tailor-update-btn">Update</button>
               <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
-                      id="ct-tailor-save-btn">Save Tailoring File</button>
+                      id="ct-tailor-save-btn">Save Policy</button>
               <button class="pf-v6-c-button pf-m-secondary" type="button"
                       id="ct-tailor-cancel-btn">Cancel</button>
               <span class="ct-tailor-save-status hidden" id="ct-tailor-save-status"></span>
@@ -1130,7 +1148,7 @@
       <div class="pf-v6-c-card" id="ct-tailor-list-card">
         <div class="pf-v6-c-card__title">
           <div class="ct-tailor-rules-header">
-            <h2 class="pf-v6-c-card__title-text">Saved Tailoring Files</h2>
+            <h2 class="pf-v6-c-card__title-text">Saved Policies</h2>
             <div class="ct-tailor-tree-controls">
               <input type="file" id="ct-tailor-upload-input" accept=".xml" class="hidden">
               <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
@@ -1140,15 +1158,17 @@
         </div>
         <div class="pf-v6-c-card__body">
           <p class="ct-tailor-list-empty" id="ct-tailor-list-empty">
-            No tailoring files saved yet. Load a profile above to create one, or upload an existing file.
+            No policies saved yet. Create one above or upload an existing file.
           </p>
           <div class="ct-table-scroll-wrap">
             <table class="pf-v6-c-table pf-m-compact hidden" id="ct-tailor-list-table"
-                   role="grid" aria-label="Saved tailoring files">
+                   role="grid" aria-label="Saved policies">
               <thead>
                 <tr role="row">
                   <th role="columnheader" scope="col">Name</th>
+                  <th role="columnheader" scope="col">Content</th>
                   <th role="columnheader" scope="col">Base Profile</th>
+                  <th role="columnheader" scope="col" class="ct-col-num">Rules</th>
                   <th role="columnheader" scope="col">Created</th>
                   <th role="columnheader" scope="col">Actions</th>
                 </tr>
@@ -1213,6 +1233,11 @@
                   </div>
                   <div class="ct-settings-check-row">
                     <input type="checkbox" class="ct-requires-admin"
+                           id="ct-setting-tailoring-enabled" checked>
+                    <label for="ct-setting-tailoring-enabled">Enable Policy Tailoring</label>
+                  </div>
+                  <div class="ct-settings-check-row">
+                    <input type="checkbox" class="ct-requires-admin"
                            id="ct-setting-dashboard-enabled">
                     <label for="ct-setting-dashboard-enabled">Enable Dashboard</label>
                   </div>
@@ -1265,7 +1290,7 @@
                   <span class="ct-settings-disk-label">Storage used</span>
                   <span class="ct-settings-disk-value" id="ct-settings-disk-usage">—</span>
                 </div>
-                <p class="ct-settings-desc">Permanently delete all scan results, tailoring files, uploaded SCAP content,
+                <p class="ct-settings-desc">Permanently delete all scan results, saved policies, uploaded SCAP content,
                   remediation audit logs, and activity history from this host. Module settings are preserved.</p>
                 <div class="ct-settings-footer">
                   <button class="pf-v6-c-button pf-m-danger ct-requires-admin" type="button"
@@ -1451,7 +1476,7 @@
       <p>This will permanently delete:</p>
       <ul class="ct-clear-all-list">
         <li>All host and container scan results</li>
-        <li>All tailoring files</li>
+        <li>All saved policies</li>
         <li>All uploaded SCAP content</li>
         <li>All remediation audit logs</li>
         <li>The activity log</li>

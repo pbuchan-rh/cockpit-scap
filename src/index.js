@@ -26,8 +26,9 @@ const RETENTION_MIN      = 1;
 const RETENTION_MAX      = 50;
 let   hostRetention        = RETENTION_DEFAULT;
 let   containerRetention   = RETENTION_DEFAULT;
-let   containerScanEnabled = false;
-let   dashboardEnabled     = false;
+let   containerScanEnabled  = false;
+let   dashboardEnabled      = false;
+let   tailoringEnabled      = true;
 
 const PERSISTENCE_CACHE_PATH = '/var/lib/cockpit-scap/persistence-cache.json';
 const ACTIVITY_LOG   = '/var/lib/cockpit-scap/activity.log';
@@ -323,9 +324,11 @@ let tailorEditingSidecar  = null;
 let tailorFilterStatus    = 'all';
 let tailorFilterSev       = 'all';
 let tailoringFilesMap   = {};
+let tailoringFilesGen   = 0;
 
 /* Module state — content */
 let hostOsVersion     = null;   /* cached from /etc/os-release at startup */
+let hostName          = 'Local host';
 let currentHostHistory = [];    /* last rendered host scan manifests */
 
 /* Module state — confirm modal */
@@ -347,6 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
             hostOsVersion = m ? parseInt(m[1], 10) : null;
         })
         .catch(() => {});
+
+    cockpit.spawn(['hostname', '--short']).then(h => { hostName = h.trim() || 'Local host'; }).catch(() => {});
 
     cockpit.user().then(u => { currentUser = u.name || u.full || '?'; }).catch(() => {});
 
@@ -2605,28 +2610,27 @@ function buildHistoryRow(manifest) {
         else if (d < 0) scoreDelta = ' ↓' + d + '%';
     }
 
-    [
-        date,
-        manifest.profile_title,
-        String(manifest.counts.pass),
-        String(manifest.counts.fail),
-        scoreText,
-    ].forEach((text, i) => {
+    const profileTitle = manifest.profile_title || '—';
+    const cells = [
+        { text: date,         cls: 'ct-history-date-cell' },
+        { text: hostName,     cls: 'ct-history-target-cell' },
+        { text: profileTitle, cls: 'ct-history-profile-cell',
+          title: isUploaded ? profileTitle + ' (custom: ' + (manifest.sds_file || '').split('/').pop() + ')' : profileTitle },
+        { text: String(manifest.counts.pass), cls: 'ct-history-num-cell' },
+        { text: String(manifest.counts.fail), cls: 'ct-history-num-cell' },
+        { text: scoreText,    cls: 'ct-history-num-cell', delta: scoreDelta },
+    ];
+
+    cells.forEach(({ text, cls, title, delta }) => {
         const td = document.createElement('td');
-        if (i === 4 && scoreDelta) {
-            td.textContent = text;
-            const delta = document.createElement('span');
-            delta.className   = scoreDelta.includes('↑') ? 'ct-score-delta-up' : 'ct-score-delta-down';
-            delta.textContent = scoreDelta;
-            td.appendChild(delta);
-        } else {
-            td.textContent = text;
-        }
-        if (i === 1) {
-            td.className = 'ct-history-profile-cell';
-            td.title     = isUploaded
-                ? text + ' (custom: ' + (manifest.sds_file || '').split('/').pop() + ')'
-                : text;
+        td.textContent = text;
+        if (cls)   td.className = cls;
+        if (title) td.title     = title;
+        if (delta) {
+            const sp = document.createElement('span');
+            sp.className   = delta.includes('↑') ? 'ct-score-delta-up' : 'ct-score-delta-down';
+            sp.textContent = delta;
+            td.appendChild(sp);
         }
         tr.appendChild(td);
     });
@@ -2724,15 +2728,18 @@ function rerunHostScan(manifest, autoStart = false) {
 /* ---- Tailoring file detection (scan tab) ------------------- */
 
 function detectTailoringFiles() {
-    tailoringFilesMap = {};
+    const gen = ++tailoringFilesGen;
     const scanSelect = document.getElementById('ct-tailor-file-select');
 
     return cockpit.spawn(['ls', TAILORING_BASE], { err: 'message' })
         .then(output => {
+            if (gen !== tailoringFilesGen) return;
+
             const files = output.trim().split('\n')
                 .filter(f => f && f.endsWith('.json'));
 
             if (files.length === 0) {
+                tailoringFilesMap = {};
                 scanSelect.innerHTML = '';
                 appendOption(scanSelect, '', '(No tailoring — use full profile)');
                 renderTailoringList([]);
@@ -2746,10 +2753,13 @@ function detectTailoringFiles() {
                         .catch(() => null)
                 )
             ).then(sidecars => {
+                if (gen !== tailoringFilesGen) return;
+
                 const all   = sidecars.filter(Boolean);
                 /* Scan tab dropdown: only files matching the current SDS */
                 const forScan = all.filter(sc => !currentSdsPath || sc.sds_path === currentSdsPath);
 
+                tailoringFilesMap = {};
                 scanSelect.innerHTML = '';
                 appendOption(scanSelect, '', '(No tailoring — use full profile)');
 
@@ -2769,6 +2779,8 @@ function detectTailoringFiles() {
             });
         })
         .catch(() => {
+            if (gen !== tailoringFilesGen) return;
+            tailoringFilesMap = {};
             scanSelect.innerHTML = '';
             appendOption(scanSelect, '', '(No tailoring — use full profile)');
             renderTailoringList([]);
@@ -2824,7 +2836,7 @@ function resetTailorForm() {
 
     document.getElementById('ct-tailor-update-btn').classList.add('hidden');
     const saveBtn = document.getElementById('ct-tailor-save-btn');
-    saveBtn.textContent = 'Save Tailoring File';
+    saveBtn.textContent = 'Save Policy';
     saveBtn.classList.add('pf-m-primary');
     saveBtn.classList.remove('pf-m-secondary');
 
@@ -3422,8 +3434,9 @@ function doUpdateTailoringFile() {
     );
 
     const updatedSidecar = Object.assign({}, sidecar, {
-        name:     newProfileTitle,
-        modified: makeTimestamp(),
+        name:          newProfileTitle,
+        modified:      makeTimestamp(),
+        rules_modified: Object.keys(tailorRuleChanges).length,
     });
 
     const jsonPath  = sidecar.path.replace(/\.xml$/, '.json');
@@ -3484,6 +3497,7 @@ function onTailorSaveClick() {
         sds_path:           tailorSdsPath,
         path:               xmlPath,
         created:            ts,
+        rules_modified:     Object.keys(tailorRuleChanges).length,
     };
 
     const saveBtn  = document.getElementById('ct-tailor-save-btn');
@@ -3569,9 +3583,24 @@ function renderTailoringList(sidecars) {
             ? sc.created.slice(0, 10) + ' ' + sc.created.slice(11).replace(/-/g, ':')
             : '';
 
-        [sc.name, sc.base_profile_title || sc.base_profile_id, created].forEach(text => {
+        const sdsVer = sc.sds_path && sc.sds_path.match(/ssg-rhel(\d+)-ds\.xml/);
+        const contentName = sdsVer
+            ? 'RHEL ' + sdsVer[1]
+            : (sc.sds_path ? sdsDisplayName(sc.sds_path.split('/').pop()) : '—');
+        const rulesText = sc.rules_modified != null
+            ? String(sc.rules_modified)
+            : '—';
+
+        [
+            [sc.name,                               'ct-tailor-name-cell'],
+            [contentName,                           'ct-tailor-content-cell'],
+            [sc.base_profile_title || sc.base_profile_id, 'ct-tailor-profile-cell'],
+            [rulesText,                             'ct-tailor-rules-cell'],
+            [created,                               'ct-history-date-cell'],
+        ].forEach(([text, cls]) => {
             const td = document.createElement('td');
-            td.textContent = text;
+            td.textContent = text || '—';
+            if (cls) td.className = cls;
             tr.appendChild(td);
         });
 
@@ -3709,7 +3738,7 @@ function parseTailoringXml(xmlContent) {
 
 function onDeleteTailoringFile(sidecar) {
     showConfirmModal(
-        'Delete Tailoring File',
+        'Delete Policy',
         'Delete "' + sidecar.name + '"? This cannot be undone.',
         () => {
             if (!normalizePath(sidecar.path).startsWith(TAILORING_BASE)) {
@@ -4116,6 +4145,8 @@ function loadSettings() {
                 containerScanEnabled = s.container_scan_enabled;
             if (typeof s.dashboard_enabled === 'boolean')
                 dashboardEnabled = s.dashboard_enabled;
+            if (typeof s.tailoring_enabled === 'boolean')
+                tailoringEnabled = s.tailoring_enabled;
         })
         .catch(() => {})
         .then(() => applyTabVisibility());
@@ -4126,10 +4157,13 @@ function applyTabVisibility() {
         .classList.toggle('hidden', !containerScanEnabled);
     document.getElementById('tab-btn-dashboard').closest('li')
         .classList.toggle('hidden', !dashboardEnabled);
+    document.getElementById('tab-btn-tailoring').closest('li')
+        .classList.toggle('hidden', !tailoringEnabled);
 
     const cActive = document.getElementById('tab-btn-container-scan').getAttribute('aria-selected') === 'true';
     const dActive = document.getElementById('tab-btn-dashboard').getAttribute('aria-selected') === 'true';
-    if ((!containerScanEnabled && cActive) || (!dashboardEnabled && dActive))
+    const tActive = document.getElementById('tab-btn-tailoring').getAttribute('aria-selected') === 'true';
+    if ((!containerScanEnabled && cActive) || (!dashboardEnabled && dActive) || (!tailoringEnabled && tActive))
         document.getElementById('tab-btn-scan').click();
 }
 
@@ -4160,6 +4194,7 @@ function onSettingsTabOpen() {
     document.getElementById('ct-setting-container-retention').value     = containerRetention;
     document.getElementById('ct-setting-container-enabled').checked     = containerScanEnabled;
     document.getElementById('ct-setting-dashboard-enabled').checked     = dashboardEnabled;
+    document.getElementById('ct-setting-tailoring-enabled').checked     = tailoringEnabled;
     document.getElementById('ct-settings-warn').classList.add('hidden');
     document.getElementById('ct-settings-saved').classList.add('hidden');
     document.getElementById('ct-settings-save-error').classList.add('hidden');
@@ -4221,17 +4256,20 @@ function saveSettings() {
 
     const ceVal = document.getElementById('ct-setting-container-enabled').checked;
     const deVal = document.getElementById('ct-setting-dashboard-enabled').checked;
+    const teVal = document.getElementById('ct-setting-tailoring-enabled').checked;
 
     const prevHost      = hostRetention;
     const prevContainer = containerRetention;
     const prevCe        = containerScanEnabled;
     const prevDe        = dashboardEnabled;
+    const prevTe        = tailoringEnabled;
 
     const newSettings = JSON.stringify({
         host_retention:         hVal,
         container_retention:    cVal,
         container_scan_enabled: ceVal,
         dashboard_enabled:      deVal,
+        tailoring_enabled:      teVal,
     }, null, 2);
 
     cockpit.file(SETTINGS_PATH, { superuser: 'require' })
@@ -4243,6 +4281,7 @@ function saveSettings() {
             containerRetention   = cVal;
             containerScanEnabled = ceVal;
             dashboardEnabled     = deVal;
+            tailoringEnabled     = teVal;
             applyTabVisibility();
             return Promise.all([
                 pruneHistoryByType('host'),
@@ -4255,6 +4294,7 @@ function saveSettings() {
             if (cVal  !== prevContainer) parts.push('container retention: ' + prevContainer + ' → ' + cVal);
             if (ceVal !== prevCe)        parts.push('container scan: ' + (ceVal ? 'enabled' : 'disabled'));
             if (deVal !== prevDe)        parts.push('dashboard: ' + (deVal ? 'enabled' : 'disabled'));
+            if (teVal !== prevTe)        parts.push('policy tailoring: ' + (teVal ? 'enabled' : 'disabled'));
             if (parts.length)
                 appendActivityLog({ type: 'settings_change', tab: 'settings',
                                     detail: parts.join(', ') });
@@ -4530,7 +4570,7 @@ function exportActivityCSV() {
 
             const headers = [
                 'Timestamp', 'User', 'Tab', 'Action', 'Content', 'Profile',
-                'Tailoring File', 'Image', 'Score %', 'Pass', 'Fail', 'Detail',
+                'Policy', 'Image', 'Score %', 'Pass', 'Fail', 'Detail',
             ];
             const rows = entries.map(e => [
                 e.ts || '',
@@ -4572,7 +4612,7 @@ function downloadCSV(filename, rows) {
 
 function exportHostHistoryCSV() {
     const headers = [
-        'Timestamp', 'Date', 'SDS File', 'Profile Title', 'Tailoring File',
+        'Timestamp', 'Date', 'SDS File', 'Profile Title', 'Policy',
         'Pass', 'Fail', 'Error', 'Not Checked', 'Not Applicable', 'Score %',
     ];
     const rows = currentHostHistory.map(m => [

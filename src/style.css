@@ -1862,11 +1862,53 @@ details.ct-tailor-group .ct-tailor-rule {
   margin-top: var(--ct-space-md);
 }
 
+.ct-history-target-cell,
 .ct-history-profile-cell {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 0;
+  min-width: 6rem;
+}
+
+.ct-history-date-cell,
+.ct-history-num-cell {
+  white-space: nowrap;
+  width: 1px;
+}
+
+.ct-history-num-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Policy table — truncating text cells */
+.ct-tailor-name-cell,
+.ct-tailor-profile-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0;
+  min-width: 8rem;
+}
+
+/* Policy table — fixed-width numeric/label cells */
+.ct-tailor-content-cell,
+.ct-tailor-rules-cell {
+  white-space: nowrap;
+  width: 1px;
+}
+
+/* Numeric column header/cell — right-align */
+.ct-col-num {
+  white-space: nowrap;
+  width: 1px;
+  text-align: right;
+}
+
+.ct-tailor-rules-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .ct-score-delta-up {

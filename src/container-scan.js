@@ -961,21 +961,22 @@ function csBuildHistoryRow(manifest) {
         .replace('T', ' ')
         .replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
 
+    const target       = csShortImageName(manifest.image_name || manifest.image_id);
+    const profileTitle = manifest.profile_title || '—';
+    const scoreText    = (manifest.score || 0).toFixed(1) + '%';
+
     [
-        date,
-        csShortImageName(manifest.image_name || manifest.image_id),
-        csSdsLabel(manifest.sds_file),
-        manifest.profile_title,
-        String(manifest.counts.pass),
-        String(manifest.counts.fail),
-        (manifest.score || 0).toFixed(1) + '%',
-    ].forEach((text, i) => {
+        { text: date,         cls: 'ct-history-date-cell' },
+        { text: target,       cls: 'ct-history-target-cell', title: manifest.image_name || target },
+        { text: profileTitle, cls: 'ct-history-profile-cell', title: profileTitle },
+        { text: String(manifest.counts.pass), cls: 'ct-history-num-cell' },
+        { text: String(manifest.counts.fail), cls: 'ct-history-num-cell' },
+        { text: scoreText,    cls: 'ct-history-num-cell' },
+    ].forEach(({ text, cls, title }) => {
         const td = document.createElement('td');
         td.textContent = text;
-        if (i === 3) {
-            td.className = 'ct-history-profile-cell';
-            td.title     = text;
-        }
+        if (cls)   td.className = cls;
+        if (title) td.title     = title;
         tr.appendChild(td);
     });
 
@@ -1260,7 +1261,7 @@ function csHideProfileDesc() {
 function exportCsHistoryCSV() {
     const headers = [
         'Timestamp', 'Date', 'Image', 'Image ID', 'SDS File',
-        'Profile Title', 'Tailoring File',
+        'Profile Title', 'Policy',
         'Pass', 'Fail', 'Error', 'Not Checked', 'Not Applicable', 'Score %',
     ];
     const rows = currentCsHistory.map(m => [
