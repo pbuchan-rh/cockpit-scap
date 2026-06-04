@@ -300,7 +300,6 @@ let currentSdsPath        = null;
 let currentScanProc       = null;
 let currentTimestamp      = null;
 let currentResultsDir     = null;
-let currentReportPath     = null;
 let currentRemBashPath      = null;
 let currentRemAnsiblePath   = null;
 let currentManifest         = null;
@@ -379,12 +378,24 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ct-view-report-btn')
         .addEventListener('click', viewReport);
     document.getElementById('ct-download-report-btn')
-        .addEventListener('click', e => downloadArtifact(
-            currentReportPath,
-            'scap-report-' + currentTimestamp + '.html',
-            'text/html',
-            e.currentTarget
-        ));
+        .addEventListener('click', e => {
+            const btn = e.currentTarget;
+            const orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Generating…';
+            generateReport(currentResultsDir + 'results.xml')
+                .then(html => {
+                    const blob = new Blob([html], { type: 'text/html' });
+                    const url  = URL.createObjectURL(blob);
+                    const a    = document.createElement('a');
+                    a.href = url; a.download = 'scap-report-' + currentTimestamp + '.html';
+                    document.body.appendChild(a); a.click();
+                    document.body.removeChild(a); URL.revokeObjectURL(url);
+                    btn.textContent = '✓ Downloaded';
+                    setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2000);
+                })
+                .catch(() => { btn.disabled = false; btn.textContent = orig; });
+        });
     document.getElementById('ct-download-xml-btn')
         .addEventListener('click', e => downloadArtifact(
             currentResultsDir + 'results.xml',
@@ -393,19 +404,32 @@ document.addEventListener('DOMContentLoaded', () => {
             e.currentTarget
         ));
     document.getElementById('ct-download-arf-btn')
-        .addEventListener('click', e => downloadArtifact(
-            currentResultsDir + 'results.arf',
-            'scap-results-arf-' + currentTimestamp + '.xml',
-            'application/xml',
-            e.currentTarget
-        ));
+        .addEventListener('click', e => {
+            const btn   = e.currentTarget;
+            const gzPath = currentResultsDir + 'results.arf.gz';
+            cockpit.spawn(['test', '-f', gzPath])
+                .then(() => downloadArtifact(gzPath, 'scap-results-arf-' + currentTimestamp + '.xml.gz', 'application/gzip', btn))
+                .catch(() => downloadArtifact(currentResultsDir + 'results.arf', 'scap-results-arf-' + currentTimestamp + '.xml', 'application/xml', btn));
+        });
     document.getElementById('ct-export-report-default')
-        .addEventListener('click', e => downloadArtifact(
-            currentReportPath,
-            'scap-report-' + currentTimestamp + '.html',
-            'text/html',
-            e.currentTarget
-        ));
+        .addEventListener('click', e => {
+            const btn = e.currentTarget;
+            const orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Generating…';
+            generateReport(currentResultsDir + 'results.xml')
+                .then(html => {
+                    const blob = new Blob([html], { type: 'text/html' });
+                    const url  = URL.createObjectURL(blob);
+                    const a    = document.createElement('a');
+                    a.href = url; a.download = 'scap-report-' + currentTimestamp + '.html';
+                    document.body.appendChild(a); a.click();
+                    document.body.removeChild(a); URL.revokeObjectURL(url);
+                    btn.textContent = '✓ Downloaded';
+                    setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2000);
+                })
+                .catch(() => { btn.disabled = false; btn.textContent = orig; });
+        });
     document.getElementById('ct-export-toggle')
         .addEventListener('click', e => {
             e.stopPropagation();
@@ -439,7 +463,15 @@ document.addEventListener('DOMContentLoaded', () => {
             else showScanSetup();
         });
     document.getElementById('ct-results-close-btn')
-        .addEventListener('click', showScanSetup);
+        .addEventListener('click', () => {
+            if (currentScanProc) {
+                // Scan still running — just dismiss old results, leave progress running
+                document.getElementById('ct-results').classList.add('hidden');
+                document.getElementById('ct-prev-results-banner').classList.add('hidden');
+            } else {
+                showScanSetup();
+            }
+        });
     document.getElementById('ct-scan-error-close')
         .addEventListener('click', hideScanError);
     document.getElementById('ct-profile-rem-toggle')
@@ -1054,7 +1086,6 @@ function onScanClick() {
 
     currentTimestamp      = makeTimestamp();
     currentResultsDir     = RESULTS_BASE + currentTimestamp + '/';
-    currentReportPath     = currentResultsDir + 'report.html';
     currentRemBashPath    = currentResultsDir + 'remediation.sh';
     currentRemAnsiblePath = currentResultsDir + 'remediation.yml';
     const resultsXmlPath  = currentResultsDir + 'results.xml';
@@ -1078,7 +1109,6 @@ function runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath) {
     args.push(
         '--progress',
         '--profile',      profileId,
-        '--report',       currentReportPath,
         '--results',      resultsXmlPath,
         '--results-arf',  currentResultsDir + 'results.arf',
         currentSdsPath
@@ -1202,6 +1232,7 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 });
             pruneHistoryByType('host').catch(() => {});
             relaxResultsPerms().catch(() => {});
+            cockpit.spawn(['gzip', currentResultsDir + 'results.arf'], { superuser: 'require' }).catch(() => {});
         })
         .catch(err => onScanError('Failed to process results: ' + (err.message || String(err))));
 }
@@ -2016,7 +2047,6 @@ function loadScanFromHistory(manifest) {
     const dir = RESULTS_BASE + manifest.timestamp + '/';
     currentTimestamp      = manifest.timestamp;
     currentResultsDir     = dir;
-    currentReportPath     = dir + 'report.html';
     currentRemBashPath    = dir + 'remediation.sh';
     currentRemAnsiblePath = dir + 'remediation.yml';
     currentSdsPath        = manifest.sds_file || null;
@@ -2242,7 +2272,16 @@ function showResults(manifest) {
 /* ---- Report / artifact actions ----------------------------- */
 
 function viewReport() {
-    viewReportFromPath(currentReportPath);
+    viewReportFromPath(currentResultsDir + 'results.xml');
+}
+
+function generateReport(resultsXmlPath) {
+    const tmpPath = '/tmp/cockpit-scap-report-' + Date.now() + '.html';
+    return cockpit.spawn(
+        ['oscap', 'xccdf', 'generate', 'report', '--output', tmpPath, resultsXmlPath],
+        { err: 'out' }
+    ).then(() => cockpit.file(tmpPath).read())
+     .then(html => { cockpit.spawn(['rm', '-f', tmpPath]).catch(() => {}); return html; });
 }
 
 function storeReportInDB(html) {
@@ -2260,16 +2299,14 @@ function storeReportInDB(html) {
     });
 }
 
-function viewReportFromPath(reportPath) {
+function viewReportFromPath(resultsXmlPath) {
     const win = window.open('about:blank', '_blank');
     if (!win) { console.error('Popup blocked — cannot open report'); return; }
-    cockpit.file(reportPath).read()
+    win.document.write('<p style="font-family:sans-serif;padding:2rem;color:#151515">Generating report…</p>');
+    generateReport(resultsXmlPath)
         .then(content => storeReportInDB(content))
         .then(() => { win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html'; })
-        .catch(err => {
-            win.close();
-            console.error('Failed to open report:', err);
-        });
+        .catch(err => { win.close(); console.error('Failed to open report:', err); });
 }
 
 function downloadArtifact(filePath, filename, mimeType, btn) {
@@ -2429,7 +2466,7 @@ function updateHostScanCmd() {
     let cmd = 'oscap xccdf eval --profile ' + profileId;
     if (tailoringPath) cmd += ' --tailoring-file ' + tailoringPath;
     cmd += ' --results /var/lib/cockpit-scap/results/<timestamp>/results.xml';
-    cmd += ' --report /var/lib/cockpit-scap/results/<timestamp>/report.html';
+    // report.html is generated on demand — not passed to oscap at scan time
     cmd += ' --results-arf /var/lib/cockpit-scap/results/<timestamp>/results.arf';
     cmd += ' ' + currentSdsPath;
 
@@ -2744,6 +2781,7 @@ function onDeleteHistoryEntry(manifest) {
 
 function rerunHostScan(manifest, autoStart = false) {
     if (currentScanProc) return;
+    currentManifest = manifest;
     showScanSetup();
     document.getElementById('tab-btn-scan').click();
 

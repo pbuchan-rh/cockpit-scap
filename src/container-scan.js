@@ -17,7 +17,6 @@ let csScanTimer      = null;
 let csScanStart      = null;
 let csTimestamp   = null;
 let csResultsDir  = null;
-let csReportPath  = null;
 let csBashPath    = null;
 let csAnsiblePath = null;
 let csCancelled   = false;
@@ -65,13 +64,26 @@ function initContainerScan() {
     document.getElementById('cs-cancel-btn')
         .addEventListener('click', onCsCancelClick);
     document.getElementById('cs-view-report-btn')
-        .addEventListener('click', () => viewReportFromPath(csReportPath));
+        .addEventListener('click', () => viewReportFromPath(csResultsDir + 'results.xml'));
     document.getElementById('cs-download-report-btn')
-        .addEventListener('click', e => downloadArtifact(
-            csReportPath,
-            'container-report-' + csTimestamp + '.html',
-            'text/html',
-            e.currentTarget));
+        .addEventListener('click', e => {
+            const btn = e.currentTarget;
+            const orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Generating…';
+            generateReport(csResultsDir + 'results.xml')
+                .then(html => {
+                    const blob = new Blob([html], { type: 'text/html' });
+                    const url  = URL.createObjectURL(blob);
+                    const a    = document.createElement('a');
+                    a.href = url; a.download = 'container-report-' + csTimestamp + '.html';
+                    document.body.appendChild(a); a.click();
+                    document.body.removeChild(a); URL.revokeObjectURL(url);
+                    btn.textContent = '✓ Downloaded';
+                    setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2000);
+                })
+                .catch(() => { btn.disabled = false; btn.textContent = orig; });
+        });
     document.getElementById('cs-download-xml-btn')
         .addEventListener('click', e => downloadArtifact(
             csResultsDir + 'results.xml',
@@ -80,19 +92,32 @@ function initContainerScan() {
             e.currentTarget
         ));
     document.getElementById('cs-download-arf-btn')
-        .addEventListener('click', e => downloadArtifact(
-            csResultsDir + 'results.arf',
-            'container-results-arf-' + csTimestamp + '.xml',
-            'application/xml',
-            e.currentTarget
-        ));
+        .addEventListener('click', e => {
+            const btn    = e.currentTarget;
+            const gzPath = csResultsDir + 'results.arf.gz';
+            cockpit.spawn(['test', '-f', gzPath])
+                .then(() => downloadArtifact(gzPath, 'container-results-arf-' + csTimestamp + '.xml.gz', 'application/gzip', btn))
+                .catch(() => downloadArtifact(csResultsDir + 'results.arf', 'container-results-arf-' + csTimestamp + '.xml', 'application/xml', btn));
+        });
     document.getElementById('cs-export-report-default')
-        .addEventListener('click', e => downloadArtifact(
-            csReportPath,
-            'container-report-' + csTimestamp + '.html',
-            'text/html',
-            e.currentTarget
-        ));
+        .addEventListener('click', e => {
+            const btn = e.currentTarget;
+            const orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Generating…';
+            generateReport(csResultsDir + 'results.xml')
+                .then(html => {
+                    const blob = new Blob([html], { type: 'text/html' });
+                    const url  = URL.createObjectURL(blob);
+                    const a    = document.createElement('a');
+                    a.href = url; a.download = 'container-report-' + csTimestamp + '.html';
+                    document.body.appendChild(a); a.click();
+                    document.body.removeChild(a); URL.revokeObjectURL(url);
+                    btn.textContent = '✓ Downloaded';
+                    setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2000);
+                })
+                .catch(() => { btn.disabled = false; btn.textContent = orig; });
+        });
     document.getElementById('cs-export-toggle')
         .addEventListener('click', e => {
             e.stopPropagation();
@@ -540,7 +565,7 @@ function updateCsScanCmd() {
     let cmd = 'oscap-podman ' + imageVal + ' xccdf eval --profile ' + profileId;
     if (tailoring) cmd += ' --tailoring-file ' + tailoring;
     cmd += ' --results /var/lib/cockpit-scap/results/<timestamp>/results.xml';
-    cmd += ' --report /var/lib/cockpit-scap/results/<timestamp>/report.html';
+    // report.html is generated on demand — not passed to oscap at scan time
     cmd += ' --results-arf /var/lib/cockpit-scap/results/<timestamp>/results.arf';
     cmd += ' ' + csSdsPath;
 
@@ -573,7 +598,6 @@ function onCsScanClick() {
 
     csTimestamp   = makeTimestamp();
     csResultsDir  = RESULTS_BASE + csTimestamp + '/';
-    csReportPath  = csResultsDir + 'report.html';
     csBashPath    = csResultsDir + 'remediation.sh';
     csAnsiblePath = csResultsDir + 'remediation.yml';
     const resultsXmlPath = csResultsDir + 'results.xml';
@@ -596,7 +620,6 @@ function onCsScanClick() {
             args.push(
                 '--progress',
                 '--profile',      profileId,
-                '--report',       csReportPath,
                 '--results',      resultsXmlPath,
                 '--results-arf',  csResultsDir + 'results.arf',
                 csSdsPath
@@ -731,6 +754,7 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 content: manifest.sds_file.split('/').pop(), profile: manifest.profile_title,
                 image: manifest.image_name, score: manifest.score.toFixed(1),
                 pass: manifest.counts.pass, fail: manifest.counts.fail });
+            cockpit.spawn(['gzip', csResultsDir + 'results.arf'], { superuser: 'require' }).catch(() => {});
             pruneHistoryByType('container').then(() => csShowResults(manifest));
         })
         .catch(err => csScanError('Failed to process results: ' + (err.message || String(err))));
@@ -746,7 +770,6 @@ function csLoadScanFromHistory(manifest) {
     const dir = RESULTS_BASE + manifest.timestamp + '/';
     csTimestamp   = manifest.timestamp;
     csResultsDir  = dir;
-    csReportPath  = dir + 'report.html';
     csBashPath    = dir + 'remediation.sh';
     csAnsiblePath = dir + 'remediation.yml';
     csImageName   = manifest.image_name || null;

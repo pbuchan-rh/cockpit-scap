@@ -2397,7 +2397,9 @@ html.pf-v6-theme-dark .ct-badge-error {
 }
 
 .ct-settings-disk-value {
-  color: var(--ct-color-text-secondary);
+  color: var(--ct-color-text);
+  font-weight: 700;
+  font-size: 1rem;
   font-variant-numeric: tabular-nums;
 }
 

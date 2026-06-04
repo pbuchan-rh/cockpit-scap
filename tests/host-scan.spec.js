@@ -107,15 +107,13 @@ test.describe('Host Scan', () => {
 
     test('full profile remediation buttons disabled until content+profile selected', async ({ page }) => {
         const frame = await getModuleFrame(page);
-        // No content selected yet — buttons should be disabled
-        await expect(frame.locator('#ct-profile-rem-bash')).toBeDisabled();
-        await expect(frame.locator('#ct-profile-rem-ansible')).toBeDisabled();
-        // Select content and profile — buttons should enable
+        // No content selected yet — toggle should be disabled
+        await expect(frame.locator('#ct-profile-rem-toggle')).toBeDisabled();
+        // Select content and profile — toggle should enable
         await frame.locator('#ct-content-select').selectOption({ value: HOST_SDS });
         await expect(frame.locator('#ct-profile-select')).toBeEnabled({ timeout: 45000 });
         await frame.locator('#ct-profile-select').selectOption({ value: HOST_PROFILE });
-        await expect(frame.locator('#ct-profile-rem-bash')).toBeEnabled({ timeout: 5000 });
-        await expect(frame.locator('#ct-profile-rem-ansible')).toBeEnabled({ timeout: 5000 });
+        await expect(frame.locator('#ct-profile-rem-toggle')).toBeEnabled({ timeout: 5000 });
         await page.screenshot({ path: 'tests/screenshots/04b-profile-rem-enabled.png' });
     });
 
