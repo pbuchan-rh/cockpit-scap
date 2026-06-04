@@ -2774,8 +2774,26 @@ function detectTailoringFiles() {
                     });
                 }
 
-                /* Tailoring tab list: all files */
-                renderTailoringList(all);
+                /* Backfill rules_modified for sidecars saved before v3.9 */
+                const needsBackfill = all.filter(sc => sc.rules_modified == null && sc.path);
+                if (needsBackfill.length === 0) {
+                    renderTailoringList(all);
+                } else {
+                    Promise.all(needsBackfill.map(sc =>
+                        cockpit.file(sc.path).read()
+                            .then(xml => {
+                                if (!xml) return;
+                                sc.rules_modified = (xml.match(/<(?:[a-z]+:)?select\s+idref=/gi) || []).length;
+                                const jsonPath = sc.path.replace(/\.xml$/, '.json');
+                                return cockpit.file(jsonPath, { superuser: 'require' })
+                                    .replace(JSON.stringify(sc, null, 2));
+                            })
+                            .catch(() => {})
+                    )).then(() => {
+                        if (gen !== tailoringFilesGen) return;
+                        renderTailoringList(all);
+                    });
+                }
             });
         })
         .catch(() => {
@@ -3592,11 +3610,11 @@ function renderTailoringList(sidecars) {
             : '—';
 
         [
+            [created,                               'ct-history-date-cell'],
             [sc.name,                               'ct-tailor-name-cell'],
             [contentName,                           'ct-tailor-content-cell'],
             [sc.base_profile_title || sc.base_profile_id, 'ct-tailor-profile-cell'],
             [rulesText,                             'ct-tailor-rules-cell'],
-            [created,                               'ct-history-date-cell'],
         ].forEach(([text, cls]) => {
             const td = document.createElement('td');
             td.textContent = text || '—';
