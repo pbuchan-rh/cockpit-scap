@@ -465,9 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ct-results-close-btn')
         .addEventListener('click', () => {
             if (currentScanProc) {
-                // Scan still running — just dismiss old results, leave progress running
                 document.getElementById('ct-results').classList.add('hidden');
-                document.getElementById('ct-prev-results-banner').classList.add('hidden');
             } else {
                 showScanSetup();
             }
@@ -2042,7 +2040,6 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, sear
 }
 
 function loadScanFromHistory(manifest) {
-    if (currentScanProc) return;
     if (!TIMESTAMP_RE.test(manifest.timestamp)) return;
     const dir = RESULTS_BASE + manifest.timestamp + '/';
     currentTimestamp      = manifest.timestamp;
@@ -2241,8 +2238,7 @@ function showResults(manifest) {
     }
 
 
-    document.getElementById('ct-scan-progress').classList.add('hidden');
-    document.getElementById('ct-prev-results-banner').classList.add('hidden');
+    if (!currentScanProc) document.getElementById('ct-scan-progress').classList.add('hidden');
     document.getElementById('ct-results').classList.remove('hidden');
     renderFailingSummary(currentResultsDir + 'results.xml',
                          'ct-failing-summary-groups', 'ct-failing-summary-loading',
@@ -2339,12 +2335,7 @@ function downloadArtifact(filePath, filename, mimeType, btn) {
 function showScanProgress() {
     document.getElementById('ct-scan-row').classList.add('hidden');
     document.getElementById('ct-scan-progress').classList.remove('hidden');
-    if (currentManifest) {
-        document.getElementById('ct-results').classList.remove('hidden');
-        document.getElementById('ct-prev-results-banner').classList.remove('hidden');
-    } else {
-        document.getElementById('ct-results').classList.add('hidden');
-    }
+    document.getElementById('ct-results').classList.add('hidden');
     hostScanStart = Date.now();
     const fillEl   = document.getElementById('ct-scan-progress-fill');
     const labelEl  = document.getElementById('ct-scan-elapsed');
@@ -2388,7 +2379,6 @@ function showScanSetup() {
     hostScanTimer = null;
     document.getElementById('ct-scan-row').classList.remove('hidden');
     document.getElementById('ct-scan-progress').classList.add('hidden');
-    document.getElementById('ct-prev-results-banner').classList.add('hidden');
     document.getElementById('ct-results').classList.add('hidden');
     document.getElementById('ct-failing-summary-groups').innerHTML = '';
     document.getElementById('ct-failing-summary-loading').classList.add('hidden');
@@ -2736,7 +2726,7 @@ function buildHistoryRow(manifest) {
     actionsTd.appendChild(rerunBtn);
 
     [
-        ['View Scan',  () => loadScanFromHistory(manifest),                          !!currentScanProc],
+        ['View Scan',  () => loadScanFromHistory(manifest),                          false],
         ['Remediate',  () => { loadScanFromHistory(manifest); openRemediationPanel(dir); }, false],
     ].forEach(([label, handler, disabled]) => {
         const btn = document.createElement('button');
@@ -2781,7 +2771,6 @@ function onDeleteHistoryEntry(manifest) {
 
 function rerunHostScan(manifest, autoStart = false) {
     if (currentScanProc) return;
-    currentManifest = manifest;
     showScanSetup();
     document.getElementById('tab-btn-scan').click();
 

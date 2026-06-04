@@ -1252,23 +1252,6 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
   margin-top: 0.375rem;
 }
 
-.ct-prev-results-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--ct-space-sm);
-  padding: var(--ct-space-sm) var(--ct-space-md);
-  margin-bottom: var(--ct-space-md);
-  background: color-mix(in srgb, var(--pf-v6-global--primary-color--100, #06c) 10%, transparent);
-  border-left: 3px solid var(--pf-v6-global--primary-color--100, #06c);
-  border-radius: var(--ct-border-radius-sm, 4px);
-  font-size: 0.875rem;
-  color: var(--ct-color-text-secondary);
-}
-
-.ct-prev-results-banner-icon {
-  color: var(--pf-v6-global--primary-color--100, #06c);
-  font-size: 1rem;
-}
 
 .ct-scan-progress-body {
   display: flex;

@@ -172,7 +172,13 @@ function initContainerScan() {
             else csShowSetup();
         });
     document.getElementById('cs-results-close-btn')
-        .addEventListener('click', csShowSetup);
+        .addEventListener('click', () => {
+            if (csProc) {
+                document.getElementById('cs-results').classList.add('hidden');
+            } else {
+                csShowSetup();
+            }
+        });
     document.getElementById('cs-scan-error-close')
         .addEventListener('click', csClearError);
     document.getElementById('cs-profile-rem-toggle')
@@ -765,7 +771,6 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
 const CS_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/;
 
 function csLoadScanFromHistory(manifest) {
-    if (csProc) return;
     if (!CS_TIMESTAMP_RE.test(manifest.timestamp)) return;
     const dir = RESULTS_BASE + manifest.timestamp + '/';
     csTimestamp   = manifest.timestamp;
@@ -924,8 +929,7 @@ function csShowResults(manifest) {
     }
 
 
-    document.getElementById('cs-progress').classList.add('hidden');
-    document.getElementById('cs-prev-results-banner').classList.add('hidden');
+    if (!csProc) document.getElementById('cs-progress').classList.add('hidden');
     document.getElementById('cs-results').classList.remove('hidden');
     renderFailingSummary(csResultsDir + 'results.xml',
                          'cs-failing-summary-groups', 'cs-failing-summary-loading',
@@ -1054,7 +1058,7 @@ function csBuildHistoryRow(manifest) {
     actionsTd.appendChild(rerunBtn);
 
     [
-        ['View Scan',  () => csLoadScanFromHistory(manifest), !!csProc],
+        ['View Scan',  () => csLoadScanFromHistory(manifest), false],
         ['Remediate',  () => { csLoadScanFromHistory(manifest); openCsRemPanel(dir); }, false],
     ].forEach(([label, handler, disabled]) => {
         const btn       = document.createElement('button');
@@ -1212,12 +1216,7 @@ function csHidePrereq() {
 function csShowProgress() {
     document.getElementById('cs-scan-row').classList.add('hidden');
     document.getElementById('cs-progress').classList.remove('hidden');
-    if (csCurrentManifest) {
-        document.getElementById('cs-results').classList.remove('hidden');
-        document.getElementById('cs-prev-results-banner').classList.remove('hidden');
-    } else {
-        document.getElementById('cs-results').classList.add('hidden');
-    }
+    document.getElementById('cs-results').classList.add('hidden');
     csScanStart = Date.now();
     const csFillEl  = document.getElementById('cs-scan-progress-fill');
     const csLabelEl = document.getElementById('cs-scan-elapsed');
@@ -1270,7 +1269,6 @@ function csShowSetup() {
     }
     document.getElementById('cs-scan-row').classList.remove('hidden');
     document.getElementById('cs-progress').classList.add('hidden');
-    document.getElementById('cs-prev-results-banner').classList.add('hidden');
     document.getElementById('cs-results').classList.add('hidden');
     document.getElementById('cs-failing-summary-groups').innerHTML = '';
     document.getElementById('cs-failing-summary-loading').classList.add('hidden');
