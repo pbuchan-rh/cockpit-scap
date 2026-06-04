@@ -1215,19 +1215,21 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                   { superuser: 'require', err: 'out' })
         .then(output => {
             const parsed   = JSON.parse(output);
+            const tailorSc   = tailoringPath ? tailoringFilesMap[tailoringPath] : null;
             const manifest = {
-                timestamp:        currentTimestamp,
-                sds_file:         currentSdsPath,
-                profile_id:       profileId,
-                profile_title:    profileTitle,
-                tailoring_file:   tailoringPath || null,
-                result_id:        parsed.result_id,
-                counts:           parsed.counts,
-                severity_counts:  parsed.sev,
-                score:            parsed.score,
-                scan_duration_s:  Math.round((Date.now() - hostScanStart) / 1000),
-                scan_id:          generateScanId(),
-                has_arf:          true,
+                timestamp:            currentTimestamp,
+                sds_file:             currentSdsPath,
+                profile_id:           profileId,
+                profile_title:        profileTitle,
+                tailoring_file:       tailoringPath || null,
+                result_id:            parsed.result_id,
+                counts:               parsed.counts,
+                severity_counts:      parsed.sev,
+                score:                parsed.score,
+                scan_duration_s:      Math.round((Date.now() - hostScanStart) / 1000),
+                scan_id:              generateScanId(),
+                has_arf:              true,
+                compliance_threshold: tailorSc ? (tailorSc.compliance_threshold || 90) : null,
             };
             return cockpit.file(currentResultsDir + 'manifest.json', { superuser: 'require' })
                 .replace(JSON.stringify(manifest, null, 2))
@@ -2873,8 +2875,9 @@ function buildHistoryRow(manifest) {
     const prev      = findPreviousScan(manifest, currentHostHistory);
     const score     = manifest.score || 0;
     const scoreText = score.toFixed(1) + '%';
-    // Thresholds: ≥90 = green, 70–89 = yellow, <70 = red (future: pull from settings)
-    const scoreCls  = score >= 90 ? 'ct-score-high' : score >= 70 ? 'ct-score-med' : 'ct-score-low';
+    const threshold = manifest.compliance_threshold != null ? manifest.compliance_threshold : 90;
+    const scoreCls  = score >= threshold ? 'ct-score-high' : 'ct-score-low';
+    const scoreTitle = score >= threshold ? 'Compliant (target: ' + threshold + '%)' : 'Non-compliant (target: ' + threshold + '%)';
     let   scoreDelta = '';
     if (prev && prev.score != null && manifest.score != null) {
         const d = parseFloat((manifest.score - prev.score).toFixed(1));
@@ -2890,7 +2893,7 @@ function buildHistoryRow(manifest) {
           title: isUploaded ? profileTitle + ' (custom: ' + (manifest.sds_file || '').split('/').pop() + ')' : profileTitle },
         { text: String(manifest.counts.pass), cls: 'ct-history-num-cell' },
         { text: String(manifest.counts.fail), cls: 'ct-history-num-cell' },
-        { text: scoreText,    cls: 'ct-history-num-cell ' + scoreCls, delta: scoreDelta },
+        { text: scoreText,    cls: 'ct-history-num-cell ' + scoreCls, delta: scoreDelta, title: scoreTitle },
     ];
 
     cells.forEach(({ text, cls, title, delta }) => {
@@ -3312,6 +3315,10 @@ function renderTailorEditor(data) {
     const nameInput  = document.getElementById('ct-tailor-name-input');
     const editorName = document.getElementById('ct-tailor-editor-name');
     editorName.value = nameInput.value.trim();
+    document.getElementById('ct-tailor-threshold').value =
+        (tailorEditingSidecar && tailorEditingSidecar.compliance_threshold != null)
+            ? tailorEditingSidecar.compliance_threshold
+            : 90;
     /* keep setup-form field in sync with the inline editor name field */
     if (nameInput._editorSyncHandler) {
         nameInput.removeEventListener('input', nameInput._editorSyncHandler);
@@ -3727,10 +3734,13 @@ function doUpdateTailoringFile() {
         tailorRuleChanges, tailorValueChanges
     );
 
+    const thresholdVal = Math.max(0, Math.min(100,
+        parseInt(document.getElementById('ct-tailor-threshold').value, 10) || 90));
     const updatedSidecar = Object.assign({}, sidecar, {
-        name:          newProfileTitle,
-        modified:      makeTimestamp(),
-        rules_modified: Object.keys(tailorRuleChanges).length,
+        name:                 newProfileTitle,
+        modified:             makeTimestamp(),
+        rules_modified:       Object.keys(tailorRuleChanges).length,
+        compliance_threshold: thresholdVal,
     });
 
     const jsonPath  = sidecar.path.replace(/\.xml$/, '.json');
@@ -3783,15 +3793,18 @@ function onTailorSaveClick() {
         baseProfileId, newProfileId, newProfileTitle,
         tailorRuleChanges, tailorValueChanges
     );
+    const thresholdVal = Math.max(0, Math.min(100,
+        parseInt(document.getElementById('ct-tailor-threshold').value, 10) || 90));
     const sidecar = {
-        name:               newProfileTitle,
-        base_profile_id:    baseProfileId,
-        base_profile_title: tailorData.profile.title,
-        profile_id:         newProfileId,
-        sds_path:           tailorSdsPath,
-        path:               xmlPath,
-        created:            ts,
-        rules_modified:     Object.keys(tailorRuleChanges).length,
+        name:                 newProfileTitle,
+        base_profile_id:      baseProfileId,
+        base_profile_title:   tailorData.profile.title,
+        profile_id:           newProfileId,
+        sds_path:             tailorSdsPath,
+        path:                 xmlPath,
+        created:              ts,
+        rules_modified:       Object.keys(tailorRuleChanges).length,
+        compliance_threshold: thresholdVal,
     };
 
     const saveBtn  = document.getElementById('ct-tailor-save-btn');
@@ -3881,9 +3894,10 @@ function renderTailoringList(sidecars) {
         const contentName = sdsVer
             ? 'RHEL ' + sdsVer[1]
             : (sc.sds_path ? sdsDisplayName(sc.sds_path.split('/').pop()) : '—');
-        const rulesText = sc.rules_modified != null
-            ? String(sc.rules_modified)
-            : '—';
+        const rulesText     = sc.rules_modified != null ? String(sc.rules_modified) : '—';
+        const thresholdText = sc.compliance_threshold != null
+            ? sc.compliance_threshold + '%'
+            : '90%';
 
         [
             [created,                               'ct-history-date-cell'],
@@ -3891,6 +3905,7 @@ function renderTailoringList(sidecars) {
             [contentName,                           'ct-tailor-content-cell'],
             [sc.base_profile_title || sc.base_profile_id, 'ct-tailor-profile-cell'],
             [rulesText,                             'ct-tailor-rules-cell'],
+            [thresholdText,                         'ct-tailor-rules-cell'],
         ].forEach(([text, cls]) => {
             const td = document.createElement('td');
             td.textContent = text || '—';

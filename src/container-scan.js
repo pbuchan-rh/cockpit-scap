@@ -1035,8 +1035,9 @@ function csBuildHistoryRow(manifest) {
     const profileTitle = manifest.profile_title || '—';
     const csScore      = manifest.score || 0;
     const scoreText    = csScore.toFixed(1) + '%';
-    // Thresholds: ≥90 = green, 70–89 = yellow, <70 = red (future: pull from settings)
-    const scoreCls     = csScore >= 90 ? 'ct-score-high' : csScore >= 70 ? 'ct-score-med' : 'ct-score-low';
+    const csThreshold  = manifest.compliance_threshold != null ? manifest.compliance_threshold : 90;
+    const scoreCls     = csScore >= csThreshold ? 'ct-score-high' : 'ct-score-low';
+    const scoreTitle   = csScore >= csThreshold ? 'Compliant (target: ' + csThreshold + '%)' : 'Non-compliant (target: ' + csThreshold + '%)';
 
     [
         { text: date,         cls: 'ct-history-date-cell' },
@@ -1044,7 +1045,7 @@ function csBuildHistoryRow(manifest) {
         { text: profileTitle, cls: 'ct-history-profile-cell', title: profileTitle },
         { text: String(manifest.counts.pass), cls: 'ct-history-num-cell' },
         { text: String(manifest.counts.fail), cls: 'ct-history-num-cell' },
-        { text: scoreText,    cls: 'ct-history-num-cell ' + scoreCls },
+        { text: scoreText,    cls: 'ct-history-num-cell ' + scoreCls, title: scoreTitle },
     ].forEach(({ text, cls, title }) => {
         const td = document.createElement('td');
         td.textContent = text;

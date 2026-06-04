@@ -1492,10 +1492,41 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
 
 .ct-tailor-editor-header-inner {
   display: flex;
+  flex-direction: column;
+  gap: var(--ct-space-sm);
+}
+
+.ct-tailor-editor-top-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--ct-space-md);
   flex-wrap: wrap;
+}
+
+.ct-tailor-threshold-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ct-space-md);
+  padding-top: var(--ct-space-xs);
+  border-top: 1px solid var(--ct-color-border);
+}
+
+.ct-tailor-threshold-label {
+  font-size: var(--ct-font-size-sm);
+  font-weight: 600;
+  color: var(--ct-color-text);
+  white-space: nowrap;
+}
+
+.ct-tailor-threshold-input {
+  width: 72px;
+}
+
+.ct-tailor-threshold-hint {
+  font-size: var(--ct-font-size-sm);
+  color: var(--ct-color-text-secondary);
+  font-style: italic;
 }
 
 .ct-tailor-editor-name-row {

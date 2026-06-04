@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=79">
+    <link rel="stylesheet" href="style.css?v=80">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=79" defer></script>
-    <script src="container-scan.js?v=79" defer></script>
-    <script src="dashboard.js?v=79" defer></script>
+    <script src="index.js?v=80" defer></script>
+    <script src="container-scan.js?v=80" defer></script>
+    <script src="dashboard.js?v=80" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -1085,20 +1085,28 @@
         <!-- Sticky header: profile name being edited + save/cancel always visible -->
         <div class="pf-v6-c-card__title ct-tailor-editor-header">
           <div class="ct-tailor-editor-header-inner">
-            <div class="ct-tailor-editor-name-row">
-              <span class="ct-tailor-editor-name-edit-icon" aria-hidden="true">&#9998;</span>
-              <input class="pf-v6-c-form-control ct-tailor-editor-name-input" type="text"
-                     id="ct-tailor-editor-name" spellcheck="false" placeholder="Policy name">
+            <div class="ct-tailor-editor-top-row">
+              <div class="ct-tailor-editor-name-row">
+                <span class="ct-tailor-editor-name-edit-icon" aria-hidden="true">&#9998;</span>
+                <input class="pf-v6-c-form-control ct-tailor-editor-name-input" type="text"
+                       id="ct-tailor-editor-name" spellcheck="false" placeholder="Policy name">
+              </div>
+              <div class="ct-tailor-save-row">
+                <span class="ct-tailor-change-count" id="ct-tailor-change-count"></span>
+                <button class="pf-v6-c-button pf-m-primary hidden ct-requires-admin" type="button"
+                        id="ct-tailor-update-btn">Update</button>
+                <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
+                        id="ct-tailor-save-btn">Save Policy</button>
+                <button class="pf-v6-c-button pf-m-secondary" type="button"
+                        id="ct-tailor-cancel-btn">Cancel</button>
+                <span class="ct-tailor-save-status hidden" id="ct-tailor-save-status"></span>
+              </div>
             </div>
-            <div class="ct-tailor-save-row">
-              <span class="ct-tailor-change-count" id="ct-tailor-change-count"></span>
-              <button class="pf-v6-c-button pf-m-primary hidden ct-requires-admin" type="button"
-                      id="ct-tailor-update-btn">Update</button>
-              <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
-                      id="ct-tailor-save-btn">Save Policy</button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="ct-tailor-cancel-btn">Cancel</button>
-              <span class="ct-tailor-save-status hidden" id="ct-tailor-save-status"></span>
+            <div class="ct-tailor-threshold-row">
+              <label class="ct-tailor-threshold-label" for="ct-tailor-threshold">Compliance threshold (%)</label>
+              <input class="pf-v6-c-form-control ct-tailor-threshold-input" type="number"
+                     id="ct-tailor-threshold" min="0" max="100" step="1" value="90">
+              <span class="ct-tailor-threshold-hint">Scans at or above this score are labeled Compliant</span>
             </div>
           </div>
         </div>
@@ -1206,12 +1214,13 @@
             <table class="pf-v6-c-table pf-m-compact hidden" id="ct-tailor-list-table"
                    role="grid" aria-label="Saved policies">
               <colgroup>
-                <col style="width:14%">
+                <col style="width:12%">
                 <col>
                 <col style="width:8%">
                 <col>
                 <col style="width:6%">
-                <col style="width:18%">
+                <col style="width:8%">
+                <col style="width:16%">
               </colgroup>
               <thead>
                 <tr role="row">
@@ -1220,6 +1229,7 @@
                   <th role="columnheader" scope="col">Content</th>
                   <th role="columnheader" scope="col">Base Profile</th>
                   <th role="columnheader" scope="col" class="ct-col-num">Rules</th>
+                  <th role="columnheader" scope="col" class="ct-col-num">Target</th>
                   <th role="columnheader" scope="col">Actions</th>
                 </tr>
               </thead>
