@@ -4291,17 +4291,28 @@ function initSettings() {
         .addEventListener('input', onRetentionInput);
     document.getElementById('ct-setting-container-retention')
         .addEventListener('input', onRetentionInput);
-    document.getElementById('ct-clear-all-btn')
+    document.getElementById('ct-clear-scan-btn')
         .addEventListener('click', () =>
-            document.getElementById('ct-clear-all-modal').classList.remove('hidden'));
-    document.getElementById('ct-clear-all-ok')
+            document.getElementById('ct-clear-scan-modal').classList.remove('hidden'));
+    document.getElementById('ct-clear-scan-ok')
         .addEventListener('click', () => {
-            document.getElementById('ct-clear-all-modal').classList.add('hidden');
-            clearAllData();
+            document.getElementById('ct-clear-scan-modal').classList.add('hidden');
+            clearScanData();
         });
-    document.getElementById('ct-clear-all-cancel')
+    document.getElementById('ct-clear-scan-cancel')
         .addEventListener('click', () =>
-            document.getElementById('ct-clear-all-modal').classList.add('hidden'));
+            document.getElementById('ct-clear-scan-modal').classList.add('hidden'));
+    document.getElementById('ct-clear-policies-btn')
+        .addEventListener('click', () =>
+            document.getElementById('ct-clear-policies-modal').classList.remove('hidden'));
+    document.getElementById('ct-clear-policies-ok')
+        .addEventListener('click', () => {
+            document.getElementById('ct-clear-policies-modal').classList.add('hidden');
+            clearPolicies();
+        });
+    document.getElementById('ct-clear-policies-cancel')
+        .addEventListener('click', () =>
+            document.getElementById('ct-clear-policies-modal').classList.add('hidden'));
 }
 
 function onSettingsTabOpen() {
@@ -4332,29 +4343,33 @@ function fetchDiskUsage() {
         .catch(() => { freeEl.textContent = '—'; });
 }
 
-function clearAllData() {
-    const dirs = [
-        '/var/lib/cockpit-scap/results/',
-        TAILORING_BASE,
-        CONTENT_BASE,
-        REMEDIATION_LOG_BASE,
-    ];
+function clearScanData() {
+    const dirs = ['/var/lib/cockpit-scap/results/', REMEDIATION_LOG_BASE];
     Promise.all(dirs.map(dir =>
         cockpit.spawn(['find', dir, '-mindepth', '1', '-delete'],
             { superuser: 'require', err: 'message' })
-            .catch(err => console.error('clearAllData: failed for ' + dir, err.message || err))
+            .catch(err => console.error('clearScanData: failed for ' + dir, err.message || err))
     ))
     .then(() => cockpit.file(ACTIVITY_LOG, { superuser: 'require' }).replace(''))
     .then(() => {
         appendActivityLog({ type: 'data_clear', tab: 'settings' });
         loadHistory();
         csLoadHistory();
-        renderContentTab();
-        detectContent();
         loadActivityLog();
         fetchDiskUsage();
     })
-    .catch(err => console.error('clearAllData failed:', err.message || err));
+    .catch(err => console.error('clearScanData failed:', err.message || err));
+}
+
+function clearPolicies() {
+    cockpit.spawn(['find', TAILORING_BASE, '-mindepth', '1', '-delete'],
+        { superuser: 'require', err: 'message' })
+        .then(() => {
+            appendActivityLog({ type: 'data_clear', tab: 'settings' });
+            renderUserContentList();
+            fetchDiskUsage();
+        })
+        .catch(err => console.error('clearPolicies failed:', err.message || err));
 }
 
 function onRetentionInput() {

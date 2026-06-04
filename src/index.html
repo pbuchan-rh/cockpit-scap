@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=72">
+    <link rel="stylesheet" href="style.css?v=73">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=72" defer></script>
-    <script src="container-scan.js?v=72" defer></script>
-    <script src="dashboard.js?v=72" defer></script>
+    <script src="index.js?v=73" defer></script>
+    <script src="container-scan.js?v=73" defer></script>
+    <script src="dashboard.js?v=73" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -1332,18 +1332,20 @@
                   <span class="ct-settings-disk-label">Partition free</span>
                   <span class="ct-settings-disk-value" id="ct-settings-disk-free">—</span>
                 </div>
-                <p class="ct-settings-desc">Permanently delete all scan results, saved policies, uploaded SCAP content,
-                  remediation audit logs, and activity history from this host. Module settings are preserved.</p>
+                <p class="ct-settings-desc">Permanently delete scan data or saved policies. Module settings and uploaded SCAP content are not affected.</p>
                 <div class="ct-settings-footer">
                   <button class="pf-v6-c-button pf-m-danger ct-requires-admin" type="button"
-                          id="ct-clear-all-btn" disabled
-                          title="Administrative access required">Clear All Data</button>
+                          id="ct-clear-scan-btn" disabled
+                          title="Administrative access required">Clear Scan Data</button>
+                  <button class="pf-v6-c-button pf-m-danger ct-requires-admin" type="button"
+                          id="ct-clear-policies-btn" disabled
+                          title="Administrative access required">Clear Policies</button>
                 </div>
                 <div class="pf-v6-c-alert pf-m-info ct-storage-hint" aria-label="Storage information">
                   <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9432;</div>
                   <div class="pf-v6-c-alert__body">
-                    <div class="pf-v6-c-alert__description">Each scan stores approximately 40–55 MB depending on profile and content size.
-                      At 10 scans retained per type, expect up to ~1 GB total.
+                    <div class="pf-v6-c-alert__description">Each scan stores approximately 15–20 MB (compressed ARF + results XML).
+                      At 10 scans retained per type, expect up to ~360 MB total.
                       Reduce retention limits to keep disk usage low.</div>
                   </div>
                 </div>
@@ -1518,24 +1520,40 @@
 </div>
 
 <!-- Clear All Data modal -->
-<div class="ct-confirm-backdrop hidden" id="ct-clear-all-modal"
-     role="dialog" aria-modal="true" aria-labelledby="ct-clear-all-title">
+<div class="ct-confirm-backdrop hidden" id="ct-clear-scan-modal"
+     role="dialog" aria-modal="true" aria-labelledby="ct-clear-scan-title">
   <div class="ct-confirm-dialog">
-    <p class="ct-confirm-title" id="ct-clear-all-title">Clear All Module Data?</p>
+    <p class="ct-confirm-title" id="ct-clear-scan-title">Clear Scan Data?</p>
     <div class="ct-confirm-body">
       <p>This will permanently delete:</p>
       <ul class="ct-clear-all-list">
         <li>All host and container scan results</li>
-        <li>All saved policies</li>
-        <li>All uploaded SCAP content</li>
         <li>All remediation audit logs</li>
         <li>The activity log</li>
       </ul>
-      <p>Module settings are preserved. This cannot be undone.</p>
+      <p>Module settings and saved policies are preserved. This cannot be undone.</p>
     </div>
     <div class="ct-confirm-footer">
-      <button class="pf-v6-c-button pf-m-danger" type="button" id="ct-clear-all-ok">Clear All Data</button>
-      <button class="pf-v6-c-button pf-m-link" type="button" id="ct-clear-all-cancel">Cancel</button>
+      <button class="pf-v6-c-button pf-m-danger" type="button" id="ct-clear-scan-ok">Clear Scan Data</button>
+      <button class="pf-v6-c-button pf-m-link" type="button" id="ct-clear-scan-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="ct-confirm-backdrop hidden" id="ct-clear-policies-modal"
+     role="dialog" aria-modal="true" aria-labelledby="ct-clear-policies-title">
+  <div class="ct-confirm-dialog">
+    <p class="ct-confirm-title" id="ct-clear-policies-title">Clear Saved Policies?</p>
+    <div class="ct-confirm-body">
+      <p>This will permanently delete:</p>
+      <ul class="ct-clear-all-list">
+        <li>All saved tailoring policies</li>
+      </ul>
+      <p>Scan results and module settings are preserved. This cannot be undone.</p>
+    </div>
+    <div class="ct-confirm-footer">
+      <button class="pf-v6-c-button pf-m-danger" type="button" id="ct-clear-policies-ok">Clear Policies</button>
+      <button class="pf-v6-c-button pf-m-link" type="button" id="ct-clear-policies-cancel">Cancel</button>
     </div>
   </div>
 </div>
