@@ -151,7 +151,7 @@ const PY_EXTRACT_FAILING_RULES = [
     '        auto_rules = set(re.findall(r"# BEGIN fix \\([^)]+\\) for \'([^\']+)\'", open(sys.argv[2]).read()))',
     '        has_rem = True',
     '    except: pass',
-    'fails = []; errors = []; notchecked = []; seen = set()',
+    'fails = []; errors = []; notchecked = []; notapplicable = []; seen = set()',
     'for rr in root.iter("{%s}rule-result" % NS):',
     '    r = rr.find("{%s}result" % NS)',
     '    if r is None: continue',
@@ -169,9 +169,11 @@ const PY_EXTRACT_FAILING_RULES = [
     '        errors.append({"id":rid,"title":t,"severity":s,"cce":cce,"message":msg})',
     '    elif res == "notchecked":',
     '        notchecked.append({"id":rid,"title":t,"severity":s,"cce":cce,"message":msg})',
+    '    elif res == "notapplicable":',
+    '        notapplicable.append({"id":rid,"title":t,"severity":s,"cce":cce,"desc":desc})',
     'order = {"high":0,"medium":1,"low":2}',
     'fails.sort(key=lambda x:(order.get(x["severity"],3),x["title"].lower()))',
-    'print(json.dumps({"fails":fails,"errors":errors,"notchecked":notchecked}))',
+    'print(json.dumps({"fails":fails,"errors":errors,"notchecked":notchecked,"notapplicable":notapplicable}))',
 ].join('\n');
 
 /* Python script: diff two results.xml files.
@@ -2053,6 +2055,7 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, sear
             const rules = data.fails || data;
             const errorRules = data.errors || [];
             const notcheckedRules = data.notchecked || [];
+            const notapplicableRules = data.notapplicable || [];
             const buckets = { high: [], medium: [], low: [] };
             rules.forEach(r => {
                 const sev = r.severity.toLowerCase();
@@ -2178,6 +2181,50 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, sear
                 details.appendChild(ruleList);
                 groupsEl.appendChild(details);
             });
+
+            if (notapplicableRules.length) {
+                const details = document.createElement('details');
+                details.className = 'ct-failing-group ct-failing-group-notapplicable';
+                const summary = document.createElement('summary');
+                summary.className = 'ct-failing-group-summary';
+                summary.textContent = 'NOT APPLICABLE — ' + notapplicableRules.length + ' rule' + (notapplicableRules.length === 1 ? '' : 's');
+                details.appendChild(summary);
+                const ruleList = document.createElement('div');
+                ruleList.className = 'ct-failing-rule-list';
+                notapplicableRules.forEach(r => {
+                    const hasDesc = !!r.desc;
+                    const wrapper = hasDesc ? document.createElement('details') : document.createElement('div');
+                    wrapper.className = 'ct-rule-item';
+                    const row = hasDesc ? document.createElement('summary') : document.createElement('div');
+                    row.className = 'ct-failing-rule-row' + (hasDesc ? ' ct-rule-row-expandable' : '');
+                    const textCol = document.createElement('div');
+                    textCol.className = 'ct-rule-text-col';
+                    const title = document.createElement('span');
+                    title.className = 'ct-rule-title';
+                    title.textContent = r.title;
+                    textCol.appendChild(title);
+                    if (r.cce) {
+                        const cce = document.createElement('span');
+                        cce.className = 'ct-rule-cce';
+                        cce.textContent = r.cce;
+                        textCol.appendChild(cce);
+                    }
+                    row.appendChild(textCol);
+                    wrapper.appendChild(row);
+                    if (hasDesc) {
+                        const body = document.createElement('div');
+                        body.className = 'ct-rule-expand';
+                        const desc = document.createElement('p');
+                        desc.className = 'ct-rule-expand-desc';
+                        desc.textContent = r.desc;
+                        body.appendChild(desc);
+                        wrapper.appendChild(body);
+                    }
+                    ruleList.appendChild(wrapper);
+                });
+                details.appendChild(ruleList);
+                groupsEl.appendChild(details);
+            }
             if (searchId) {
                 const ctrl = document.getElementById(searchId.replace('-search', '-controls'));
                 if (ctrl) ctrl.classList.remove('hidden');

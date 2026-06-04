@@ -998,8 +998,9 @@ details[open] .ct-failing-group-summary::before { content: '▼ '; }
 .ct-failing-group-high        .ct-failing-group-summary { color: var(--ct-color-danger); }
 .ct-failing-group-medium      .ct-failing-group-summary { color: var(--ct-color-warning); }
 .ct-failing-group-low         .ct-failing-group-summary { color: var(--ct-color-text-secondary); }
-.ct-failing-group-error       .ct-failing-group-summary { color: var(--pf-v6-global--warning-color--100, #f0ab00); }
-.ct-failing-group-notchecked  .ct-failing-group-summary { color: var(--ct-color-text-secondary); }
+.ct-failing-group-error         .ct-failing-group-summary { color: var(--pf-v6-global--warning-color--100, #f0ab00); }
+.ct-failing-group-notchecked    .ct-failing-group-summary { color: var(--ct-color-text-secondary); }
+.ct-failing-group-notapplicable .ct-failing-group-summary { color: var(--ct-color-text-secondary); }
 
 .ct-failing-rule-list {
   margin: var(--ct-space-xs) 0 0;
