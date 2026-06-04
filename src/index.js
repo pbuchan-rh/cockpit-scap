@@ -4320,11 +4320,16 @@ function onSettingsTabOpen() {
 
 
 function fetchDiskUsage() {
-    const el = document.getElementById('ct-settings-disk-usage');
-    el.textContent = '…';
+    const usedEl = document.getElementById('ct-settings-disk-usage');
+    const freeEl = document.getElementById('ct-settings-disk-free');
+    usedEl.textContent = '…';
+    freeEl.textContent = '…';
     cockpit.spawn(['du', '-sh', '/var/lib/cockpit-scap/'], { err: 'message' })
-        .then(out => { el.textContent = out.split('\t')[0].trim(); })
-        .catch(() => { el.textContent = '—'; });
+        .then(out => { usedEl.textContent = out.split('\t')[0].trim(); })
+        .catch(() => { usedEl.textContent = '—'; });
+    cockpit.spawn(['df', '-h', '--output=avail', '/var/lib/cockpit-scap/'], { err: 'message' })
+        .then(out => { freeEl.textContent = out.trim().split('\n').pop().trim(); })
+        .catch(() => { freeEl.textContent = '—'; });
 }
 
 function clearAllData() {
