@@ -799,9 +799,8 @@ function updateCsActionBoard(sev, totalFail, autoCount) {
     sevEl.innerHTML = '';
     [['high','ct-sev-high','High'],['medium','ct-sev-medium','Medium'],['low','ct-sev-low','Low']].forEach(([k, cls, label]) => {
         const n = sev[k] || 0;
-        if (!n) return;
         const span = document.createElement('span');
-        span.className = 'ct-sev-badge ' + cls;
+        span.className = 'ct-sev-badge ' + (n ? cls : 'ct-sev-zero');
         span.textContent = label + ': ' + n;
         sevEl.appendChild(span);
     });

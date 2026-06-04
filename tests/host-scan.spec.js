@@ -185,7 +185,7 @@ test.describe('Host Scan', () => {
         if (!loaded) { test.skip('No scan history available'); return; }
         await expect(frame.locator('#ct-action-board')).not.toHaveClass(/hidden/, { timeout: 15000 });
         // Section label
-        await expect(frame.locator('#ct-action-board .ct-action-board-label')).toContainText('Remediation Builder');
+        await expect(frame.locator('#ct-action-board .ct-rem-panel-heading')).toContainText('Remediation Builder');
         // Review All button labelled "All Failures"
         const reviewBtn = frame.locator('#ct-review-all-btn');
         await expect(reviewBtn).toBeVisible();

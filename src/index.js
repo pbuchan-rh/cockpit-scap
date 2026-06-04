@@ -2254,9 +2254,8 @@ function updateActionBoard(sev, totalFail, autoCount, mode) {
     sevEl.innerHTML = '';
     [['high','High','ct-sev-high'],['medium','Medium','ct-sev-medium'],['low','Low','ct-sev-low']].forEach(([key, label, cls]) => {
         const n = (sev && sev[key]) || 0;
-        if (!n) return;
         const span = document.createElement('span');
-        span.className = 'ct-sev-badge ' + cls;
+        span.className = 'ct-sev-badge ' + (n ? cls : 'ct-sev-zero');
         span.textContent = label + ': ' + n;
         sevEl.appendChild(span);
     });

@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=78">
+    <link rel="stylesheet" href="style.css?v=79">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=78" defer></script>
-    <script src="container-scan.js?v=78" defer></script>
-    <script src="dashboard.js?v=78" defer></script>
+    <script src="index.js?v=79" defer></script>
+    <script src="container-scan.js?v=79" defer></script>
+    <script src="dashboard.js?v=79" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -257,34 +257,36 @@
             </div>
           </div>
           <div class="pf-v6-c-card__body">
-            <div class="ct-result-summary-row">
-              <div class="ct-result-score-wrap">
-                <div class="ct-result-score" id="ct-result-score"></div>
-                <div class="ct-result-score-delta hidden" id="ct-result-score-delta"></div>
+            <div class="ct-result-top-grid">
+              <div class="ct-result-findings-col">
+                <div class="ct-result-summary-row">
+                  <div class="ct-result-badges" id="ct-result-badges"></div>
+                  <div class="ct-result-score-wrap">
+                    <div class="ct-result-score" id="ct-result-score"></div>
+                    <div class="ct-result-score-delta hidden" id="ct-result-score-delta"></div>
+                  </div>
+                </div>
               </div>
-              <div class="ct-result-badges" id="ct-result-badges"></div>
-            </div>
-            <div class="ct-action-board hidden" id="ct-action-board">
-              <div class="ct-action-board-left">
+              <div class="ct-action-board ct-result-rem-col hidden" id="ct-action-board">
+                <p class="ct-rem-panel-heading">Remediation Builder</p>
                 <div class="ct-action-board-sev" id="ct-action-board-sev"></div>
                 <div class="ct-action-board-auto" id="ct-action-board-auto"></div>
-              </div>
-              <div class="ct-action-board-actions">
-                <span class="ct-action-board-label">Open Remediation Builder:</span>
-                <button class="pf-v6-c-button pf-m-secondary" type="button"
-                        id="ct-quick-fix-btn" disabled>Critical Rules</button>
-                <button class="pf-v6-c-button pf-m-secondary" type="button"
-                        id="ct-review-all-btn"
-                        title="Opens the remediation builder with all failing rules. Review, select, and generate a fix script — nothing is applied until you confirm.">All Failures</button>
-                <span class="ct-rem-generating-status hidden" id="ct-rem-generating-status"
-                      title="Remediation scripts are generated after each scan and may take several minutes on large profiles.">
-                  <span class="pf-v6-c-spinner pf-m-sm" role="progressbar" aria-label="Preparing scripts">
-                    <span class="pf-v6-c-spinner__clipper"></span>
-                    <span class="pf-v6-c-spinner__lead-ball"></span>
-                    <span class="pf-v6-c-spinner__tail-ball"></span>
+                <div class="ct-action-board-actions">
+                  <button class="pf-v6-c-button pf-m-primary" type="button"
+                          id="ct-quick-fix-btn" disabled>Critical Rules</button>
+                  <button class="pf-v6-c-button pf-m-secondary" type="button"
+                          id="ct-review-all-btn"
+                          title="Opens the remediation builder with all failing rules. Review, select, and generate a fix script — nothing is applied until you confirm.">All Failures</button>
+                  <span class="ct-rem-generating-status hidden" id="ct-rem-generating-status"
+                        title="Remediation scripts are generated after each scan and may take several minutes on large profiles.">
+                    <span class="pf-v6-c-spinner pf-m-sm" role="progressbar" aria-label="Preparing scripts">
+                      <span class="pf-v6-c-spinner__clipper"></span>
+                      <span class="pf-v6-c-spinner__lead-ball"></span>
+                      <span class="pf-v6-c-spinner__tail-ball"></span>
+                    </span>
+                    Preparing scripts…
                   </span>
-                  Preparing scripts…
-                </span>
+                </div>
               </div>
             </div>
             <!-- Shown only when scan used uploaded (not system-package) content -->
@@ -721,25 +723,27 @@
               </div>
             </div>
             <div class="pf-v6-c-card__body">
-              <div class="ct-result-summary-row">
-                <div class="ct-result-score-wrap">
-                <div class="ct-result-score" id="cs-result-score"></div>
-                <div class="ct-result-score-delta hidden" id="cs-result-score-delta"></div>
-              </div>
-              <div class="ct-result-badges" id="cs-result-badges"></div>
-              </div>
-              <div class="ct-action-board hidden" id="cs-action-board">
-                <div class="ct-action-board-left">
+              <div class="ct-result-top-grid">
+                <div class="ct-result-findings-col">
+                  <div class="ct-result-summary-row">
+                    <div class="ct-result-badges" id="cs-result-badges"></div>
+                    <div class="ct-result-score-wrap">
+                      <div class="ct-result-score" id="cs-result-score"></div>
+                      <div class="ct-result-score-delta hidden" id="cs-result-score-delta"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="ct-action-board ct-result-rem-col hidden" id="cs-action-board">
+                  <p class="ct-rem-panel-heading">Remediation Builder</p>
                   <div class="ct-action-board-sev" id="cs-action-board-sev"></div>
                   <div class="ct-action-board-auto" id="cs-action-board-auto"></div>
-                </div>
-                <div class="ct-action-board-actions">
-                  <span class="ct-action-board-label">Open Remediation Builder:</span>
-                  <button class="pf-v6-c-button pf-m-secondary" type="button"
-                          id="cs-quick-fix-btn" disabled>Critical Rules</button>
-                  <button class="pf-v6-c-button pf-m-secondary" type="button"
-                          id="cs-review-all-btn"
-                          title="Opens the remediation builder with all failing rules. Review, select, and generate a fix script — nothing is applied until you confirm.">All Failures</button>
+                  <div class="ct-action-board-actions">
+                    <button class="pf-v6-c-button pf-m-primary" type="button"
+                            id="cs-quick-fix-btn" disabled>Critical Rules</button>
+                    <button class="pf-v6-c-button pf-m-secondary" type="button"
+                            id="cs-review-all-btn"
+                            title="Opens the remediation builder with all failing rules. Review, select, and generate a fix script — nothing is applied until you confirm.">All Failures</button>
+                  </div>
                 </div>
               </div>
               <!-- notapplicable context note — always shown for container scans -->
