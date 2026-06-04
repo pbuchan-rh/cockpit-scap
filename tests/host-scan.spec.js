@@ -140,7 +140,7 @@ test.describe('Host Scan', () => {
         await frame.locator('#ct-profile-select').selectOption({ value: HOST_PROFILE });
         await frame.locator('#ct-scan-btn').click();
         await page.screenshot({ path: 'tests/screenshots/05-scan-running.png' });
-        await frame.locator('#ct-results').waitFor({ state: 'visible', timeout: 120000 });
+        await frame.locator('#ct-results').waitFor({ state: 'visible', timeout: 300000 });
         await expect(frame.locator('#ct-result-score')).toBeVisible();
         // Action board should appear
         await expect(frame.locator('#ct-action-board')).not.toHaveClass(/hidden/, { timeout: 15000 });

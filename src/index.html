@@ -193,16 +193,24 @@
                     title="Generate and view the full oscap security guide for the selected profile">
               View Compliance Guide
             </button>
-            <button class="pf-v6-c-button pf-m-secondary" type="button"
-                    id="ct-profile-rem-bash" disabled
-                    title="Download a bash remediation script for all rules in the selected profile — no scan required">
-              Profile Remediation (Bash)
-            </button>
-            <button class="pf-v6-c-button pf-m-secondary" type="button"
-                    id="ct-profile-rem-ansible" disabled
-                    title="Download an Ansible playbook for all rules in the selected profile — no scan required">
-              Profile Remediation (Ansible)
-            </button>
+            <div class="ct-dl-dropdown">
+              <button class="pf-v6-c-button pf-m-secondary" type="button"
+                      id="ct-profile-rem-toggle" disabled
+                      title="Generate and download a remediation script for all rules in the selected profile — no scan required"
+                      aria-haspopup="true" aria-expanded="false">
+                Download Remediation &#9660;
+              </button>
+              <div class="ct-split-btn-menu hidden" id="ct-profile-rem-menu">
+                <button type="button" data-fix-type="bash"
+                        title="Shell script for direct execution on RHEL/Fedora systems">Bash Script (.sh)</button>
+                <button type="button" data-fix-type="ansible"
+                        title="Ansible playbook for automated configuration management">Ansible Playbook (.yml)</button>
+                <button type="button" data-fix-type="puppet"
+                        title="Puppet manifest for Puppet-managed infrastructure">Puppet Manifest (.pp)</button>
+                <button type="button" data-fix-type="kubernetes"
+                        title="Kubernetes manifest for container workload hardening">Kubernetes Manifest (.yml)</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -645,16 +653,24 @@
               <button class="pf-v6-c-button pf-m-secondary" type="button"
                       id="cs-guide-btn" disabled
                       title="Generate and view the full oscap security guide for the selected profile">View Compliance Guide</button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="cs-profile-rem-bash" disabled
-                      title="Download a bash remediation script for all rules in the selected profile — no scan required">
-                Profile Remediation (Bash)
-              </button>
-              <button class="pf-v6-c-button pf-m-secondary" type="button"
-                      id="cs-profile-rem-ansible" disabled
-                      title="Download an Ansible playbook for all rules in the selected profile — no scan required">
-                Profile Remediation (Ansible)
-              </button>
+              <div class="ct-dl-dropdown">
+                <button class="pf-v6-c-button pf-m-secondary" type="button"
+                        id="cs-profile-rem-toggle" disabled
+                        title="Generate and download a remediation script for all rules in the selected profile — no scan required"
+                        aria-haspopup="true" aria-expanded="false">
+                  Download Remediation &#9660;
+                </button>
+                <div class="ct-split-btn-menu hidden" id="cs-profile-rem-menu">
+                  <button type="button" data-fix-type="bash"
+                          title="Shell script for direct execution on RHEL/Fedora systems">Bash Script (.sh)</button>
+                  <button type="button" data-fix-type="ansible"
+                          title="Ansible playbook for automated configuration management">Ansible Playbook (.yml)</button>
+                  <button type="button" data-fix-type="puppet"
+                          title="Puppet manifest for Puppet-managed infrastructure">Puppet Manifest (.pp)</button>
+                  <button type="button" data-fix-type="ignition"
+                          title="Ignition config for RHCOS/Fedora CoreOS first-boot provisioning">Ignition Config (.ign)</button>
+                  </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1005,12 +1021,26 @@
           <button class="pf-v6-c-button pf-m-secondary" type="button"
                   id="ct-tailor-guide-btn" disabled
                   title="Generate and view the full oscap security guide for the selected profile">View Compliance Guide</button>
-          <button class="pf-v6-c-button pf-m-secondary" type="button"
-                  id="ct-tailor-profile-rem-bash" disabled
-                  title="Download a bash remediation script for all rules in the selected profile — no scan required">Profile Remediation (Bash)</button>
-          <button class="pf-v6-c-button pf-m-secondary" type="button"
-                  id="ct-tailor-profile-rem-ansible" disabled
-                  title="Download an Ansible playbook for all rules in the selected profile — no scan required">Profile Remediation (Ansible)</button>
+          <div class="ct-dl-dropdown">
+            <button class="pf-v6-c-button pf-m-secondary" type="button"
+                    id="ct-tailor-profile-rem-toggle" disabled
+                    title="Generate and download a remediation script for all rules in the selected profile — no scan required"
+                    aria-haspopup="true" aria-expanded="false">
+              Download Remediation &#9660;
+            </button>
+            <div class="ct-split-btn-menu hidden" id="ct-tailor-profile-rem-menu">
+              <button type="button" data-fix-type="bash"
+                      title="Shell script for direct execution on RHEL/Fedora systems">Bash Script (.sh)</button>
+              <button type="button" data-fix-type="ansible"
+                      title="Ansible playbook for automated configuration management">Ansible Playbook (.yml)</button>
+              <button type="button" data-fix-type="puppet"
+                      title="Puppet manifest for Puppet-managed infrastructure">Puppet Manifest (.pp)</button>
+              <button type="button" data-fix-type="ignition"
+                      title="Ignition config for RHCOS/Fedora CoreOS first-boot provisioning">Ignition Config (.ign)</button>
+              <button type="button" data-fix-type="kubernetes"
+                      title="Kubernetes manifest for container workload hardening">Kubernetes Manifest (.yml)</button>
+            </div>
+          </div>
         </div>
       </div>
 

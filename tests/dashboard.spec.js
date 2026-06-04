@@ -124,9 +124,8 @@ test.describe('Dashboard', () => {
         const rddDrawer = frame.locator('#ct-rule-detail-drawer');
         await expect(rddDrawer).toHaveClass(/ct-drawer-open/, { timeout: 5000 });
         await expect(frame.locator('#ct-rdd-body')).toBeVisible();
-        // Body should contain actual content
-        const bodyText = await frame.locator('#ct-rdd-body').textContent();
-        expect(bodyText.length).toBeGreaterThan(20);
+        // Meta badges (severity, CCE) confirm the drawer populated rule data
+        await expect(frame.locator('#ct-rdd-body .ct-rdd-meta')).toBeVisible();
         await page.screenshot({ path: 'tests/screenshots/29b-rule-detail-drawer.png' });
         // Close with Esc
         await page.keyboard.press('Escape');

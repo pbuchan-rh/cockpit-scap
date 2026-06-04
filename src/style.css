@@ -877,6 +877,11 @@ code {
   display: inline-flex;
 }
 
+.ct-dl-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
 .ct-split-btn .ct-split-btn-main {
   border-top-right-radius: 0 !important;
   border-bottom-right-radius: 0 !important;

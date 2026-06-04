@@ -420,12 +420,18 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('ct-export-toggle').setAttribute('aria-expanded', 'false');
         });
     document.addEventListener('click', e => {
-        const menu = document.getElementById('ct-export-menu');
-        if (menu && !menu.classList.contains('hidden') &&
-            !e.target.closest('#ct-export-toggle') && !e.target.closest('#ct-export-menu')) {
-            menu.classList.add('hidden');
-            document.getElementById('ct-export-toggle').setAttribute('aria-expanded', 'false');
-        }
+        [
+            ['ct-export-toggle',          'ct-export-menu'],
+            ['ct-profile-rem-toggle',     'ct-profile-rem-menu'],
+            ['ct-tailor-profile-rem-toggle', 'ct-tailor-profile-rem-menu'],
+        ].forEach(([toggleId, menuId]) => {
+            const menu = document.getElementById(menuId);
+            if (menu && !menu.classList.contains('hidden') &&
+                !e.target.closest('#' + toggleId) && !e.target.closest('#' + menuId)) {
+                menu.classList.add('hidden');
+                document.getElementById(toggleId).setAttribute('aria-expanded', 'false');
+            }
+        });
     });
     document.getElementById('ct-new-scan-btn')
         .addEventListener('click', () => {
@@ -436,10 +442,22 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', showScanSetup);
     document.getElementById('ct-scan-error-close')
         .addEventListener('click', hideScanError);
-    document.getElementById('ct-profile-rem-bash')
-        .addEventListener('click', e => downloadProfileRemediation('bash', e.currentTarget));
-    document.getElementById('ct-profile-rem-ansible')
-        .addEventListener('click', e => downloadProfileRemediation('ansible', e.currentTarget));
+    document.getElementById('ct-profile-rem-toggle')
+        .addEventListener('click', e => {
+            e.stopPropagation();
+            const menu = document.getElementById('ct-profile-rem-menu');
+            const open = menu.classList.toggle('hidden') === false;
+            e.currentTarget.setAttribute('aria-expanded', String(open));
+        });
+    document.getElementById('ct-profile-rem-menu')
+        .addEventListener('click', e => {
+            const item = e.target.closest('[data-fix-type]');
+            if (!item) return;
+            const toggle = document.getElementById('ct-profile-rem-toggle');
+            document.getElementById('ct-profile-rem-menu').classList.add('hidden');
+            toggle.setAttribute('aria-expanded', 'false');
+            downloadProfileRemediation(item.dataset.fixType, toggle);
+        });
     document.getElementById('ct-scan-cmd-copy')
         .addEventListener('click', () => {
             const cmd = document.getElementById('ct-scan-cmd').textContent;
@@ -630,10 +648,22 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', onViewGuideClick);
     document.getElementById('ct-tailor-guide-btn')
         .addEventListener('click', onTailorViewGuideClick);
-    document.getElementById('ct-tailor-profile-rem-bash')
-        .addEventListener('click', e => downloadTailorProfileRemediation('bash', e.currentTarget));
-    document.getElementById('ct-tailor-profile-rem-ansible')
-        .addEventListener('click', e => downloadTailorProfileRemediation('ansible', e.currentTarget));
+    document.getElementById('ct-tailor-profile-rem-toggle')
+        .addEventListener('click', e => {
+            e.stopPropagation();
+            const menu = document.getElementById('ct-tailor-profile-rem-menu');
+            const open = menu.classList.toggle('hidden') === false;
+            e.currentTarget.setAttribute('aria-expanded', String(open));
+        });
+    document.getElementById('ct-tailor-profile-rem-menu')
+        .addEventListener('click', e => {
+            const item = e.target.closest('[data-fix-type]');
+            if (!item) return;
+            const toggle = document.getElementById('ct-tailor-profile-rem-toggle');
+            document.getElementById('ct-tailor-profile-rem-menu').classList.add('hidden');
+            toggle.setAttribute('aria-expanded', 'false');
+            downloadTailorProfileRemediation(item.dataset.fixType, toggle);
+        });
 
     /* CSV export */
     document.getElementById('ct-export-csv-btn')
@@ -1147,6 +1177,7 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
             // display immediately after the scan — not after 7-8 min of oscap generate fix.
             remediationGenerating = true;
             updateApplyGate1Btn();
+            const remDir = currentResultsDir;
             generateRemediation(manifest.result_id, resultsXmlPath, tailoringPath)
                 .catch(err => {
                     console.error('Remediation generation failed:', err.message || err);
@@ -1156,10 +1187,11 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 .finally(() => {
                     remediationGenerating = false;
                     updateApplyGate1Btn();
-                    if (currentRemBashPath && currentRemAnsiblePath) {
-                        cockpit.spawn(['chmod', '644', currentRemBashPath, currentRemAnsiblePath],
-                            { superuser: 'require' }).catch(() => {});
-                    }
+                    cockpit.spawn(
+                        ['find', remDir, '-maxdepth', '1', '-name', 'remediation.*',
+                         '-exec', 'chmod', '644', '{}', '+'],
+                        { superuser: 'require' }
+                    ).catch(() => {});
                 });
             pruneHistoryByType('host').catch(() => {});
             relaxResultsPerms().catch(() => {});
@@ -2380,8 +2412,7 @@ function updateHostScanCmd() {
     }
 
     const remEnabled = !!(currentSdsPath && profileId);
-    document.getElementById('ct-profile-rem-bash').disabled    = !remEnabled;
-    document.getElementById('ct-profile-rem-ansible').disabled = !remEnabled;
+    document.getElementById('ct-profile-rem-toggle').disabled = !remEnabled;
 
     if (!currentSdsPath || !profileId) {
         details.classList.add('hidden');
@@ -2397,6 +2428,13 @@ function updateHostScanCmd() {
 
     cmdEl.textContent = cmd;
     details.classList.remove('hidden');
+}
+
+function remFixMeta(fixType) {
+    if (fixType === 'bash')       return { ext: '.sh',              mime: 'text/x-shellscript' };
+    if (fixType === 'puppet')     return { ext: '.pp',              mime: 'text/plain' };
+    if (fixType === 'ansible')    return { ext: '-ansible.yml',     mime: 'text/yaml' };
+    return { ext: '.txt', mime: 'text/plain' };
 }
 
 function downloadProfileRemediation(fixType, btnEl) {
@@ -2415,20 +2453,24 @@ function downloadProfileRemediation(fixType, btnEl) {
     if (tailoringPath) args.push('--tailoring-file', tailoringPath);
     args.push(currentSdsPath);
 
-    const ext         = fixType === 'bash' ? '.sh' : '.yml';
+    const { ext, mime } = remFixMeta(fixType);
     const profileSel  = document.getElementById('ct-profile-select');
     const profileText = profileSel && profileSel.selectedIndex >= 0
         ? profileSel.options[profileSel.selectedIndex].text : profileId;
     const safeName = profileText.toLowerCase()
         .replace(/[()]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const fname    = 'profile-remediation-' + safeName + ext;
-    const mime     = 'text/plain';
     const origText = btnEl.textContent;
     btnEl.disabled = true;
     btnEl.textContent = 'Generating…';
 
     cockpit.spawn(args, { err: 'message' })
         .then(output => {
+            if (!output || !output.trim()) {
+                btnEl.textContent = 'No content for this profile';
+                setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 3000);
+                return;
+            }
             const blob = new Blob([output], { type: mime });
             const url  = URL.createObjectURL(blob);
             const a    = document.createElement('a');
@@ -2940,8 +2982,7 @@ function updateTailorLoadBtn() {
     const remEnabled = !!(profileId && tailorSdsPath);
     document.getElementById('ct-tailor-load-btn').disabled          = !profileId || !name;
     document.getElementById('ct-tailor-guide-btn').disabled          = !remEnabled;
-    document.getElementById('ct-tailor-profile-rem-bash').disabled   = !remEnabled;
-    document.getElementById('ct-tailor-profile-rem-ansible').disabled = !remEnabled;
+    document.getElementById('ct-tailor-profile-rem-toggle').disabled = !remEnabled;
 }
 
 function downloadTailorProfileRemediation(fixType, btnEl) {
@@ -2955,7 +2996,7 @@ function downloadTailorProfileRemediation(fixType, btnEl) {
     }
     args.push(tailorSdsPath);
 
-    const ext        = fixType === 'bash' ? '.sh' : '.yml';
+    const { ext, mime: remMime } = remFixMeta(fixType);
     const profileSel = document.getElementById('ct-tailor-profile-select');
     const profileText = profileSel && profileSel.selectedIndex >= 0
         ? profileSel.options[profileSel.selectedIndex].text : profileId;
@@ -2969,7 +3010,12 @@ function downloadTailorProfileRemediation(fixType, btnEl) {
 
     cockpit.spawn(args, { err: 'message' })
         .then(output => {
-            const blob = new Blob([output], { type: 'text/plain' });
+            if (!output || !output.trim()) {
+                btnEl.textContent = 'No content for this profile';
+                setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 3000);
+                return;
+            }
+            const blob = new Blob([output], { type: remMime });
             const url  = URL.createObjectURL(blob);
             const a    = document.createElement('a');
             a.href = url; a.download = fname; a.click();

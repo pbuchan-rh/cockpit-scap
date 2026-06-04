@@ -145,10 +145,30 @@ function initContainerScan() {
         .addEventListener('click', csShowSetup);
     document.getElementById('cs-scan-error-close')
         .addEventListener('click', csClearError);
-    document.getElementById('cs-profile-rem-bash')
-        .addEventListener('click', e => downloadCsProfileRemediation('bash', e.currentTarget));
-    document.getElementById('cs-profile-rem-ansible')
-        .addEventListener('click', e => downloadCsProfileRemediation('ansible', e.currentTarget));
+    document.getElementById('cs-profile-rem-toggle')
+        .addEventListener('click', e => {
+            e.stopPropagation();
+            const menu = document.getElementById('cs-profile-rem-menu');
+            const open = menu.classList.toggle('hidden') === false;
+            e.currentTarget.setAttribute('aria-expanded', String(open));
+        });
+    document.getElementById('cs-profile-rem-menu')
+        .addEventListener('click', e => {
+            const item = e.target.closest('[data-fix-type]');
+            if (!item) return;
+            const toggle = document.getElementById('cs-profile-rem-toggle');
+            document.getElementById('cs-profile-rem-menu').classList.add('hidden');
+            toggle.setAttribute('aria-expanded', 'false');
+            downloadCsProfileRemediation(item.dataset.fixType, toggle);
+        });
+    document.addEventListener('click', e => {
+        const menu = document.getElementById('cs-profile-rem-menu');
+        if (menu && !menu.classList.contains('hidden') &&
+            !e.target.closest('#cs-profile-rem-toggle') && !e.target.closest('#cs-profile-rem-menu')) {
+            menu.classList.add('hidden');
+            document.getElementById('cs-profile-rem-toggle').setAttribute('aria-expanded', 'false');
+        }
+    });
     document.getElementById('cs-scan-cmd-copy')
         .addEventListener('click', () => {
             const cmd = document.getElementById('cs-scan-cmd').textContent;
@@ -423,6 +443,13 @@ function onCsTailorFileChange() {
     csUpdateScanBtn();
 }
 
+function remFixMeta(fixType) {
+    if (fixType === 'bash')       return { ext: '.sh',              mime: 'text/x-shellscript' };
+    if (fixType === 'puppet')     return { ext: '.pp',              mime: 'text/plain' };
+    if (fixType === 'ansible')    return { ext: '-ansible.yml',     mime: 'text/yaml' };
+    return { ext: '.txt', mime: 'text/plain' };
+}
+
 function downloadCsProfileRemediation(fixType, btnEl) {
     const tailorSelect  = document.getElementById('cs-tailor-file-select');
     const tailoringPath = tailorSelect ? tailorSelect.value : '';
@@ -439,7 +466,7 @@ function downloadCsProfileRemediation(fixType, btnEl) {
     if (tailoringPath) args.push('--tailoring-file', tailoringPath);
     args.push(csSdsPath);
 
-    const ext         = fixType === 'bash' ? '.sh' : '.yml';
+    const { ext, mime } = remFixMeta(fixType);
     const profileSel  = document.getElementById('cs-profile-select');
     const profileText = profileSel && profileSel.selectedIndex >= 0
         ? profileSel.options[profileSel.selectedIndex].text : profileId;
@@ -452,7 +479,12 @@ function downloadCsProfileRemediation(fixType, btnEl) {
 
     cockpit.spawn(args, { err: 'message' })
         .then(output => {
-            const blob = new Blob([output], { type: 'text/plain' });
+            if (!output || !output.trim()) {
+                btnEl.textContent = 'No content for this profile';
+                setTimeout(() => { btnEl.disabled = false; btnEl.textContent = origText; }, 3000);
+                return;
+            }
+            const blob = new Blob([output], { type: mime });
             const url  = URL.createObjectURL(blob);
             const a    = document.createElement('a');
             a.href = url; a.download = fname; a.click();
@@ -477,8 +509,7 @@ function csUpdateScanBtn() {
     document.getElementById('cs-scan-btn').disabled =
         !imageVal || (!profileId && !tailoring) || csVersionBlocked || !adminAllowed;
     document.getElementById('cs-guide-btn').disabled          = !csRemEnabled;
-    document.getElementById('cs-profile-rem-bash').disabled   = !csRemEnabled;
-    document.getElementById('cs-profile-rem-ansible').disabled = !csRemEnabled;
+    document.getElementById('cs-profile-rem-toggle').disabled = !csRemEnabled;
     updateCsScanCmd();
 }
 
