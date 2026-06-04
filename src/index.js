@@ -1894,13 +1894,11 @@ function loadScanDiff(newXml, oldXml, containerId) {
         });
 }
 
-function buildScoreDonut(score, failCount, animate) {
-    const r     = 52;
-    const circ  = 2 * Math.PI * r;
+function buildScoreDonut(score, threshold, animate) {
+    const r      = 52;
+    const circ   = 2 * Math.PI * r;
     const offset = circ * (1 - score / 100);
-    const color  = failCount === 0  ? 'var(--ct-color-success)'
-                 : failCount <= 10  ? 'var(--ct-color-warning)'
-                 : 'var(--ct-color-danger)';
+    const color  = score >= threshold ? 'var(--ct-color-success)' : 'var(--ct-color-danger)';
     const NS = 'http://www.w3.org/2000/svg';
 
     const svg = document.createElementNS(NS, 'svg');
@@ -2375,9 +2373,18 @@ function showResults(manifest) {
     arfBtn.disabled = !manifest.has_arf;
     if (!manifest.has_arf) arfBtn.title = 'ARF not available — rescan to generate';
 
-    const scoreEl = document.getElementById('ct-result-score');
+    const scoreEl  = document.getElementById('ct-result-score');
+    const threshold = manifest.compliance_threshold != null ? manifest.compliance_threshold : 90;
     scoreEl.innerHTML = '';
-    scoreEl.appendChild(buildScoreDonut(score, counts.fail, true));
+    scoreEl.appendChild(buildScoreDonut(score, threshold, true));
+
+    const targetEl = document.getElementById('ct-results-target');
+    if (manifest.compliance_threshold != null) {
+        targetEl.textContent = 'Policy target: ' + manifest.compliance_threshold + '%';
+        targetEl.classList.remove('hidden');
+    } else {
+        targetEl.classList.add('hidden');
+    }
 
     const uploadedWarn = document.getElementById('ct-uploaded-content-warning');
     if (currentSdsPath && currentSdsPath.startsWith(CONTENT_BASE)) {
@@ -2390,10 +2397,14 @@ function showResults(manifest) {
     const deltaEl = document.getElementById('ct-result-score-delta');
     if (prev) {
         const scoreDiff = score - prev.score;
-        const sign = scoreDiff > 0 ? '+' : '';
-        deltaEl.textContent = sign + scoreDiff.toFixed(1) + ' pts';
-        deltaEl.className = 'ct-result-score-delta ' +
-            (scoreDiff > 0.05 ? 'ct-delta-up' : scoreDiff < -0.05 ? 'ct-delta-down' : 'ct-delta-neutral');
+        if (Math.abs(scoreDiff) >= 0.05) {
+            const sign = scoreDiff > 0 ? '+' : '';
+            deltaEl.textContent = sign + scoreDiff.toFixed(1) + ' pts vs. last scan';
+            deltaEl.className = 'ct-result-score-delta ' +
+                (scoreDiff > 0 ? 'ct-delta-up' : 'ct-delta-down');
+        } else {
+            deltaEl.className = 'ct-result-score-delta hidden';
+        }
     } else {
         deltaEl.className = 'ct-result-score-delta hidden';
     }

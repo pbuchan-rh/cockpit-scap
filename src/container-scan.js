@@ -880,9 +880,18 @@ function csShowResults(manifest) {
     csArfBtn.disabled = !manifest.has_arf;
     if (!manifest.has_arf) csArfBtn.title = 'ARF not available — rescan to generate';
 
-    const scoreEl = document.getElementById('cs-result-score');
+    const scoreEl    = document.getElementById('cs-result-score');
+    const csThresh   = manifest.compliance_threshold != null ? manifest.compliance_threshold : 90;
     scoreEl.innerHTML = '';
-    scoreEl.appendChild(buildScoreDonut(score, counts.fail, true));
+    scoreEl.appendChild(buildScoreDonut(score, csThresh, true));
+
+    const csTargetEl = document.getElementById('cs-results-target');
+    if (manifest.compliance_threshold != null) {
+        csTargetEl.textContent = 'Policy target: ' + manifest.compliance_threshold + '%';
+        csTargetEl.classList.remove('hidden');
+    } else {
+        csTargetEl.classList.add('hidden');
+    }
 
     const csPrev = currentCsHistory.find(m =>
         m.timestamp  <  manifest.timestamp &&
@@ -893,10 +902,14 @@ function csShowResults(manifest) {
     const csDeltaEl = document.getElementById('cs-result-score-delta');
     if (csPrev) {
         const scoreDiff = score - csPrev.score;
-        const sign = scoreDiff > 0 ? '+' : '';
-        csDeltaEl.textContent = sign + scoreDiff.toFixed(1) + ' pts';
-        csDeltaEl.className = 'ct-result-score-delta ' +
-            (scoreDiff > 0.05 ? 'ct-delta-up' : scoreDiff < -0.05 ? 'ct-delta-down' : 'ct-delta-neutral');
+        if (Math.abs(scoreDiff) >= 0.05) {
+            const sign = scoreDiff > 0 ? '+' : '';
+            csDeltaEl.textContent = sign + scoreDiff.toFixed(1) + ' pts vs. last scan';
+            csDeltaEl.className = 'ct-result-score-delta ' +
+                (scoreDiff > 0 ? 'ct-delta-up' : 'ct-delta-down');
+        } else {
+            csDeltaEl.className = 'ct-result-score-delta hidden';
+        }
     } else {
         csDeltaEl.className = 'ct-result-score-delta hidden';
     }
