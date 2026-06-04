@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <title>SCAP Compliance</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css?v=73">
+    <link rel="stylesheet" href="style.css?v=76">
     <link rel="stylesheet" href="../../static/branding.css">
     <script src="../base1/cockpit.js" defer></script>
-    <script src="index.js?v=73" defer></script>
-    <script src="container-scan.js?v=73" defer></script>
-    <script src="dashboard.js?v=73" defer></script>
+    <script src="index.js?v=76" defer></script>
+    <script src="container-scan.js?v=76" defer></script>
+    <script src="dashboard.js?v=76" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -330,8 +330,12 @@
                 </span>
                 <span>Analyzing failing rules…</span>
               </div>
-              <input class="ct-failing-search hidden" id="ct-failing-search"
-                     type="text" placeholder="Search failing rules…" autocomplete="off">
+              <div class="ct-failing-controls hidden" id="ct-failing-controls">
+                <input class="ct-failing-search" id="ct-failing-search"
+                       type="text" placeholder="Search failing rules…" autocomplete="off">
+                <button class="pf-v6-c-button pf-m-link" type="button" id="ct-expand-all">Expand All</button>
+                <button class="pf-v6-c-button pf-m-link" type="button" id="ct-collapse-all">Collapse All</button>
+              </div>
               <div id="ct-failing-summary-groups"></div>
             </div>
           </div>
@@ -781,8 +785,12 @@
                 </span>
                 <span>Analyzing failing rules…</span>
               </div>
-              <input class="ct-failing-search hidden" id="cs-failing-search"
-                     type="text" placeholder="Search failing rules…" autocomplete="off">
+              <div class="ct-failing-controls hidden" id="cs-failing-controls">
+                <input class="ct-failing-search" id="cs-failing-search"
+                       type="text" placeholder="Search failing rules…" autocomplete="off">
+                <button class="pf-v6-c-button pf-m-link" type="button" id="cs-expand-all">Expand All</button>
+                <button class="pf-v6-c-button pf-m-link" type="button" id="cs-collapse-all">Collapse All</button>
+              </div>
               <div id="cs-failing-summary-groups"></div>
             </div>
           </div>

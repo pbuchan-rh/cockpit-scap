@@ -130,7 +130,9 @@ const PY_EXTRACT_FAILING_RULES = [
     '    desc = " ".join("".join(d_el.itertext()).split()) if d_el is not None else ""',
     '    r_el = rule.find("{%s}rationale" % NS)',
     '    rat  = " ".join("".join(r_el.itertext()).split()) if r_el is not None else ""',
-    '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity", "unknown"), cce, desc, rat, float(rule.get("weight", "1.0")))',
+    '    fx_el = next((f for f in rule.findall("{%s}fix" % NS) if "sh" in (f.get("system","") or "")), None)',
+    '    fix  = "".join(fx_el.itertext()).strip() if fx_el is not None else ""',
+    '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity", "unknown"), cce, desc, rat, float(rule.get("weight", "1.0")), fix)',
     'has_rem = False; auto_rules = set()',
     'if len(sys.argv) > 2:',
     '    try:',
@@ -144,8 +146,8 @@ const PY_EXTRACT_FAILING_RULES = [
     '        rid = rr.get("idref", "")',
     '        if rid in seen: continue',
     '        seen.add(rid)',
-    '        t, s, cce, desc, rat, w = rinfo.get(rid, (rid, rr.get("severity", "unknown"), "", "", "", 1.0))',
-    '        rule = {"id": rid, "title": t, "severity": s, "cce": cce, "desc": desc, "rat": rat, "weight": w}',
+    '        t, s, cce, desc, rat, w, fix = rinfo.get(rid, (rid, rr.get("severity", "unknown"), "", "", "", 1.0, ""))',
+    '        rule = {"id": rid, "title": t, "severity": s, "cce": cce, "desc": desc, "rat": rat, "weight": w, "fix": fix}',
     '        if has_rem: rule["automated"] = rid in auto_rules',
     '        fails.append(rule)',
     'order = {"high":0,"medium":1,"low":2}',
@@ -520,6 +522,14 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('input', onRemediationSearch);
     document.getElementById('ct-failing-search')
         .addEventListener('input', () => onFailingSummarySearch('ct-failing-summary-groups', 'ct-failing-search'));
+    document.getElementById('ct-expand-all')
+        .addEventListener('click', () =>
+            document.querySelectorAll('#ct-failing-summary-groups details.ct-failing-group')
+                .forEach(d => { d.open = true; }));
+    document.getElementById('ct-collapse-all')
+        .addEventListener('click', () =>
+            document.querySelectorAll('#ct-failing-summary-groups details.ct-failing-group')
+                .forEach(d => { d.open = false; }));
     document.getElementById('ct-rem-select-all-btn')
         .addEventListener('click', () => {
             document.querySelectorAll('#ct-remediation-rules .ct-rem-rule-item:not([style*="none"]) .ct-rem-checkbox')
@@ -1361,7 +1371,7 @@ function openRemediationPanel(resultsDir) {
         });
 }
 
-function buildRemPanelDOM(container, rules, updateCountFn) {
+function buildRemPanelDOM(container, rules, updateCountFn, remPath) {
     const groups = { high: [], medium: [], low: [], unknown: [] };
     rules.forEach(r => (groups[r.severity] || groups.unknown).push(r));
 
@@ -1411,6 +1421,7 @@ function buildRemPanelDOM(container, rules, updateCountFn) {
                         '<p class="ct-rem-detail-desc">' + escHtmlRem(rule.desc) + '</p>' +
                         rat +
                     '</div>';
+                if (rule.fix) det.querySelector('.ct-rem-detail-body').appendChild(buildFixBlock(rule, remPath));
                 item.appendChild(det);
             }
 
@@ -1440,7 +1451,8 @@ function renderRemediationRules(rules) {
     buildRemPanelDOM(
         document.getElementById('ct-remediation-rules'),
         rules,
-        updateRemediationCount
+        updateRemediationCount,
+        currentRemBashPath
     );
     updateAdminControls();
 
@@ -1935,6 +1947,44 @@ function onFailingSummarySearch(groupsId, searchId) {
     });
 }
 
+const FIX_CAP = 600;
+
+function buildFixBlock(r, remPath) {
+    const remDetails = document.createElement('details');
+    remDetails.className = 'ct-rule-rem-details';
+    const remSummary = document.createElement('summary');
+    remSummary.className = 'ct-rule-rem-summary';
+    remSummary.textContent = 'Remediation Script';
+    remDetails.appendChild(remSummary);
+    const capped = r.fix.length > FIX_CAP;
+    const pre = document.createElement('pre');
+    pre.className = 'ct-rule-rem-pre';
+    pre.textContent = capped ? r.fix.slice(0, FIX_CAP) + '\n…' : r.fix;
+    remDetails.appendChild(pre);
+    if (capped && remPath) {
+        const dlBtn = document.createElement('button');
+        dlBtn.className = 'pf-v6-c-button pf-m-link ct-rule-rem-dl';
+        dlBtn.type = 'button';
+        dlBtn.textContent = 'Download full fix script';
+        dlBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            cockpit.spawn(['python3', '-c', PY_FILTER_FIX, remPath, 'bash', JSON.stringify([r.id])], { err: 'message' })
+                .then(output => {
+                    const blob = new Blob([output], { type: 'text/x-shellscript' });
+                    const url  = URL.createObjectURL(blob);
+                    const a    = document.createElement('a');
+                    a.href     = url;
+                    a.download = 'fix-' + (r.cce || r.id.split('_').pop()) + '.sh';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                })
+                .catch(() => {});
+        });
+        remDetails.appendChild(dlBtn);
+    }
+    return remDetails;
+}
+
 function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, searchId) {
     const groupsEl  = document.getElementById(groupsId);
     const loadingEl = document.getElementById(loadingId);
@@ -1942,7 +1992,9 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, sear
     loadingEl.classList.remove('hidden');
     if (searchId) {
         const s = document.getElementById(searchId);
-        if (s) { s.value = ''; s.classList.add('hidden'); }
+        if (s) { s.value = ''; }
+        const ctrl = document.getElementById(searchId.replace('-search', '-controls'));
+        if (ctrl) ctrl.classList.add('hidden');
     }
 
     const spawnArgs = remPath
@@ -1971,7 +2023,7 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, sear
                 const ruleList = document.createElement('div');
                 ruleList.className = 'ct-failing-rule-list';
                 list.forEach(r => {
-                    const hasExpand = !!r.desc;
+                    const hasExpand = !!(r.desc || r.fix);
                     const wrapper = hasExpand
                         ? document.createElement('details')
                         : document.createElement('div');
@@ -2024,6 +2076,9 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, sear
                             body.appendChild(ratLabel);
                             body.appendChild(rat);
                         }
+                        if (r.fix) {
+                            body.appendChild(buildFixBlock(r, remPath));
+                        }
                         wrapper.appendChild(body);
                     }
                     ruleList.appendChild(wrapper);
@@ -2032,8 +2087,8 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, sear
                 groupsEl.appendChild(details);
             });
             if (searchId) {
-                const s = document.getElementById(searchId);
-                if (s) s.classList.remove('hidden');
+                const ctrl = document.getElementById(searchId.replace('-search', '-controls'));
+                if (ctrl) ctrl.classList.remove('hidden');
             }
         })
         .catch(() => { loadingEl.classList.add('hidden'); });

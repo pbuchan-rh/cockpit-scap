@@ -154,6 +154,14 @@ function initContainerScan() {
         .addEventListener('input', onCsRemSearch);
     document.getElementById('cs-failing-search')
         .addEventListener('input', () => onFailingSummarySearch('cs-failing-summary-groups', 'cs-failing-search'));
+    document.getElementById('cs-expand-all')
+        .addEventListener('click', () =>
+            document.querySelectorAll('#cs-failing-summary-groups details.ct-failing-group')
+                .forEach(d => { d.open = true; }));
+    document.getElementById('cs-collapse-all')
+        .addEventListener('click', () =>
+            document.querySelectorAll('#cs-failing-summary-groups details.ct-failing-group')
+                .forEach(d => { d.open = false; }));
     document.getElementById('cs-rem-select-all-btn')
         .addEventListener('click', () => {
             document.querySelectorAll('#cs-remediation-rules .ct-rem-rule-item:not([style*="none"]) .ct-rem-checkbox')
@@ -1413,7 +1421,8 @@ function renderCsRemRules(rules) {
     buildRemPanelDOM(
         document.getElementById('cs-remediation-rules'),
         rules,
-        updateCsRemCount
+        updateCsRemCount,
+        csBashPath
     );
 
     if (csPendingQuickFix) {

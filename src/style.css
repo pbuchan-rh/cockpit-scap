@@ -949,8 +949,14 @@ code {
   margin-top: var(--ct-space-md);
 }
 
-.ct-failing-search {
+.ct-failing-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ct-space-md);
   margin-bottom: 10px;
+}
+
+.ct-failing-search {
   max-width: 360px;
   width: 100%;
 }
@@ -1099,6 +1105,43 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
   font-weight: 600;
   color: var(--ct-color-text);
   margin: var(--ct-space-sm) 0 2px;
+}
+
+.ct-rule-rem-details {
+  margin-top: var(--ct-space-sm);
+  border-top: 1px solid var(--ct-color-border);
+  padding-top: var(--ct-space-xs);
+}
+
+.ct-rule-rem-summary {
+  font-size: var(--ct-font-size-sm);
+  font-weight: 600;
+  color: var(--ct-color-text);
+  cursor: pointer;
+  user-select: none;
+  padding: 2px 0;
+}
+
+.ct-rule-rem-pre {
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: var(--ct-color-text-secondary);
+  background: var(--ct-color-bg-page);
+  border: 1px solid var(--ct-color-border);
+  border-radius: var(--ct-border-radius-sm, 4px);
+  padding: var(--ct-space-sm);
+  margin: var(--ct-space-xs) 0 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.ct-rule-rem-dl {
+  display: block;
+  margin-top: var(--ct-space-xs);
+  font-size: var(--ct-font-size-sm);
+  padding-left: 0;
 }
 
 .ct-rule-text-col {
