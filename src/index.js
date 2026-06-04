@@ -608,6 +608,13 @@ document.addEventListener('DOMContentLoaded', () => {
             e.target.value = '';
         });
 
+    /* History empty state — scroll to scan config */
+    document.getElementById('ct-history-empty-scan-btn')
+        .addEventListener('click', () => {
+            document.getElementById('ct-content-select').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('ct-content-select').focus();
+        });
+
     /* Content tab */
     document.getElementById('ct-content-refresh-btn')
         .addEventListener('click', () => { renderContentTab(); detectContent(); });
@@ -2644,7 +2651,10 @@ function buildHistoryRow(manifest) {
     const isUploaded = manifest.sds_file && manifest.sds_file.startsWith(CONTENT_BASE);
 
     const prev      = findPreviousScan(manifest, currentHostHistory);
-    const scoreText = (manifest.score || 0).toFixed(1) + '%';
+    const score     = manifest.score || 0;
+    const scoreText = score.toFixed(1) + '%';
+    // Thresholds: ≥90 = green, 70–89 = yellow, <70 = red (future: pull from settings)
+    const scoreCls  = score >= 90 ? 'ct-score-high' : score >= 70 ? 'ct-score-med' : 'ct-score-low';
     let   scoreDelta = '';
     if (prev && prev.score != null && manifest.score != null) {
         const d = parseFloat((manifest.score - prev.score).toFixed(1));
@@ -2660,7 +2670,7 @@ function buildHistoryRow(manifest) {
           title: isUploaded ? profileTitle + ' (custom: ' + (manifest.sds_file || '').split('/').pop() + ')' : profileTitle },
         { text: String(manifest.counts.pass), cls: 'ct-history-num-cell' },
         { text: String(manifest.counts.fail), cls: 'ct-history-num-cell' },
-        { text: scoreText,    cls: 'ct-history-num-cell', delta: scoreDelta },
+        { text: scoreText,    cls: 'ct-history-num-cell ' + scoreCls, delta: scoreDelta },
     ];
 
     cells.forEach(({ text, cls, title, delta }) => {
@@ -4020,11 +4030,38 @@ function renderSystemContentList() {
 
 function renderUserContentList() {
     const container = document.getElementById('ct-user-content-list');
+
+    function buildTable() {
+        const table = document.createElement('table');
+        table.className = 'pf-v6-c-table pf-m-compact';
+        table.setAttribute('role', 'grid');
+        table.setAttribute('aria-label', 'Uploaded SCAP content');
+        const thead = table.createTHead();
+        const hr = thead.insertRow();
+        hr.setAttribute('role', 'row');
+        ['Name', 'File', 'Size', 'Version', 'Actions'].forEach(h => {
+            const th = document.createElement('th');
+            th.setAttribute('role', 'columnheader');
+            th.scope = 'col';
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        return table;
+    }
+
     cockpit.spawn(['ls', CONTENT_BASE], { err: 'message' })
         .then(output => {
             const files = output.trim().split('\n').filter(f => f.endsWith('.xml'));
             if (files.length === 0) {
-                container.innerHTML = '<p class="ct-content-empty">No SDS files found. Stage files using the instructions above, then click Refresh.</p>';
+                const table = buildTable();
+                const tbody = table.createTBody();
+                const tr = tbody.insertRow();
+                const td = tr.insertCell();
+                td.colSpan = 5;
+                td.className = 'ct-content-empty';
+                td.textContent = 'No SDS files found. Stage files using the instructions above, then click Refresh.';
+                container.innerHTML = '';
+                container.appendChild(table);
                 return;
             }
             const entries = files.map(f => ({
@@ -4045,20 +4082,7 @@ function renderUserContentList() {
                         .catch(() => { e.sizeMB = '—'; e.version = '?'; })
                 )
             ).then(() => {
-                const table = document.createElement('table');
-                table.className = 'pf-v6-c-table pf-m-compact';
-                table.setAttribute('role', 'grid');
-                table.setAttribute('aria-label', 'Uploaded SCAP content');
-                const thead = table.createTHead();
-                const hr = thead.insertRow();
-                hr.setAttribute('role', 'row');
-                ['Name', 'File', 'Size', 'Version', 'Actions'].forEach(h => {
-                    const th = document.createElement('th');
-                    th.setAttribute('role', 'columnheader');
-                    th.scope = 'col';
-                    th.textContent = h;
-                    hr.appendChild(th);
-                });
+                const table = buildTable();
                 const tbody = table.createTBody();
                 entries.forEach(e => {
                     const tr  = tbody.insertRow();

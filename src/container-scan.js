@@ -57,6 +57,11 @@ function initContainerScan() {
         .addEventListener('click', onCsViewGuideClick);
     document.getElementById('cs-export-csv-btn')
         .addEventListener('click', exportCsHistoryCSV);
+    document.getElementById('cs-history-empty-scan-btn')
+        .addEventListener('click', () => {
+            document.getElementById('cs-image-input').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('cs-image-input').focus();
+        });
     document.getElementById('cs-cancel-btn')
         .addEventListener('click', onCsCancelClick);
     document.getElementById('cs-view-report-btn')
@@ -994,7 +999,10 @@ function csBuildHistoryRow(manifest) {
 
     const target       = csShortImageName(manifest.image_name || manifest.image_id);
     const profileTitle = manifest.profile_title || '—';
-    const scoreText    = (manifest.score || 0).toFixed(1) + '%';
+    const csScore      = manifest.score || 0;
+    const scoreText    = csScore.toFixed(1) + '%';
+    // Thresholds: ≥90 = green, 70–89 = yellow, <70 = red (future: pull from settings)
+    const scoreCls     = csScore >= 90 ? 'ct-score-high' : csScore >= 70 ? 'ct-score-med' : 'ct-score-low';
 
     [
         { text: date,         cls: 'ct-history-date-cell' },
@@ -1002,7 +1010,7 @@ function csBuildHistoryRow(manifest) {
         { text: profileTitle, cls: 'ct-history-profile-cell', title: profileTitle },
         { text: String(manifest.counts.pass), cls: 'ct-history-num-cell' },
         { text: String(manifest.counts.fail), cls: 'ct-history-num-cell' },
-        { text: scoreText,    cls: 'ct-history-num-cell' },
+        { text: scoreText,    cls: 'ct-history-num-cell ' + scoreCls },
     ].forEach(({ text, cls, title }) => {
         const td = document.createElement('td');
         td.textContent = text;
