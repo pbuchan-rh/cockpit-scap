@@ -1947,8 +1947,6 @@ function onFailingSummarySearch(groupsId, searchId) {
     });
 }
 
-const FIX_CAP = 600;
-
 function buildFixBlock(r, remPath) {
     const remDetails = document.createElement('details');
     remDetails.className = 'ct-rule-rem-details';
@@ -1956,31 +1954,38 @@ function buildFixBlock(r, remPath) {
     remSummary.className = 'ct-rule-rem-summary';
     remSummary.textContent = 'Remediation Script';
     remDetails.appendChild(remSummary);
-    const capped = r.fix.length > FIX_CAP;
     const pre = document.createElement('pre');
     pre.className = 'ct-rule-rem-pre';
-    pre.textContent = capped ? r.fix.slice(0, FIX_CAP) + '\n…' : r.fix;
+    pre.textContent = r.fix;
     remDetails.appendChild(pre);
-    if (capped && remPath) {
-        const dlBtn = document.createElement('button');
-        dlBtn.className = 'pf-v6-c-button pf-m-link ct-rule-rem-dl';
-        dlBtn.type = 'button';
-        dlBtn.textContent = 'Download full fix script';
-        dlBtn.addEventListener('click', e => {
-            e.stopPropagation();
-            cockpit.spawn(['python3', '-c', PY_FILTER_FIX, remPath, 'bash', JSON.stringify([r.id])], { err: 'message' })
-                .then(output => {
-                    const blob = new Blob([output], { type: 'text/x-shellscript' });
-                    const url  = URL.createObjectURL(blob);
-                    const a    = document.createElement('a');
-                    a.href     = url;
-                    a.download = 'fix-' + (r.cce || r.id.split('_').pop()) + '.sh';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                })
-                .catch(() => {});
+    if (remPath) {
+        const dlRow = document.createElement('div');
+        dlRow.className = 'ct-rule-rem-dl-row';
+        [['bash', 'Download .sh', 'text/x-shellscript', '.sh'],
+         ['ansible', 'Download .yml', 'text/yaml', '.yml']
+        ].forEach(([fixType, label, mime, ext]) => {
+            const btn = document.createElement('button');
+            btn.className = 'pf-v6-c-button pf-m-link ct-rule-rem-dl';
+            btn.type = 'button';
+            btn.textContent = label;
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const remFile = fixType === 'bash' ? remPath : remPath.replace('.sh', '.yml');
+                cockpit.spawn(['python3', '-c', PY_FILTER_FIX, remFile, fixType, JSON.stringify([r.id])], { err: 'message' })
+                    .then(output => {
+                        const blob = new Blob([output], { type: mime });
+                        const url  = URL.createObjectURL(blob);
+                        const a    = document.createElement('a');
+                        a.href     = url;
+                        a.download = 'fix-' + (r.cce || r.id.split('_').pop()) + ext;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    })
+                    .catch(() => {});
+            });
+            dlRow.appendChild(btn);
         });
-        remDetails.appendChild(dlBtn);
+        remDetails.appendChild(dlRow);
     }
     return remDetails;
 }

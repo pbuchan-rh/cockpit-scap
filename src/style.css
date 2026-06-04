@@ -1137,9 +1137,13 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
   overflow-y: auto;
 }
 
-.ct-rule-rem-dl {
-  display: block;
+.ct-rule-rem-dl-row {
+  display: flex;
+  gap: var(--ct-space-sm);
   margin-top: var(--ct-space-xs);
+}
+
+.ct-rule-rem-dl {
   font-size: var(--ct-font-size-sm);
   padding-left: 0;
 }
