@@ -1919,21 +1919,21 @@ details.ct-tailor-group .ct-tailor-rule {
 .ct-score-delta-up {
   margin-left: 0.375rem;
   font-size: 0.8125rem;
-  color: var(--pf-global--success-color--100);
+  color: var(--ct-color-success);
   font-variant-numeric: tabular-nums;
 }
 
 .ct-score-delta-down {
   margin-left: 0.375rem;
   font-size: 0.8125rem;
-  color: var(--pf-global--danger-color--100);
+  color: var(--ct-color-danger);
   font-variant-numeric: tabular-nums;
 }
 
 /* Score color coding — thresholds: ≥90 green, 70–89 yellow, <70 red */
-.ct-score-high { color: var(--pf-global--success-color--100); font-weight: 600; }
-.ct-score-med  { color: var(--pf-global--warning-color--100); font-weight: 600; }
-.ct-score-low  { color: var(--pf-global--danger-color--100);  font-weight: 600; }
+.ct-score-high { color: var(--ct-color-success); font-weight: 600; }
+.ct-score-med  { color: var(--ct-color-warning); font-weight: 600; }
+.ct-score-low  { color: var(--ct-color-danger);  font-weight: 600; }
 
 .ct-content-help {
   color: var(--ct-color-text-secondary);
