@@ -995,9 +995,11 @@ code {
 
 details[open] .ct-failing-group-summary::before { content: '▼ '; }
 
-.ct-failing-group-high   .ct-failing-group-summary { color: var(--ct-color-danger); }
-.ct-failing-group-medium .ct-failing-group-summary { color: var(--ct-color-warning); }
-.ct-failing-group-low    .ct-failing-group-summary { color: var(--ct-color-text-secondary); }
+.ct-failing-group-high        .ct-failing-group-summary { color: var(--ct-color-danger); }
+.ct-failing-group-medium      .ct-failing-group-summary { color: var(--ct-color-warning); }
+.ct-failing-group-low         .ct-failing-group-summary { color: var(--ct-color-text-secondary); }
+.ct-failing-group-error       .ct-failing-group-summary { color: var(--pf-v6-global--warning-color--100, #f0ab00); }
+.ct-failing-group-notchecked  .ct-failing-group-summary { color: var(--ct-color-text-secondary); }
 
 .ct-failing-rule-list {
   margin: var(--ct-space-xs) 0 0;
@@ -1163,6 +1165,38 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
   font-size: 0.75rem;
   color: var(--ct-color-text-secondary);
   line-height: 1.3;
+}
+
+.ct-rule-msg {
+  font-size: 0.75rem;
+  color: var(--ct-color-text-secondary);
+  font-style: italic;
+  line-height: 1.3;
+}
+
+.ct-rule-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: var(--ct-space-xs) 0;
+}
+
+.ct-rule-ref-chip {
+  font-size: 0.72rem;
+  background: var(--ct-color-bg-page);
+  border: 1px solid var(--ct-color-border);
+  border-radius: 3px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+.ct-rule-ref-chip a {
+  color: var(--pf-v6-global--primary-color--100, #06c);
+  text-decoration: none;
+}
+
+.ct-rule-ref-chip a:hover {
+  text-decoration: underline;
 }
 
 /* ---- Full-screen report overlay ----------------------------- */

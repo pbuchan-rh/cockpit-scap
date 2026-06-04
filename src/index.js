@@ -117,7 +117,9 @@ const PY_EXTRACT_PROFILE = [
  * Output: JSON [{id, title, severity}] sorted high→medium→low */
 const PY_EXTRACT_FAILING_RULES = [
     'import sys, json, re, xml.etree.ElementTree as ET',
+    'from collections import defaultdict',
     'NS = "http://checklists.nist.gov/xccdf/1.2"',
+    'REF_KEEP = [("800-53","NIST 800-53"),("800-171","NIST 800-171"),("cswp","NIST CSF"),("pcisecuritystandards.org","PCI-DSS"),("docs-prv.pci","PCI-DSS"),("cyber.mil/stigs","DISA"),("iase.disa.mil","DISA"),("cisecurity.org/benchmark","CIS Benchmark"),("cisecurity.org/controls","CIS Controls")]',
     'tree = ET.parse(sys.argv[1])',
     'root = tree.getroot()',
     'rinfo = {}',
@@ -132,27 +134,44 @@ const PY_EXTRACT_FAILING_RULES = [
     '    rat  = " ".join("".join(r_el.itertext()).split()) if r_el is not None else ""',
     '    fx_el = next((f for f in rule.findall("{%s}fix" % NS) if "sh" in (f.get("system","") or "")), None)',
     '    fix  = "".join(fx_el.itertext()).strip() if fx_el is not None else ""',
-    '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity", "unknown"), cce, desc, rat, float(rule.get("weight", "1.0")), fix)',
+    '    rb = defaultdict(list); rh = {}',
+    '    for ref in rule.findall("{%s}reference" % NS):',
+    '        href = ref.get("href",""); text = (ref.text or "").strip()',
+    '        if not text: continue',
+    '        hl = href.lower()',
+    '        for pat, lbl in REF_KEEP:',
+    '            if pat in hl:',
+    '                if lbl not in rh: rh[lbl] = href',
+    '                rb[lbl].append(text); break',
+    '    refs = [{"label":lbl,"href":rh[lbl],"values":rb[lbl]} for lbl in rb]',
+    '    rinfo[rid] = (t.text.strip() if t is not None else rid, rule.get("severity","unknown"), cce, desc, rat, float(rule.get("weight","1.0")), fix, refs)',
     'has_rem = False; auto_rules = set()',
     'if len(sys.argv) > 2:',
     '    try:',
     '        auto_rules = set(re.findall(r"# BEGIN fix \\([^)]+\\) for \'([^\']+)\'", open(sys.argv[2]).read()))',
     '        has_rem = True',
     '    except: pass',
-    'fails = []; seen = set()',
+    'fails = []; errors = []; notchecked = []; seen = set()',
     'for rr in root.iter("{%s}rule-result" % NS):',
     '    r = rr.find("{%s}result" % NS)',
-    '    if r is not None and r.text == "fail":',
-    '        rid = rr.get("idref", "")',
-    '        if rid in seen: continue',
-    '        seen.add(rid)',
-    '        t, s, cce, desc, rat, w, fix = rinfo.get(rid, (rid, rr.get("severity", "unknown"), "", "", "", 1.0, ""))',
-    '        rule = {"id": rid, "title": t, "severity": s, "cce": cce, "desc": desc, "rat": rat, "weight": w, "fix": fix}',
-    '        if has_rem: rule["automated"] = rid in auto_rules',
-    '        fails.append(rule)',
+    '    if r is None: continue',
+    '    res = r.text; rid = rr.get("idref","")',
+    '    if rid in seen: continue',
+    '    seen.add(rid)',
+    '    msg_el = rr.find("{%s}message" % NS)',
+    '    msg = (msg_el.text or "").strip() if msg_el is not None else ""',
+    '    t, s, cce, desc, rat, w, fix, refs = rinfo.get(rid, (rid, rr.get("severity","unknown"), "", "", "", 1.0, "", []))',
+    '    if res == "fail":',
+    '        rule_obj = {"id":rid,"title":t,"severity":s,"cce":cce,"desc":desc,"rat":rat,"weight":w,"fix":fix,"refs":refs}',
+    '        if has_rem: rule_obj["automated"] = rid in auto_rules',
+    '        fails.append(rule_obj)',
+    '    elif res == "error":',
+    '        errors.append({"id":rid,"title":t,"severity":s,"cce":cce,"message":msg})',
+    '    elif res == "notchecked":',
+    '        notchecked.append({"id":rid,"title":t,"severity":s,"cce":cce,"message":msg})',
     'order = {"high":0,"medium":1,"low":2}',
-    'fails.sort(key=lambda x: (order.get(x["severity"], 3), x["title"].lower()))',
-    'print(json.dumps(fails))',
+    'fails.sort(key=lambda x:(order.get(x["severity"],3),x["title"].lower()))',
+    'print(json.dumps({"fails":fails,"errors":errors,"notchecked":notchecked}))',
 ].join('\n');
 
 /* Python script: diff two results.xml files.
@@ -1361,7 +1380,7 @@ function openRemediationPanel(resultsDir) {
     if (remBashForDir) spawnArgs.push(remBashForDir);
     cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...spawnArgs],
                   { err: 'message' })
-        .then(output => showRules(JSON.parse(output)))
+        .then(output => { const d = JSON.parse(output); showRules(d.fails || d); })
         .catch(err => {
             pendingQuickFix = false;
             document.getElementById('ct-remediation-loading').classList.add('hidden');
@@ -1947,6 +1966,28 @@ function onFailingSummarySearch(groupsId, searchId) {
     });
 }
 
+function buildRefsEl(refs) {
+    if (!refs || !refs.length) return null;
+    const el = document.createElement('div');
+    el.className = 'ct-rule-refs';
+    refs.forEach(ref => {
+        const chip = document.createElement('span');
+        chip.className = 'ct-rule-ref-chip';
+        const a = document.createElement('a');
+        a.href = ref.href;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = ref.label;
+        chip.appendChild(a);
+        const MAX = 3;
+        const vals = ref.values.slice(0, MAX);
+        const extra = ref.values.length - MAX;
+        chip.appendChild(document.createTextNode(': ' + vals.join(', ') + (extra > 0 ? ' +' + extra + ' more' : '')));
+        el.appendChild(chip);
+    });
+    return el;
+}
+
 function buildFixBlock(r, remPath) {
     const remDetails = document.createElement('details');
     remDetails.className = 'ct-rule-rem-details';
@@ -2008,7 +2049,10 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, sear
     cockpit.spawn(spawnArgs, { err: 'message' })
         .then(output => {
             loadingEl.classList.add('hidden');
-            const rules = JSON.parse(output);
+            const data = JSON.parse(output);
+            const rules = data.fails || data;
+            const errorRules = data.errors || [];
+            const notcheckedRules = data.notchecked || [];
             const buckets = { high: [], medium: [], low: [] };
             rules.forEach(r => {
                 const sev = r.severity.toLowerCase();
@@ -2081,11 +2125,54 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, sear
                             body.appendChild(ratLabel);
                             body.appendChild(rat);
                         }
+                        const refsEl = buildRefsEl(r.refs);
+                        if (refsEl) body.appendChild(refsEl);
                         if (r.fix) {
                             body.appendChild(buildFixBlock(r, remPath));
                         }
                         wrapper.appendChild(body);
                     }
+                    ruleList.appendChild(wrapper);
+                });
+                details.appendChild(ruleList);
+                groupsEl.appendChild(details);
+            });
+            [['error', 'ERRORS'], ['notchecked', 'NOT CHECKED']].forEach(([type, label]) => {
+                const list = type === 'error' ? errorRules : notcheckedRules;
+                if (!list.length) return;
+                const details = document.createElement('details');
+                details.className = 'ct-failing-group ct-failing-group-' + type;
+                const summary = document.createElement('summary');
+                summary.className = 'ct-failing-group-summary';
+                summary.textContent = label + ' — ' + list.length + ' rule' + (list.length === 1 ? '' : 's');
+                details.appendChild(summary);
+                const ruleList = document.createElement('div');
+                ruleList.className = 'ct-failing-rule-list';
+                list.forEach(r => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'ct-rule-item';
+                    const row = document.createElement('div');
+                    row.className = 'ct-failing-rule-row';
+                    const textCol = document.createElement('div');
+                    textCol.className = 'ct-rule-text-col';
+                    const title = document.createElement('span');
+                    title.className = 'ct-rule-title';
+                    title.textContent = r.title;
+                    textCol.appendChild(title);
+                    if (r.cce) {
+                        const cce = document.createElement('span');
+                        cce.className = 'ct-rule-cce';
+                        cce.textContent = r.cce;
+                        textCol.appendChild(cce);
+                    }
+                    if (r.message) {
+                        const msg = document.createElement('span');
+                        msg.className = 'ct-rule-msg';
+                        msg.textContent = r.message;
+                        textCol.appendChild(msg);
+                    }
+                    row.appendChild(textCol);
+                    wrapper.appendChild(row);
                     ruleList.appendChild(wrapper);
                 });
                 details.appendChild(ruleList);
@@ -2312,7 +2399,7 @@ function showResults(manifest) {
     if (currentRemBashPath) eagerArgs.push(currentRemBashPath);
     cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...eagerArgs], { err: 'message' })
         .then(output => {
-            eagerRemRules = JSON.parse(output);
+            const d = JSON.parse(output); eagerRemRules = d.fails || d;
             const highCritRules = eagerRemRules.filter(r => ['high','critical'].includes(r.severity) && r.automated);
             const medRules      = eagerRemRules.filter(r => r.severity === 'medium' && r.automated);
             quickFixMode        = highCritRules.length > 0 ? 'high' : 'medium';

@@ -953,7 +953,7 @@ function csShowResults(manifest) {
     cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...csEagerArgs],
         { err: 'message' })
         .then(output => {
-            csEagerRemRules = JSON.parse(output);
+            const d = JSON.parse(output); csEagerRemRules = d.fails || d;
             const recCount = csEagerRemRules.filter(r => ['high','critical'].includes(r.severity) && r.automated).length;
             updateCsActionBoard(csSev, counts.fail, recCount);
         })
@@ -1403,7 +1403,7 @@ function openCsRemPanel(resultsDir) {
     cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...csLazyArgs],
                   { err: 'message' })
         .then(output => {
-            csRemRules = JSON.parse(output);
+            const d = JSON.parse(output); csRemRules = d.fails || d;
             document.getElementById('cs-remediation-loading').classList.add('hidden');
             renderCsRemRules(csRemRules);
             document.getElementById('cs-remediation-content').classList.remove('hidden');
