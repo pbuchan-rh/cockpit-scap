@@ -665,6 +665,11 @@ code {
   letter-spacing: 0.02em;
 }
 
+.ct-results-version {
+  font-size: var(--ct-font-size-sm);
+  color: var(--ct-color-text-secondary);
+}
+
 .ct-results-target {
   font-size: 0.85rem;
   font-weight: 600;

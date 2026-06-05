@@ -319,6 +319,7 @@ const PY_FILTER_FIX = [
 
 /* Module state — scan */
 let currentSdsPath        = null;
+let currentSdsVersion     = null;
 let currentScanProc       = null;
 let currentTimestamp      = null;
 let currentResultsDir     = null;
@@ -799,21 +800,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('ct-activity-tbody').addEventListener('click', e => {
-        const btn = e.target.closest('.ct-activity-view-log');
+        const viewBtn = e.target.closest('.ct-activity-view-log');
+        const dlBtn   = e.target.closest('.ct-activity-download-log');
+        const btn     = viewBtn || dlBtn;
         if (!btn) return;
         const logPath = btn.dataset.logPath;
         if (!logPath) return;
         if (!normalizePath(logPath).startsWith(REMEDIATION_LOG_BASE)) return;
         cockpit.file(logPath, { superuser: 'require' }).read()
             .then(content => {
+                if (dlBtn) {
+                    const blob = new Blob([content || ''], { type: 'text/plain' });
+                    const url  = URL.createObjectURL(blob);
+                    const a    = document.createElement('a');
+                    a.href     = url;
+                    a.download = logPath.split('/').pop();
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    return;
+                }
                 document.getElementById('ct-log-modal-path').textContent = logPath;
                 document.getElementById('ct-log-modal-content').textContent = content || '(empty)';
                 document.getElementById('ct-log-modal').classList.remove('hidden');
             })
             .catch(err => {
-                document.getElementById('ct-log-modal-path').textContent = logPath;
-                document.getElementById('ct-log-modal-content').textContent = 'Could not read log file:\n' + (err.message || String(err));
-                document.getElementById('ct-log-modal').classList.remove('hidden');
+                if (viewBtn) {
+                    document.getElementById('ct-log-modal-path').textContent = logPath;
+                    document.getElementById('ct-log-modal-content').textContent = 'Could not read log file:\n' + (err.message || String(err));
+                    document.getElementById('ct-log-modal').classList.remove('hidden');
+                }
             });
     });
 
@@ -1270,6 +1285,7 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 scan_id:              generateScanId(),
                 has_arf:              true,
                 compliance_threshold: tailorSc ? (tailorSc.compliance_threshold || 90) : null,
+                sds_version:          currentSdsVersion || null,
             };
             return cockpit.file(currentResultsDir + 'manifest.json', { superuser: 'require' })
                 .replace(JSON.stringify(manifest, null, 2))
@@ -2415,6 +2431,13 @@ function showResults(manifest) {
     } else {
         idEl.classList.add('hidden');
     }
+    const verEl = document.getElementById('ct-results-version');
+    if (manifest.sds_version) {
+        verEl.textContent = 'SSG ' + manifest.sds_version;
+        verEl.classList.remove('hidden');
+    } else {
+        verEl.classList.add('hidden');
+    }
 
     const badges = document.getElementById('ct-result-badges');
     badges.innerHTML = '';
@@ -2640,6 +2663,18 @@ function showScanProgress() {
     document.getElementById('ct-scan-ctx-policy').textContent =
         _tailEl.value ? (_tailEl.options[_tailEl.selectedIndex]?.text || '—') : '—';
     document.getElementById('ct-scan-ctx-target').textContent = hostName || 'Local host';
+    document.getElementById('ct-scan-ctx-version').textContent = '…';
+    currentSdsVersion = null;
+    if (currentSdsPath) {
+        cockpit.spawn(['python3', '-c', PY_SDS_VERSION, currentSdsPath], { err: 'ignore' })
+            .then(out => {
+                currentSdsVersion = (out.trim().split(' ')[1]) || null;
+                document.getElementById('ct-scan-ctx-version').textContent = currentSdsVersion || '—';
+            })
+            .catch(() => { document.getElementById('ct-scan-ctx-version').textContent = '—'; });
+    } else {
+        document.getElementById('ct-scan-ctx-version').textContent = '—';
+    }
     const _tailVal   = _tailEl.value;
     const _profileId = (_tailVal && tailoringFilesMap[_tailVal])
         ? tailoringFilesMap[_tailVal].profile_id
@@ -4851,10 +4886,11 @@ const ACTIVITY_BADGE_CLASS = {
 };
 
 const ACTIVITY_FILTER_MAP = {
-    scan:      ['scan_start', 'scan_complete', 'scan_cancel', 'scan_error', 'scan_delete', 'remediate_download'],
-    guide:     ['guide'],
-    validate:  ['validate', 'content_delete', 'content_upload'],
-    tailoring: ['tailor_upload', 'tailor_load', 'tailor_save', 'tailor_delete', 'tailor_download'],
+    scan:        ['scan_start', 'scan_complete', 'scan_cancel', 'scan_error', 'scan_delete'],
+    remediation: ['remediate_apply', 'remediate_download'],
+    guide:       ['guide'],
+    validate:    ['validate', 'content_delete', 'content_upload'],
+    tailoring:   ['tailor_upload', 'tailor_load', 'tailor_save', 'tailor_delete', 'tailor_download'],
 };
 
 function startActivityPoll() {
@@ -4968,7 +5004,9 @@ function activityDetails(e) {
     if (e.type === 'remediate_apply') {
         const rulesText = esc(e.rules_applied + ' rule' + (e.rules_applied !== 1 ? 's' : '') + ' applied');
         if (e.log_path) {
-            return rulesText + ' &nbsp;<button class="pf-v6-c-button pf-m-link ct-activity-view-log" type="button" data-log-path="' + escapeAttr(e.log_path) + '">View Log</button>';
+            return rulesText +
+                ' &nbsp;<button class="pf-v6-c-button pf-m-link ct-activity-view-log" type="button" data-log-path="' + escapeAttr(e.log_path) + '">View Log</button>' +
+                ' <button class="pf-v6-c-button pf-m-link ct-activity-download-log" type="button" data-log-path="' + escapeAttr(e.log_path) + '">Download Log</button>';
         }
         return rulesText;
     }
