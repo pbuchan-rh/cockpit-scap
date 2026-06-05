@@ -1,7 +1,7 @@
 # cockpit-scap — Design Document
 
-**Status:** v3.5 released 2026-06-01  
-**Last updated:** 2026-06-01
+**Status:** v3.9-dev (in progress)  
+**Last updated:** 2026-06-05
 
 ---
 
@@ -45,9 +45,9 @@ scoped to scan execution only.
 
 ### Navigation Architecture
 
-**Current tab bar (v3.4):**
+**Current tab bar (v3.9):**
 ```
-[ Host Scan ]  [ Container Scan ]  [ Policy Tailoring ]  [ Content Library ]  [ Dashboard ]        Activity →
+[ Host Scan ]  [ Container Scan ]  [ Policy Tailoring ]  [ Content Library ]        Settings  Activity →
 ```
 
 Each tab is an independent workflow with shared infrastructure (content detection, tailoring files, history):
@@ -56,8 +56,9 @@ Each tab is an independent workflow with shared infrastructure (content detectio
 - **Container Scan** — `oscap-podman` workflow, root Podman image store, identical results/history to host scan
 - **Policy Tailoring** — full rule tree editor, variable editor, save/edit/update/delete tailoring files
 - **Content Library** — manage user-staged SDS files (stage via SCP), validate, delete
-- **Dashboard** — latest scan per host + container image, compliance score, delta vs previous *(preview)*
 - **Activity** — real-time action log, filter by type, export CSV, clear
+
+> **Dashboard tab — cut in v3.9:** A Compliance Dashboard was implemented as a Preview feature (v3.3–v3.8) but removed in v3.9. No clear UX direction emerged; the score trend chart and persistent failures card were useful but the overall design was not settled. If you have a dashboard UX proposal, open an issue with a mockup.
 
 **Original rationale (still holds):**
 Reflects the actual admin mental model — scan first, tailor carefully, remediate deliberately. Tabs are independent workflows; an admin can spend an entire session in Tailoring without ever scanning.
@@ -112,7 +113,7 @@ Reflects the actual admin mental model — scan first, tailor carefully, remedia
 
 **Results XML download:** Raw `results.xml` downloadable for auditor archives — available on results card and each history row.
 
-**Score donut:** Plain SVG arc. Arc length = compliance %. Color based on failure count: 0=green, 1–10=yellow, 11+=red. Score percentage in center. No library. See Score Donut design note above.
+**Score donut:** Plain SVG arc. Arc length = compliance %. Color is binary: green = at or above compliance threshold (default 90%), red = below. Score percentage in center. No library. See Score Donut design note below.
 
 **Failing rules summary:** Async-loaded below badges. Collapsible `<details>/<summary>` groups for HIGH/MEDIUM/LOW (HIGH expanded by default). Each rule shows title + CCE identifier as secondary text. Powered by `PY_EXTRACT_FAILING_RULES` (shared with Selective Remediation panel).
 
@@ -130,14 +131,15 @@ Reflects the actual admin mental model — scan first, tailor carefully, remedia
 
 **Per-scan directory contents:**
 ```
-manifest.json     # profile used, SDS path, counts, date, result-id
-report.html       # oscap HTML report
-results.xml       # oscap XML results (required for remediation generation)
+manifest.json     # profile used, SDS path, counts, date, result-id, threshold
+results.arf.gz    # compressed ARF bundle (~2 MB)
+results.xml       # oscap XML results (~15 MB; required for report gen + remediation)
 remediation.sh    # bash remediation script
 remediation.yml   # ansible remediation playbook
 ```
+Note: `report.html` is no longer stored. HTML reports are generated on demand when View/Download Report is clicked and served from `/tmp`.
 
-**manifest.json schema (v3.4):**
+**manifest.json schema (v3.9):**
 ```json
 {
   "timestamp": "2026-05-28T14-32-00",
@@ -146,14 +148,23 @@ remediation.yml   # ansible remediation playbook
   "profile_title": "CIS Red Hat Enterprise Linux 10 Benchmark for Level 2 - Server",
   "tailoring_file": "/var/lib/cockpit-scap/tailoring/my-tailoring.xml",
   "result_id": "xccdf_org.open-scap_testresult_...",
+  "scan_id": "cockpit-scap-20260528-143200",
   "scan_type": "host",
+  "scan_duration_s": 142.3,
   "scheduled": false,
+  "has_arf": true,
+  "compliance_threshold": 90,
   "counts": {
     "pass": 142,
     "fail": 38,
     "error": 2,
     "notchecked": 12,
     "notapplicable": 5
+  },
+  "severity_counts": {
+    "high": 4,
+    "medium": 22,
+    "low": 12
   },
   "score": 78.9
 }
@@ -292,10 +303,13 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 | **v1** ✅ | Local scanning + tailoring | Host scan, tailoring editor, SELinux, Makefile, COPR |
 | **v2** ✅ | Multi-version SDS content | RHEL 6–9 SDS staging, CPE OS detection, content management UI |
 | **v3** ✅ | Container image scanning | `oscap-podman` integration, root Podman store, version mismatch detection, per-image history |
-| **v3.3** ✅ | Selective remediation + observability | Selective Remediation Builder (host + container), Results XML download, Activity log, Compliance Dashboard (preview), Tailoring Update-in-place |
-| **v3.4** ✅ | UI polish release | Failing rules summary with CCE identifiers, score donut, View Scan from history, results card persistence, unified scan config card, close button; scheduled scanning deliberately deferred (see design note) |
-| **v3.5** ✅ | Actionability + audit trail | Apply Now (two-gate, live output, full audit log); remediation search + rule detail expansion; Settings tab (retention, tab visibility); activity log user field; admin gate hardening; container scan limited access parity; dashboard disabled by default (opt-in Preview) |
-| **v3.6** 🔲 | UX refinement | Gate 2 replace raw bash with structured rule list; remediation panel collapsed by default; download feedback; scan progress elapsed timer; activity log filter empty states; settings disk usage complete; clear all data button |
+| **v3.3** ✅ | Selective remediation + observability | Selective Remediation Builder (host + container), Results XML download, Activity log, Tailoring Update-in-place |
+| **v3.4** ✅ | UI polish | Failing rules summary with CCE identifiers, score donut, View Scan from history, unified scan config card |
+| **v3.5** ✅ | Actionability + audit trail | Apply Now (two-gate, live output, full audit log); Settings tab (retention, tab visibility); admin gate hardening |
+| **v3.6** ✅ | UX refinement | Gate 2 rule list, scan progress timer, settings disk usage, Clear All Data button |
+| **v3.7** ✅ | Action board + content | Action Board, severity weights, history score delta, Content Library → Settings, dry-run preview |
+| **v3.8** ✅ | Storage + export | ARF gzip (~2 MB compressed); report.html on-demand; scan ETA; full profile remediation; framework reference chips |
+| **v3.9** 🔲 | Compliance threshold + cleanup | Per-policy compliance threshold; binary donut color; all XCCDF result types; scan progress card redesign; dashboard cut; LGPL-2.1 license |
 
 **Explicitly out of scope (any version):**
 - Remote SSH scanning — different tool, different trust model
@@ -316,9 +330,9 @@ Displayed below the pass/fail/score badges, loaded asynchronously after the resu
 
 ### Score Donut
 
-Plain SVG arc (`stroke-dasharray` / `stroke-dashoffset` technique). Arc length = compliance %. Color based on failure count, not score percentage — because 80% compliance is not "good" for a security tool. Thresholds: 0 failures = green, 1–10 = yellow, 11+ = red. Score percentage shown in center text. No library.
+Plain SVG arc (`stroke-dasharray` / `stroke-dashoffset` technique). Arc length = compliance %. Color is binary: green = score at or above the policy's compliance threshold, red = below. Default threshold is 90%; per-policy thresholds are stored in the tailoring sidecar JSON and carried into `manifest.json` at scan time. Score percentage shown in center text. No library.
 
-**Why failure-count not score-based color:** A score-based threshold (e.g. ≥80% = green) implies 20% of failing security rules is acceptable. For a compliance tool targeting security hardening, any failures represent real risk. The failure count gives a more honest signal — 0 failures is the only clean state.
+**Why binary color:** A three-tier (green/yellow/red) scale implies that 70–89% is "cautionary but acceptable." For a compliance tool used by security-focused admins, partial compliance is either meeting the target or not — a yellow middle ground adds ambiguity without adding information. Binary maps cleanly to the compliance threshold concept already familiar from audit frameworks.
 
 ### View Scan / Results Persistence
 
@@ -400,7 +414,7 @@ The script must replicate the full JS scan completion path:
 2. Parse results.xml for counts and score (Python)
 3. Write `manifest.json` with `scan_type: "host"`, `scheduled: true`
 4. Run `oscap xccdf generate fix` for bash and ansible artifacts
-5. Prune host history to 10 entries
+5. Prune host history to configured retention limit (default 5)
 6. Append `scan_scheduled_complete` or `scan_scheduled_error` to `activity.log`
 7. Write `last_run`, `last_status`, `last_error` back to the schedule JSON
 

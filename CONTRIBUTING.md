@@ -1,6 +1,17 @@
 # Contributing to cockpit-scap
 
-Thanks for your interest in contributing. cockpit-scap is a community project and welcomes bug reports, feature requests, and pull requests.
+Thanks for your interest in contributing. cockpit-scap is a community project built to fill the gap left by SCAP Workbench on RHEL 10 — contributions of any size are welcome.
+
+## Good first contributions
+
+Not sure where to start? These areas are approachable without deep knowledge of the codebase:
+
+- **Bug reports** — if something breaks on your setup, open an issue (see below)
+- **Documentation** — typos, unclear steps, missing examples
+- **SCAP profile testing** — if you've run cockpit-scap against CIS, STIG, or PCI-DSS profiles and found issues, that's valuable feedback
+- **UI polish** — small visual improvements that follow the existing PatternFly 6 patterns
+
+For larger features, open an issue first to discuss scope before investing time in an implementation.
 
 ## Requirements
 
@@ -95,7 +106,7 @@ cockpit-scap/
 3. Open a pull request with a clear description of what the change does and why
 4. Include a screenshot or screen recording for any UI change
 
-For larger features or changes that affect scope, open an issue first to discuss the approach before investing time in an implementation.
+For larger features or changes that affect scope, open an issue first and reference [DESIGN.md](DESIGN.md) — it covers the project's goals and what's deliberately out of scope.
 
 ## Reporting bugs
 
@@ -106,13 +117,8 @@ Open a [GitHub issue](https://github.com/pbuchan-rh/cockpit-scap/issues) with:
 - What you expected vs. what happened
 - Browser console output if relevant (F12 → Console)
 
-## What this module does and does not do
-
-Before proposing a new feature, review [DESIGN.md](DESIGN.md) for the project's stated scope. In particular:
-
-- **In scope:** Local compliance scanning, profile tailoring, container image scanning, scan history and reporting
-- **Out of scope:** Remote SSH scanning, OVAL vulnerability scanning, Red Hat Insights/Satellite integration
+If you hit issues specifically on a CIS-hardened or STIG-hardened host, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md) first — some common breakages are documented there.
 
 ## License
 
-cockpit-scap is licensed under the [GNU General Public License v2.0 or later](LICENSE).
+cockpit-scap is licensed under the [GNU Lesser General Public License v2.1 or later](LICENSE).

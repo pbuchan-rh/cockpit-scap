@@ -209,13 +209,15 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 - **REQ-95:** ✅ The Activity tab MUST display log entries with semantic badge colors: blue=scan, red=delete/error, orange=remediation, teal=tailoring, yellow=validate
 - **REQ-96:** ✅ The Activity tab MUST support filter chips (All / Scans / Guide / Content / Tailoring), a limit selector, Export CSV, and Clear Log with confirmation
 
-### Compliance Dashboard (Preview)
+### Compliance Dashboard (Preview) — ~~CUT in v3.9~~
 
-- **REQ-97:** ✅ A Dashboard tab MUST show the latest scan result per host and per container image as status cards with compliance score, pass/fail counts, profile, content, and time since last scan
-- **REQ-98:** ✅ The host card MUST display the actual hostname; container cards MUST show the image name
-- **REQ-99:** ✅ Score delta vs previous scan MUST be shown (↑/↓) when available and ≥ 0.05% difference
-- **REQ-100:** ✅ Dashboard data MUST be cached on first load; a manual Refresh button reloads it; completing a new scan automatically invalidates the cache
-- **REQ-101:** ✅ The Dashboard tab MUST be marked as a preview feature
+> These requirements were implemented (v3.3–v3.8) and then removed in v3.9. No clear UX direction emerged. Kept here as a record of what was tried. If a dashboard is revisited, start from a fresh UX proposal rather than restoring this implementation.
+
+- **REQ-97:** ~~A Dashboard tab MUST show the latest scan result per host and per container image as status cards with compliance score, pass/fail counts, profile, content, and time since last scan~~
+- **REQ-98:** ~~The host card MUST display the actual hostname; container cards MUST show the image name~~
+- **REQ-99:** ~~Score delta vs previous scan MUST be shown (↑/↓) when available and ≥ 0.05% difference~~
+- **REQ-100:** ~~Dashboard data MUST be cached on first load; a manual Refresh button reloads it; completing a new scan automatically invalidates the cache~~
+- **REQ-101:** ~~The Dashboard tab MUST be marked as a preview feature~~
 
 ### Tailoring Update-in-place
 
@@ -329,23 +331,23 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 - **REQ-159:** ✅ The Selective Remediation panel MUST include a search bar filtering rules by title OR short rule ID; non-matching rules and empty severity groups MUST be hidden; Select All / Deselect All MUST respect the active search filter
 - **REQ-160:** ✅ Each rule in the Selective Remediation panel MUST include a collapsible Details section showing the rule description and rationale inline
 
-### Dashboard (v3.5 session)
+### Dashboard (v3.5 session) — ~~CUT in v3.9~~
 
-- **REQ-161:** ✅ The Dashboard MUST display a single full-width host compliance hero card showing the most recent host scan regardless of profile — not grouped per profile
-- **REQ-162:** ✅ The host compliance card MUST display a weighted risk score: `(high × 10) + (medium × 3) + (low × 1)`, color-coded red/yellow/green
-- **REQ-163:** ✅ The host compliance card MUST async-load and display the human-readable titles of all HIGH severity failing rules; each title MUST be clickable and navigate to View Last Scan; a loading state MUST be shown while the Python script runs
+- **REQ-161:** ~~The Dashboard MUST display a single full-width host compliance hero card showing the most recent host scan regardless of profile — not grouped per profile~~
+- **REQ-162:** ~~The host compliance card MUST display a weighted risk score: `(high × 10) + (medium × 3) + (low × 1)`, color-coded red/yellow/green~~
+- **REQ-163:** ~~The host compliance card MUST async-load and display the human-readable titles of all HIGH severity failing rules; each title MUST be clickable and navigate to View Last Scan; a loading state MUST be shown while the Python script runs~~
 
 ### Settings Tab (v3.5 session)
 
 - **REQ-164:** ✅ A Settings tab MUST appear left of Activity providing system-wide module configuration; settings MUST be stored in `/var/lib/cockpit-scap/settings.json` and apply to all Cockpit users on the host
-- **REQ-165:** ✅ Settings MUST include configurable scan result retention (1–50 scans, per scan type) and module feature toggles (Enable Container Scanning, Enable Dashboard); disabling a tab MUST hide it immediately and redirect if it is currently active; all controls MUST be admin-gated
+- **REQ-165:** ✅ Settings MUST include configurable scan result retention (1–50 scans, per scan type) and module feature toggles (Enable Container Scanning, Enable Policy Tailoring); disabling a tab MUST hide it immediately and redirect if it is currently active; all controls MUST be admin-gated *(Enable Dashboard toggle removed in v3.9)*
 
 ### v3.5 Release (2026-06-01)
 
 - **REQ-166:** ✅ Remediation audit log — Apply Now MUST write a structured log to `/var/lib/cockpit-scap/remediation-logs/` containing timestamp, user, profile, rules applied, exit code, and full bash output; Activity tab MUST show a View Log button linking to a modal log viewer
 - **REQ-167:** ✅ All significant events MUST be dispatched to the systemd journal via `logger -t cockpit-scap` with the authenticated username included
 - **REQ-168:** ✅ Activity log entries MUST record the authenticated Cockpit username in a `user` field
-- **REQ-169:** ✅ Dashboard MUST be disabled by default on fresh installs; Settings checkbox defaults to unchecked; existing installs with saved settings are unaffected
+- **REQ-169:** ~~Dashboard MUST be disabled by default on fresh installs; Settings checkbox defaults to unchecked; existing installs with saved settings are unaffected~~ *(cut in v3.9)*
 - **REQ-170:** ✅ `/var/lib/cockpit-scap/remediation-logs/` MUST be created by the RPM install and Makefile with correct SELinux context inherited from the wildcard fcontext rule
 
 ---
