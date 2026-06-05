@@ -12,7 +12,6 @@ A native [Cockpit](https://cockpit-project.org/) module for RHEL 10 / CentOS Str
 - **Policy tailoring** — XCCDF rule tree editor with variable adjustment and search; upload, download, edit, and delete saved tailoring files; active tailoring file included in remediation exports
 - **Scan history** — every result stored with score delta vs previous same-profile scan; reload any historical result or open it directly in the remediation drawer; configurable retention
 - **Export** — HTML report, XCCDF results XML, and ARF bundle per scan; compliance guide viewable for any profile; history exportable as CSV
-- **Compliance Dashboard** *(preview)* — score trend chart, risk score, severity breakdown, and unified critical findings with Quick Fix; rule detail drawer for any listed finding
 - **Settings** — tab visibility toggles, scan retention, Clear All Data, Content Library (system + uploaded SDS), and manual scheduling command for cron
 
 ## Screenshots
@@ -83,8 +82,8 @@ All runtime data is written to `/var/lib/cockpit-scap/`:
 /var/lib/cockpit-scap/
 ├── results/
 │   └── <TIMESTAMP>/          # One directory per scan
-│       ├── manifest.json     # Scan metadata (profile, SDS, score, timing)
-│       ├── results.arf.gz    # Compressed ARF bundle (~3 MB)
+│       ├── manifest.json     # Scan metadata (profile, SDS, score, timing, compliance threshold)
+│       ├── results.arf.gz    # Compressed ARF bundle (~2 MB)
 │       ├── results.xml       # oscap XML results (~15 MB; used for report gen + remediation)
 │       ├── remediation.sh    # Bash remediation script
 │       └── remediation.yml   # Ansible remediation playbook
@@ -97,7 +96,7 @@ All runtime data is written to `/var/lib/cockpit-scap/`:
     └── <TIMESTAMP>-<profile>.log  # Apply Now audit log (user, rules applied, exit code)
 ```
 
-HTML reports are generated on demand when **View Report** or **Download Report** is clicked — they are not stored on disk. Each scan uses approximately 18 MB on disk. Retention defaults to 10 results per scan type and is configurable via the Settings tab.
+HTML reports are generated on demand when **View Report** or **Download Report** is clicked — they are not stored on disk. Each scan uses approximately 18 MB on disk. Retention defaults to 5 results per scan type (~180 MB total at default) and is configurable via the Settings tab.
 
 Scan history is pruned automatically after each scan.
 

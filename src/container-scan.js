@@ -968,7 +968,6 @@ function csShowResults(manifest) {
                          'cs-failing-summary-groups', 'cs-failing-summary-loading',
                          csBashPath || null, 'cs-failing-search');
     csLoadHistory();
-    dbInvalidate();
 
     const csSev = Object.assign({ high: 0, medium: 0, low: 0 }, manifest.severity_counts || {});
     csEagerRemRules = null;

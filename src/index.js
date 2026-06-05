@@ -27,7 +27,6 @@ const RETENTION_MAX      = 50;
 let   hostRetention        = RETENTION_DEFAULT;
 let   containerRetention   = RETENTION_DEFAULT;
 let   containerScanEnabled  = false;
-let   dashboardEnabled      = false;
 let   tailoringEnabled      = true;
 
 const PERSISTENCE_CACHE_PATH = '/var/lib/cockpit-scap/persistence-cache.json';
@@ -384,7 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
     detectTailoringFiles();
     renderContentTab();
     initContainerScan();
-    initDashboard();
     initSettings();
 
     /* Scan tab */
@@ -2504,7 +2502,6 @@ function showResults(manifest) {
         .catch(() => updateActionBoard(sev, counts.fail, 0));
 
     loadHistory();
-    dbInvalidate();
 }
 
 /* ---- Report / artifact actions ----------------------------- */
@@ -3018,7 +3015,6 @@ function onDeleteHistoryEntry(manifest) {
                 .then(() => {
                     appendActivityLog({ type: 'scan_delete', tab: 'host', content: manifest.sds_file, profile: manifest.profile_id });
                     loadHistory();
-                    dbInvalidate();
                 })
                 .catch(err => console.error('Failed to delete scan:', err.message || err));
         }
@@ -4526,8 +4522,6 @@ function loadSettings() {
                 containerRetention = Math.min(s.container_retention, RETENTION_MAX);
             if (typeof s.container_scan_enabled === 'boolean')
                 containerScanEnabled = s.container_scan_enabled;
-            if (typeof s.dashboard_enabled === 'boolean')
-                dashboardEnabled = s.dashboard_enabled;
             if (typeof s.tailoring_enabled === 'boolean')
                 tailoringEnabled = s.tailoring_enabled;
         })
@@ -4538,15 +4532,12 @@ function loadSettings() {
 function applyTabVisibility() {
     document.getElementById('tab-btn-container-scan').closest('li')
         .classList.toggle('hidden', !containerScanEnabled);
-    document.getElementById('tab-btn-dashboard').closest('li')
-        .classList.toggle('hidden', !dashboardEnabled);
     document.getElementById('tab-btn-tailoring').closest('li')
         .classList.toggle('hidden', !tailoringEnabled);
 
     const cActive = document.getElementById('tab-btn-container-scan').getAttribute('aria-selected') === 'true';
-    const dActive = document.getElementById('tab-btn-dashboard').getAttribute('aria-selected') === 'true';
     const tActive = document.getElementById('tab-btn-tailoring').getAttribute('aria-selected') === 'true';
-    if ((!containerScanEnabled && cActive) || (!dashboardEnabled && dActive) || (!tailoringEnabled && tActive))
+    if ((!containerScanEnabled && cActive) || (!tailoringEnabled && tActive))
         document.getElementById('tab-btn-scan').click();
 }
 
@@ -4587,7 +4578,6 @@ function onSettingsTabOpen() {
     document.getElementById('ct-setting-host-retention').value          = hostRetention;
     document.getElementById('ct-setting-container-retention').value     = containerRetention;
     document.getElementById('ct-setting-container-enabled').checked     = containerScanEnabled;
-    document.getElementById('ct-setting-dashboard-enabled').checked     = dashboardEnabled;
     document.getElementById('ct-setting-tailoring-enabled').checked     = tailoringEnabled;
     document.getElementById('ct-settings-warn').classList.add('hidden');
     document.getElementById('ct-settings-saved').classList.add('hidden');
@@ -4658,20 +4648,17 @@ function saveSettings() {
     cInput.value = cVal;
 
     const ceVal = document.getElementById('ct-setting-container-enabled').checked;
-    const deVal = document.getElementById('ct-setting-dashboard-enabled').checked;
     const teVal = document.getElementById('ct-setting-tailoring-enabled').checked;
 
     const prevHost      = hostRetention;
     const prevContainer = containerRetention;
     const prevCe        = containerScanEnabled;
-    const prevDe        = dashboardEnabled;
     const prevTe        = tailoringEnabled;
 
     const newSettings = JSON.stringify({
         host_retention:         hVal,
         container_retention:    cVal,
         container_scan_enabled: ceVal,
-        dashboard_enabled:      deVal,
         tailoring_enabled:      teVal,
     }, null, 2);
 
@@ -4683,7 +4670,6 @@ function saveSettings() {
             hostRetention        = hVal;
             containerRetention   = cVal;
             containerScanEnabled = ceVal;
-            dashboardEnabled     = deVal;
             tailoringEnabled     = teVal;
             applyTabVisibility();
             return Promise.all([
@@ -4696,7 +4682,6 @@ function saveSettings() {
             if (hVal  !== prevHost)      parts.push('host retention: ' + prevHost + ' → ' + hVal);
             if (cVal  !== prevContainer) parts.push('container retention: ' + prevContainer + ' → ' + cVal);
             if (ceVal !== prevCe)        parts.push('container scan: ' + (ceVal ? 'enabled' : 'disabled'));
-            if (deVal !== prevDe)        parts.push('dashboard: ' + (deVal ? 'enabled' : 'disabled'));
             if (teVal !== prevTe)        parts.push('policy tailoring: ' + (teVal ? 'enabled' : 'disabled'));
             if (parts.length)
                 appendActivityLog({ type: 'settings_change', tab: 'settings',

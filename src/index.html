@@ -9,7 +9,6 @@
     <script src="../base1/cockpit.js" defer></script>
     <script src="index.js?v=80" defer></script>
     <script src="container-scan.js?v=80" defer></script>
-    <script src="dashboard.js?v=80" defer></script>
 </head>
 <body class="pf-v6-m-tabular-nums">
 
@@ -37,12 +36,6 @@
             <button class="pf-v6-c-tabs__link" type="button" role="tab"
                     aria-selected="false" data-panel="panel-tailoring" id="tab-btn-tailoring">
               <span class="pf-v6-c-tabs__item-text">Policy Tailoring</span>
-            </button>
-          </li>
-          <li class="pf-v6-c-tabs__item" role="presentation">
-            <button class="pf-v6-c-tabs__link" type="button" role="tab"
-                    aria-selected="false" data-panel="panel-dashboard" id="tab-btn-dashboard">
-              <span class="pf-v6-c-tabs__item-text">Dashboard <span class="ct-tab-preview-badge">Preview</span></span>
             </button>
           </li>
           <li class="pf-v6-c-tabs__item ct-tab-settings" role="presentation">
@@ -1314,19 +1307,6 @@
     <!-- CONTENT TAB PANEL                                  -->
     <!-- ================================================== -->
 
-    <!-- ================================================== -->
-    <!-- DASHBOARD TAB PANEL                                -->
-    <!-- ================================================== -->
-    <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-dashboard"
-             role="tabpanel" aria-labelledby="tab-btn-dashboard">
-
-      <div class="db-toolbar">
-        <button class="pf-v6-c-button pf-m-link" type="button" id="db-refresh-btn">Refresh</button>
-      </div>
-      <div id="db-content"></div>
-
-    </section>
-    <!-- END DASHBOARD TAB PANEL -->
 
     <!-- Settings panel -->
     <section class="pf-v6-c-page__main-section ct-tab-panel hidden" id="panel-settings"
@@ -1363,11 +1343,6 @@
                     <input type="checkbox" class="ct-requires-admin"
                            id="ct-setting-tailoring-enabled" checked>
                     <label for="ct-setting-tailoring-enabled">Enable Policy Tailoring</label>
-                  </div>
-                  <div class="ct-settings-check-row">
-                    <input type="checkbox" class="ct-requires-admin"
-                           id="ct-setting-dashboard-enabled">
-                    <label for="ct-setting-dashboard-enabled">Enable Dashboard</label>
                   </div>
                 </div>
 
@@ -1435,7 +1410,7 @@
                   <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9432;</div>
                   <div class="pf-v6-c-alert__body">
                     <div class="pf-v6-c-alert__description">Each scan stores approximately 15–20 MB (compressed ARF + results XML).
-                      At 10 scans retained per type, expect up to ~360 MB total.
+                      At 5 scans retained per type (default), expect up to ~180 MB total.
                       Reduce retention limits to keep disk usage low.</div>
                   </div>
                 </div>
@@ -1551,7 +1526,7 @@
 <!-- Drawer backdrop (shared by all drawers) -->
 <div class="ct-drawer-backdrop" id="ct-drawer-backdrop"></div>
 
-<!-- Rule detail drawer (opened from Dashboard critical findings) -->
+<!-- Rule detail drawer -->
 <div class="ct-rem-drawer" id="ct-rule-detail-drawer">
   <div class="pf-v6-c-card" style="height:100%;display:flex;flex-direction:column;border-radius:0;border:none;border-left:1px solid var(--pf-v6-global--BorderColor--100,rgba(0,0,0,.12));overflow:hidden;">
     <div class="pf-v6-c-card__title ct-history-title-row">
