@@ -1240,7 +1240,11 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
             appendActivityLog({ type: 'scan_complete', tab: 'host',
                 content: manifest.sds_file.split('/').pop(), profile: manifest.profile_title,
                 score: manifest.score.toFixed(1), pass: manifest.counts.pass, fail: manifest.counts.fail });
-            showResults(manifest);
+            // chmod results.xml before showResults so unprivileged Python spawns can read it
+            // (CIS umask 027 creates it as 640; relaxResultsPerms runs later for everything else)
+            cockpit.spawn(['chmod', '644', resultsXmlPath], { superuser: 'require' })
+                .catch(() => {})
+                .finally(() => { showResults(manifest); });
             // Remediation generation, pruning, and perms run in the background so results
             // display immediately after the scan — not after 7-8 min of oscap generate fix.
             remediationGenerating = true;
