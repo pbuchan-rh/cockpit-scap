@@ -426,11 +426,39 @@ document.addEventListener('DOMContentLoaded', () => {
         ));
     document.getElementById('ct-download-arf-btn')
         .addEventListener('click', e => {
-            const btn   = e.currentTarget;
+            const btn    = e.currentTarget;
+            const orig   = btn.textContent;
             const gzPath = currentResultsDir + 'results.arf.gz';
-            cockpit.spawn(['test', '-f', gzPath])
-                .then(() => downloadArtifact(gzPath, 'scap-results-arf-' + currentTimestamp + '.xml.gz', 'application/gzip', btn))
-                .catch(() => downloadArtifact(currentResultsDir + 'results.arf', 'scap-results-arf-' + currentTimestamp + '.xml', 'application/xml', btn));
+            btn.disabled = true;
+            btn.textContent = 'Downloading…';
+            /* cockpit.file() is text-only; binary gzip requires cockpit.spawn cat with binary:true */
+            cockpit.spawn(['cat', gzPath], { binary: true, superuser: 'try', err: 'message' })
+                .then(content => {
+                    const blob = new Blob([content], { type: 'application/gzip' });
+                    const url  = URL.createObjectURL(blob);
+                    const a    = document.createElement('a');
+                    a.href = url; a.download = 'scap-results-arf-' + currentTimestamp + '.xml.gz';
+                    document.body.appendChild(a); a.click();
+                    document.body.removeChild(a); URL.revokeObjectURL(url);
+                    btn.textContent = '✓ Downloaded';
+                    setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2000);
+                })
+                .catch(() => {
+                    /* Fall back to uncompressed ARF for pre-v3.9 scans */
+                    cockpit.file(currentResultsDir + 'results.arf', { max_read_size: -1, superuser: 'try' }).read()
+                        .then(content => {
+                            if (!content) throw new Error('not found');
+                            const blob = new Blob([content], { type: 'application/xml' });
+                            const url  = URL.createObjectURL(blob);
+                            const a    = document.createElement('a');
+                            a.href = url; a.download = 'scap-results-arf-' + currentTimestamp + '.xml';
+                            document.body.appendChild(a); a.click();
+                            document.body.removeChild(a); URL.revokeObjectURL(url);
+                            btn.textContent = '✓ Downloaded';
+                            setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2000);
+                        })
+                        .catch(() => { btn.disabled = false; btn.textContent = orig; });
+                });
         });
     document.getElementById('ct-export-report-default')
         .addEventListener('click', e => {
@@ -672,6 +700,19 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', () => {
             document.getElementById('ct-content-select').scrollIntoView({ behavior: 'smooth', block: 'center' });
             document.getElementById('ct-content-select').focus();
+        });
+
+    /* History empty state — navigate to tailoring tab */
+    document.getElementById('ct-history-empty-policy-btn')
+        .addEventListener('click', () => {
+            document.getElementById('tab-btn-tailoring').click();
+        });
+
+    /* Tailoring list empty state — scroll to tailoring editor */
+    document.getElementById('ct-tailor-list-empty-btn')
+        .addEventListener('click', () => {
+            document.getElementById('ct-tailor-content-select').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('ct-tailor-content-select').focus();
         });
 
     /* Content tab */
@@ -1241,7 +1282,8 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 score: manifest.score.toFixed(1), pass: manifest.counts.pass, fail: manifest.counts.fail });
             // chmod results.xml before showResults so unprivileged Python spawns can read it
             // (CIS umask 027 creates it as 640; relaxResultsPerms runs later for everything else)
-            cockpit.spawn(['chmod', '644', resultsXmlPath], { superuser: 'require' })
+            cockpit.spawn(['chmod', '644', resultsXmlPath, currentResultsDir + 'manifest.json'],
+                  { superuser: 'require' })
                 .catch(() => {})
                 .finally(() => { showResults(manifest); });
             // Remediation generation, pruning, and perms run in the background so results
@@ -1266,8 +1308,9 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                     ).catch(() => {});
                 });
             pruneHistoryByType('host').catch(() => {});
-            relaxResultsPerms().catch(() => {});
-            cockpit.spawn(['gzip', currentResultsDir + 'results.arf'], { superuser: 'require' }).catch(() => {});
+            cockpit.spawn(['gzip', currentResultsDir + 'results.arf'], { superuser: 'require' })
+                .catch(() => {})
+                .finally(() => relaxResultsPerms().catch(() => {}));
         })
         .catch(err => onScanError('Failed to process results: ' + (err.message || String(err))));
 }
@@ -1278,7 +1321,7 @@ function buildPersistenceCache(manifest) {
             const dirs = output.trim().split('\n').filter(d => TIMESTAMP_RE.test(d));
             return Promise.all(
                 dirs.map(dir =>
-                    cockpit.file(RESULTS_BASE + dir + '/manifest.json').read()
+                    cockpit.file(RESULTS_BASE + dir + '/manifest.json', { superuser: 'try' }).read()
                         .then(c => JSON.parse(c))
                         .catch(() => null)
                 )
@@ -1294,7 +1337,7 @@ function buildPersistenceCache(manifest) {
                 return cockpit.spawn(['python3', '-c', PY_BUILD_PERSISTENCE, ...xmlPaths], { err: 'message' })
                     .then(output => {
                         const failures = JSON.parse(output);
-                        return cockpit.file(PERSISTENCE_CACHE_PATH).read()
+                        return cockpit.file(PERSISTENCE_CACHE_PATH, { superuser: 'try' }).read()
                             .then(data => {
                                 const cache = (data && data.trim()) ? JSON.parse(data) : { profiles: {} };
                                 cache.profiles[manifest.profile_id] = {
@@ -1349,7 +1392,7 @@ function openRemediationPanel(resultsDir) {
     document.getElementById('ct-rem-context').classList.add('hidden');
 
     /* Load manifest for context header */
-    cockpit.file(resultsDir + 'manifest.json').read()
+    cockpit.file(resultsDir + 'manifest.json', { superuser: 'try' }).read()
         .then(content => {
             const m = JSON.parse(content);
             const ts      = (m.timestamp || '').replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');
@@ -1387,7 +1430,7 @@ function openRemediationPanel(resultsDir) {
     const remBashForDir = resultsDir === currentResultsDir ? currentRemBashPath : resultsDir + 'remediation.sh';
     if (remBashForDir) spawnArgs.push(remBashForDir);
     cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...spawnArgs],
-                  { err: 'message' })
+                  { err: 'message', superuser: 'try' })
         .then(output => { const d = JSON.parse(output); showRules(d.fails || d); })
         .catch(err => {
             pendingQuickFix = false;
@@ -1776,7 +1819,7 @@ function pruneHistoryByType(scanType) {
 
             return Promise.all(
                 dirs.map(dir =>
-                    cockpit.file(RESULTS_BASE + dir + '/manifest.json').read()
+                    cockpit.file(RESULTS_BASE + dir + '/manifest.json', { superuser: 'try' }).read()
                         .then(c => {
                             const m = JSON.parse(c);
                             /* Old host scan manifests predate scan_type field — treat as host */
@@ -2052,7 +2095,7 @@ function renderFailingSummary(resultsXmlPath, groupsId, loadingId, remPath, sear
     const spawnArgs = remPath
         ? ['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsXmlPath, remPath]
         : ['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsXmlPath];
-    cockpit.spawn(spawnArgs, { err: 'message' })
+    cockpit.spawn(spawnArgs, { err: 'message', superuser: 'try' })
         .then(output => {
             loadingEl.classList.add('hidden');
             const data = JSON.parse(output);
@@ -2297,7 +2340,7 @@ function refreshActionBoardAutomatable() {
     const sev = currentManifest.severity_counts || {};
     const totalFail = (currentManifest.counts || {}).fail || 0;
     cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES,
-                  currentResultsDir + 'results.xml', currentRemBashPath], { err: 'message' })
+                  currentResultsDir + 'results.xml', currentRemBashPath], { err: 'message', superuser: 'try' })
         .then(output => {
             const d = JSON.parse(output);
             eagerRemRules = d.fails || d;
@@ -2490,7 +2533,7 @@ function showResults(manifest) {
     updateActionBoard(sev, counts.fail, null);
     const eagerArgs = [currentResultsDir + 'results.xml'];
     if (currentRemBashPath) eagerArgs.push(currentRemBashPath);
-    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...eagerArgs], { err: 'message' })
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, ...eagerArgs], { err: 'message', superuser: 'try' })
         .then(output => {
             const d = JSON.parse(output); eagerRemRules = d.fails || d;
             const highCritRules = eagerRemRules.filter(r => ['high','critical'].includes(r.severity) && r.automated);
@@ -2514,8 +2557,8 @@ function generateReport(resultsXmlPath) {
     const tmpPath = '/tmp/cockpit-scap-report-' + Date.now() + '.html';
     return cockpit.spawn(
         ['oscap', 'xccdf', 'generate', 'report', '--output', tmpPath, resultsXmlPath],
-        { err: 'out' }
-    ).then(() => cockpit.file(tmpPath).read())
+        { err: 'out', superuser: 'try' }
+    ).then(() => cockpit.file(tmpPath, { superuser: 'try' }).read())
      .then(html => { cockpit.spawn(['rm', '-f', tmpPath]).catch(() => {}); return html; });
 }
 
@@ -2546,7 +2589,7 @@ function viewReportFromPath(resultsXmlPath) {
 
 function downloadArtifact(filePath, filename, mimeType, btn) {
     if (!filePath) return;
-    cockpit.file(filePath, { max_read_size: -1 }).read()
+    cockpit.file(filePath, { max_read_size: -1, superuser: 'try' }).read()
         .then(content => {
             const blob = new Blob([content], { type: mimeType });
             const url  = URL.createObjectURL(blob);
@@ -2597,7 +2640,10 @@ function showScanProgress() {
     document.getElementById('ct-scan-ctx-policy').textContent =
         _tailEl.value ? (_tailEl.options[_tailEl.selectedIndex]?.text || '—') : '—';
     document.getElementById('ct-scan-ctx-target').textContent = hostName || 'Local host';
-    const _profileId = (document.getElementById('ct-profile-select') || {}).value || null;
+    const _tailVal   = _tailEl.value;
+    const _profileId = (_tailVal && tailoringFilesMap[_tailVal])
+        ? tailoringFilesMap[_tailVal].profile_id
+        : (document.getElementById('ct-profile-select') || {}).value || null;
     const _prevScan  = currentHostHistory.find(m =>
         m.profile_id === _profileId && m.sds_file === currentSdsPath && m.scan_duration_s != null
     );
@@ -2882,7 +2928,7 @@ function loadHistory() {
 
             return Promise.all(
                 dirs.map(dir =>
-                    cockpit.file(RESULTS_BASE + dir + '/manifest.json').read()
+                    cockpit.file(RESULTS_BASE + dir + '/manifest.json', { superuser: 'try' }).read()
                         .then(content => {
                             const m = JSON.parse(content);
                             return (m && m.scan_type === 'container') ? null : m;
@@ -3079,7 +3125,7 @@ function detectTailoringFiles() {
 
             return Promise.all(
                 files.map(f =>
-                    cockpit.file(TAILORING_BASE + f).read()
+                    cockpit.file(TAILORING_BASE + f, { superuser: 'try' }).read()
                         .then(content => JSON.parse(content))
                         .catch(() => null)
                 )
@@ -3111,7 +3157,7 @@ function detectTailoringFiles() {
                     renderTailoringList(all);
                 } else {
                     Promise.all(needsBackfill.map(sc =>
-                        cockpit.file(sc.path).read()
+                        cockpit.file(sc.path, { superuser: 'try' }).read()
                             .then(xml => {
                                 if (!xml) return;
                                 sc.rules_modified = (xml.match(/<(?:[a-z]+:)?select\s+idref=/gi) || []).length;
@@ -3876,7 +3922,7 @@ function onTailorSaveClick() {
             cockpit.file(jsonPath, { superuser: 'require' }).replace(JSON.stringify(sidecar, null, 2)),
         ]))
         .then(() => cockpit.spawn(['chmod', '644', xmlPath, jsonPath], { superuser: 'require' }))
-        .then(() => cockpit.file(xmlPath).read())
+        .then(() => cockpit.file(xmlPath, { superuser: 'try' }).read())
         .then(written => {
             if (written !== xml) throw new Error(
                 'File not written — on hardened systems, add ' +
@@ -4043,7 +4089,7 @@ function doEditTailoringFile(sidecar) {
     document.getElementById('ct-tailor-loading').classList.remove('hidden');
 
     /* Parse saved tailoring XML to restore prior changes, then load base profile */
-    cockpit.file(sidecar.path).read()
+    cockpit.file(sidecar.path, { superuser: 'try' }).read()
         .then(xmlContent => {
             const changes  = parseTailoringXml(xmlContent);
             tailorRuleChanges  = changes.ruleChanges;
@@ -4479,6 +4525,7 @@ function doWriteContent(file, destPath, sizeMB) {
     const reader = new FileReader();
     reader.onload = ev => {
         cockpit.file(destPath, { superuser: 'require' }).replace(ev.target.result)
+            .then(() => cockpit.spawn(['chmod', '644', destPath], { superuser: 'require' }))
             .then(() => {
                 status.className   = 'ct-content-upload-status ct-content-upload-ok';
                 status.textContent = file.name + ' (' + sizeMB + ' MB) uploaded successfully.';
@@ -4512,7 +4559,7 @@ function doWriteContent(file, destPath, sizeMB) {
 /* ---- Settings tab ------------------------------------------ */
 
 function loadSettings() {
-    return cockpit.file(SETTINGS_PATH).read()
+    return cockpit.file(SETTINGS_PATH, { superuser: 'try' }).read()
         .then(content => {
             if (!content) return;
             const s = JSON.parse(content);
@@ -4593,7 +4640,7 @@ function fetchDiskUsage() {
     const freeEl = document.getElementById('ct-settings-disk-free');
     usedEl.textContent = '…';
     freeEl.textContent = '…';
-    cockpit.spawn(['du', '-sh', '/var/lib/cockpit-scap/'], { err: 'message' })
+    cockpit.spawn(['du', '-sh', '/var/lib/cockpit-scap/'], { err: 'message', superuser: 'try' })
         .then(out => { usedEl.textContent = out.split('\t')[0].trim(); })
         .catch(() => { usedEl.textContent = '—'; });
     cockpit.spawn(['df', '-h', '--output=avail', '/var/lib/cockpit-scap/'], { err: 'message' })
@@ -4664,9 +4711,8 @@ function saveSettings() {
 
     cockpit.file(SETTINGS_PATH, { superuser: 'require' })
         .replace(newSettings)
-        .then(() => cockpit.file(SETTINGS_PATH).read())
-        .then(written => {
-            if (written !== newSettings) throw new Error('File not written');
+        .then(() => cockpit.spawn(['chmod', '644', SETTINGS_PATH], { superuser: 'require' }))
+        .then(() => {
             hostRetention        = hVal;
             containerRetention   = cVal;
             containerScanEnabled = ceVal;

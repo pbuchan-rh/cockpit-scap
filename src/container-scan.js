@@ -378,7 +378,7 @@ function csDetectTailoringFiles() {
 
             return Promise.all(
                 files.map(f =>
-                    cockpit.file(TAILORING_BASE + f).read()
+                    cockpit.file(TAILORING_BASE + f, { superuser: 'try' }).read()
                         .then(c => JSON.parse(c)).catch(() => null)
                 )
             ).then(sidecars => {
@@ -995,7 +995,7 @@ function csLoadHistory() {
 
             return Promise.all(
                 dirs.map(dir =>
-                    cockpit.file(RESULTS_BASE + dir + '/manifest.json').read()
+                    cockpit.file(RESULTS_BASE + dir + '/manifest.json', { superuser: 'try' }).read()
                         .then(content => {
                             const m = JSON.parse(content);
                             return (m && m.scan_type === 'container') ? m : null;
@@ -1404,7 +1404,7 @@ function openCsRemPanel(resultsDir) {
     document.getElementById('cs-remediation-error').classList.add('hidden');
     document.getElementById('cs-rem-context').classList.add('hidden');
 
-    cockpit.file(resultsDir + 'manifest.json').read()
+    cockpit.file(resultsDir + 'manifest.json', { superuser: 'try' }).read()
         .then(content => {
             const m = JSON.parse(content);
             const ts      = (m.timestamp || '').replace('T', ' ').replace(/-(\d{2})-(\d{2})$/, ':$1:$2');

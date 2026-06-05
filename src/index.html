@@ -463,23 +463,22 @@
               <div class="pf-v6-c-empty-state__icon" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"
                      viewBox="0 0 512 512" fill="currentColor" aria-hidden="true">
-                  <path d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111
-                           248-248S393 8 256 8zm0 448c-110.5 0-200-89.5-200-200S145.5
-                           56 256 56s200 89.5 200 200-89.5 200-200 200zm61.8-104.4
-                           l-84.9-61.7c-3.1-2.3-4.9-5.9-4.9-9.7V116c0-6.6
-                           5.4-12 12-12h32c6.6 0 12 5.4 12 12v141.7l66.8
-                           48.6c5.4 3.9 6.5 11.4 2.6 16.8L334.6
-                           349c-3.9 5.3-11.4 6.5-16.8 2.6z"/>
+                  <path d="M466.5 83.7l-192-80a48.15 48.15 0 0 0-36.9 0l-192 80C27.7
+                           91.1 16 108.6 16 128c0 198.5 114.5 335.7 221.5 380.3 11.8
+                           4.9 25.1 4.9 36.9 0C382.6 462.6 496 325.1 496 128c0-19.4
+                           -11.7-36.9-29.5-44.3z"/>
                 </svg>
               </div>
               <h3 class="pf-v6-c-empty-state__title">No scans yet</h3>
               <div class="pf-v6-c-empty-state__body">
-                Configure a content file and profile above, then run your first scan.
-                Results will appear here after each completed scan.
+                Select a profile above and run your first scan, or create a saved
+                policy to customize which rules are enforced.
               </div>
               <div class="pf-v6-c-empty-state__footer">
                 <button class="pf-v6-c-button pf-m-primary" type="button"
                         id="ct-history-empty-scan-btn">Run a Scan</button>
+                <button class="pf-v6-c-button pf-m-secondary" type="button"
+                        id="ct-history-empty-policy-btn">Create a Scan Policy</button>
               </div>
             </div>
           </div>
@@ -957,18 +956,16 @@
               <div class="pf-v6-c-empty-state__icon" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"
                      viewBox="0 0 512 512" fill="currentColor" aria-hidden="true">
-                  <path d="M256 8C119 8 8 119 8 256s111 248 248 248 248-111
-                           248-248S393 8 256 8zm0 448c-110.5 0-200-89.5-200-200S145.5
-                           56 256 56s200 89.5 200 200-89.5 200-200 200zm61.8-104.4
-                           l-84.9-61.7c-3.1-2.3-4.9-5.9-4.9-9.7V116c0-6.6
-                           5.4-12 12-12h32c6.6 0 12 5.4 12 12v141.7l66.8
-                           48.6c5.4 3.9 6.5 11.4 2.6 16.8L334.6
-                           349c-3.9 5.3-11.4 6.5-16.8 2.6z"/>
+                  <path d="M466.5 83.7l-192-80a48.15 48.15 0 0 0-36.9 0l-192 80C27.7
+                           91.1 16 108.6 16 128c0 198.5 114.5 335.7 221.5 380.3 11.8
+                           4.9 25.1 4.9 36.9 0C382.6 462.6 496 325.1 496 128c0-19.4
+                           -11.7-36.9-29.5-44.3z"/>
                 </svg>
               </div>
               <h3 class="pf-v6-c-empty-state__title">No container scans yet</h3>
               <div class="pf-v6-c-empty-state__body">
-                Select an image and profile above, then run your first container scan.
+                Select a container image and profile above, then run your first
+                container scan. Results will appear here after each completed scan.
               </div>
               <div class="pf-v6-c-empty-state__footer">
                 <button class="pf-v6-c-button pf-m-primary" type="button"
@@ -1268,9 +1265,32 @@
           </div>
         </div>
         <div class="pf-v6-c-card__body">
-          <p class="ct-tailor-list-empty" id="ct-tailor-list-empty">
-            No policies saved yet. Create one above or upload an existing file.
-          </p>
+          <div class="pf-v6-c-empty-state" id="ct-tailor-list-empty">
+            <div class="pf-v6-c-empty-state__content">
+              <div class="pf-v6-c-empty-state__icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"
+                     viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
+                  <path d="M224 136V0H24C10.7 0 0 10.7 0 24v464c0 13.3 10.7 24 24
+                           24h336c13.3 0 24-10.7 24-24V160H248c-13.2 0-24-10.8-24-24zm64
+                           236c0 6.6-5.4 12-12 12H108c-6.6 0-12-5.4-12-12v-8c0-6.6
+                           5.4-12 12-12h168c6.6 0 12 5.4 12 12v8zm0-64c0 6.6-5.4
+                           12-12 12H108c-6.6 0-12-5.4-12-12v-8c0-6.6 5.4-12 12-12h168c6.6
+                           0 12 5.4 12 12v8zm0-72v8c0 6.6-5.4 12-12 12H108c-6.6
+                           0-12-5.4-12-12v-8c0-6.6 5.4-12 12-12h168c6.6 0 12 5.4 12
+                           12zm96-111.1L279.1 0H256v128h128v-23.1z"/>
+                </svg>
+              </div>
+              <h3 class="pf-v6-c-empty-state__title">No saved policies yet</h3>
+              <div class="pf-v6-c-empty-state__body">
+                Policies let you customize which rules are enforced and save your
+                settings for reuse across scans.
+              </div>
+              <div class="pf-v6-c-empty-state__footer">
+                <button class="pf-v6-c-button pf-m-primary" type="button"
+                        id="ct-tailor-list-empty-btn">Open Tailoring Editor</button>
+              </div>
+            </div>
+          </div>
           <div class="ct-table-scroll-wrap">
             <table class="pf-v6-c-table pf-m-compact hidden" id="ct-tailor-list-table"
                    role="grid" aria-label="Saved policies">

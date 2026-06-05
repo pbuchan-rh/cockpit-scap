@@ -2068,12 +2068,6 @@ details.ct-tailor-group .ct-tailor-rule {
 .ct-tailor-sum-val-from { text-decoration: line-through; opacity: 0.6; }
 .ct-tailor-sum-val-to   { color: var(--pf-v6-global--primary-color--100, #06c); font-weight: 600; }
 
-.ct-tailor-list-empty {
-  font-size: var(--ct-font-size-sm);
-  color: var(--ct-color-text-secondary);
-  font-style: italic;
-  margin: 0;
-}
 
 .ct-btn-danger-link,
 .ct-danger-link {
@@ -2638,6 +2632,10 @@ html.pf-v6-theme-dark .ct-badge-error {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+#ct-settings-save-error {
+  margin-top: 16px;
 }
 
 .ct-settings-saved {
