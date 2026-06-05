@@ -4987,7 +4987,11 @@ function activityResult(e) {
 }
 
 function clearActivityLog() {
-    cockpit.file(ACTIVITY_LOG, { superuser: 'require' }).replace('')
+    const tombstone = JSON.stringify({
+        ts: new Date().toISOString(), user: currentUser || '?',
+        type: 'activity_clear', tab: 'activity'
+    }) + '\n';
+    cockpit.file(ACTIVITY_LOG, { superuser: 'require' }).replace(tombstone)
         .then(() => {
             cockpit.spawn(['logger', '-t', 'cockpit-scap',
                 'user: ' + (currentUser || '?') + ' — Activity log cleared'
