@@ -1255,6 +1255,7 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 .finally(() => {
                     remediationGenerating = false;
                     updateApplyGate1Btn();
+                    refreshActionBoardAutomatable();
                     cockpit.spawn(
                         ['find', remDir, '-maxdepth', '1', '-name', 'remediation.*',
                          '-exec', 'chmod', '644', '{}', '+'],
@@ -2286,6 +2287,24 @@ function updateActionBoard(sev, totalFail, autoCount, mode) {
     rBtn.textContent = 'All Failures (' + totalFail + ')';
     rBtn.disabled = totalFail === 0;
     board.classList.remove('hidden');
+}
+
+function refreshActionBoardAutomatable() {
+    if (!currentRemBashPath || !currentManifest) return;
+    const sev = currentManifest.severity_counts || {};
+    const totalFail = (currentManifest.counts || {}).fail || 0;
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES,
+                  currentResultsDir + 'results.xml', currentRemBashPath], { err: 'message' })
+        .then(output => {
+            const d = JSON.parse(output);
+            eagerRemRules = d.fails || d;
+            const highCritRules = eagerRemRules.filter(r => ['high','critical'].includes(r.severity) && r.automated);
+            const medRules      = eagerRemRules.filter(r => r.severity === 'medium' && r.automated);
+            quickFixMode        = highCritRules.length > 0 ? 'high' : 'medium';
+            const recCount      = quickFixMode === 'high' ? highCritRules.length : medRules.length;
+            updateActionBoard(sev, totalFail, recCount, quickFixMode);
+        })
+        .catch(() => {});
 }
 
 function onQuickFixClick() {
