@@ -352,7 +352,7 @@ function loadHostInsights(manifest) {
     const resultsXml = DB_RESULTS_BASE + manifest.timestamp + '/results.xml';
     const remBash    = DB_RESULTS_BASE + manifest.timestamp + '/remediation.sh';
     cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES, resultsXml, remBash], { err: 'message' })
-        .then(output => { dbInsightRules = JSON.parse(output); })
+        .then(output => { const d = JSON.parse(output); dbInsightRules = d.fails || d; })
         .catch(() => {});
 }
 
