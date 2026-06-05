@@ -641,11 +641,11 @@ function onCsScanClick() {
 
             let csScanOutput = '';
             let _csRuleBuf = '';
-            let _csChecked = 0;
-            let _csFailed = 0;
+            let _csPass = 0, _csFail = 0, _csError = 0;
             const _csRecent = [];
-            const csFeedEl  = document.getElementById('cs-rule-feed');
-            const csTallyEl = document.getElementById('cs-rule-tally');
+            const csPassEl  = document.getElementById('cs-live-pass');
+            const csFailEl  = document.getElementById('cs-live-fail');
+            const csErrorEl = document.getElementById('cs-live-error');
             const csListEl  = document.getElementById('cs-rule-feed-list');
             const CS_RULE_RE = /^(xccdf_\S+):(pass|fail|error|notchecked|notapplicable|informational|fixed)$/;
 
@@ -659,14 +659,15 @@ function onCsScanClick() {
                     const m = line.trim().match(CS_RULE_RE);
                     if (!m) continue;
                     const [, ruleId, result] = m;
-                    _csChecked++;
-                    if (result === 'fail' || result === 'error') _csFailed++;
+                    if (result === 'pass' || result === 'fixed') _csPass++;
+                    else if (result === 'fail') _csFail++;
+                    else if (result === 'error') _csError++;
                     const name = ruleId.replace(/^.*content_rule_/, '').replace(/_/g, ' ');
                     _csRecent.unshift({ name, result });
                     if (_csRecent.length > 5) _csRecent.pop();
-                    csFeedEl.classList.remove('hidden');
-                    csTallyEl.innerHTML = _csChecked + ' checked' +
-                        (_csFailed ? ' &middot; <span class="ct-tally-fail">' + _csFailed + ' failing</span>' : '');
+                    csPassEl.textContent  = _csPass;
+                    csFailEl.textContent  = _csFail;
+                    csErrorEl.textContent = _csError;
                     csListEl.innerHTML = _csRecent.map(r =>
                         '<div class="ct-rule-feed-item">' +
                         '<span class="ct-rule-feed-dot ' + r.result + '"></span>' +
@@ -869,10 +870,22 @@ function csShowResults(manifest) {
     if ((counts.notapplicable || 0) > 0) {
         csBadgeDefs.splice(3, 0, ['Not applicable', counts.notapplicable, 'ct-badge-na']);
     }
-    csBadgeDefs.forEach(([label, count, cls]) => {
-        const span       = document.createElement('span');
-        span.className   = 'ct-result-badge ' + cls;
-        span.textContent = label + ': ' + count;
+    csBadgeDefs.forEach(([label, count, cls], i) => {
+        if (i === 3) {
+            const spacer = document.createElement('span');
+            spacer.className = 'ct-badge-group-gap';
+            badges.appendChild(spacer);
+        }
+        const span = document.createElement('span');
+        span.className = 'ct-result-badge ' + cls;
+        const numEl = document.createElement('span');
+        numEl.className = 'ct-result-badge-num';
+        numEl.textContent = count;
+        const lblEl = document.createElement('span');
+        lblEl.className = 'ct-result-badge-label';
+        lblEl.textContent = label;
+        span.appendChild(numEl);
+        span.appendChild(lblEl);
         badges.appendChild(span);
     });
 
@@ -1244,9 +1257,22 @@ function csShowProgress() {
     csFillEl.style.width = '0%';
     csFillEl.classList.remove('ct-indeterminate');
     csLabelEl.textContent = '';
-    document.getElementById('cs-rule-feed').classList.add('hidden');
-    document.getElementById('cs-rule-feed-list').innerHTML = '';
-    document.getElementById('cs-rule-tally').textContent = '';
+    document.getElementById('cs-live-pass').textContent  = '0';
+    document.getElementById('cs-live-fail').textContent  = '0';
+    document.getElementById('cs-live-error').textContent = '0';
+    document.getElementById('cs-rule-feed-list').innerHTML =
+        '<div class="ct-rule-feed-item ct-rule-feed-waiting">' +
+        '<span class="ct-rule-feed-name">Waiting for first rule…</span></div>';
+    const _csSdsEl  = document.getElementById('cs-content-select');
+    const _csProfEl = document.getElementById('cs-profile-select');
+    const _csTailEl = document.getElementById('cs-tailor-file-select');
+    document.getElementById('cs-scan-ctx-content').textContent =
+        _csSdsEl.options[_csSdsEl.selectedIndex]?.text || '—';
+    document.getElementById('cs-scan-ctx-profile').textContent =
+        _csProfEl.options[_csProfEl.selectedIndex]?.text || '—';
+    document.getElementById('cs-scan-ctx-policy').textContent =
+        _csTailEl.value ? (_csTailEl.options[_csTailEl.selectedIndex]?.text || '—') : '—';
+    document.getElementById('cs-scan-ctx-image').textContent = csImageName || '—';
     const _csProfileId = (document.getElementById('cs-profile-select') || {}).value || null;
     const _csPrevScan  = currentCsHistory.find(m =>
         m.profile_id === _csProfileId && m.sds_file === csSdsPath &&

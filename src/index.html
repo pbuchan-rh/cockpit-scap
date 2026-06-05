@@ -235,8 +235,39 @@
             </div>
             <span class="ct-scan-elapsed" id="ct-scan-elapsed"></span>
           </div>
-          <div class="ct-rule-feed hidden" id="ct-rule-feed">
-            <div class="ct-rule-tally" id="ct-rule-tally"></div>
+          <div class="ct-scan-lower">
+            <div class="ct-scan-context">
+              <div class="ct-scan-ctx-row">
+                <span class="ct-scan-ctx-label">Content</span>
+                <span class="ct-scan-ctx-value" id="ct-scan-ctx-content">—</span>
+              </div>
+              <div class="ct-scan-ctx-row">
+                <span class="ct-scan-ctx-label">Profile</span>
+                <span class="ct-scan-ctx-value" id="ct-scan-ctx-profile">—</span>
+              </div>
+              <div class="ct-scan-ctx-row">
+                <span class="ct-scan-ctx-label">Policy</span>
+                <span class="ct-scan-ctx-value" id="ct-scan-ctx-policy">—</span>
+              </div>
+              <div class="ct-scan-ctx-row">
+                <span class="ct-scan-ctx-label">Target</span>
+                <span class="ct-scan-ctx-value" id="ct-scan-ctx-target">—</span>
+              </div>
+            </div>
+            <div class="ct-live-badges">
+              <div class="ct-live-badge ct-live-badge-pass">
+                <span class="ct-live-badge-num" id="ct-live-pass">0</span>
+                <span class="ct-live-badge-label">passed</span>
+              </div>
+              <div class="ct-live-badge ct-live-badge-fail">
+                <span class="ct-live-badge-num" id="ct-live-fail">0</span>
+                <span class="ct-live-badge-label">failed</span>
+              </div>
+              <div class="ct-live-badge ct-live-badge-error">
+                <span class="ct-live-badge-num" id="ct-live-error">0</span>
+                <span class="ct-live-badge-label">errors</span>
+              </div>
+            </div>
             <div class="ct-rule-feed-list" id="ct-rule-feed-list"></div>
           </div>
         </div>
@@ -704,8 +735,39 @@
               </div>
               <span class="ct-scan-elapsed" id="cs-scan-elapsed"></span>
             </div>
-            <div class="ct-rule-feed hidden" id="cs-rule-feed">
-              <div class="ct-rule-tally" id="cs-rule-tally"></div>
+            <div class="ct-scan-lower">
+              <div class="ct-scan-context">
+                <div class="ct-scan-ctx-row">
+                  <span class="ct-scan-ctx-label">Content</span>
+                  <span class="ct-scan-ctx-value" id="cs-scan-ctx-content">—</span>
+                </div>
+                <div class="ct-scan-ctx-row">
+                  <span class="ct-scan-ctx-label">Profile</span>
+                  <span class="ct-scan-ctx-value" id="cs-scan-ctx-profile">—</span>
+                </div>
+                <div class="ct-scan-ctx-row">
+                  <span class="ct-scan-ctx-label">Policy</span>
+                  <span class="ct-scan-ctx-value" id="cs-scan-ctx-policy">—</span>
+                </div>
+                <div class="ct-scan-ctx-row">
+                  <span class="ct-scan-ctx-label">Image</span>
+                  <span class="ct-scan-ctx-value" id="cs-scan-ctx-image">—</span>
+                </div>
+              </div>
+              <div class="ct-live-badges">
+                <div class="ct-live-badge ct-live-badge-pass">
+                  <span class="ct-live-badge-num" id="cs-live-pass">0</span>
+                  <span class="ct-live-badge-label">passed</span>
+                </div>
+                <div class="ct-live-badge ct-live-badge-fail">
+                  <span class="ct-live-badge-num" id="cs-live-fail">0</span>
+                  <span class="ct-live-badge-label">failed</span>
+                </div>
+                <div class="ct-live-badge ct-live-badge-error">
+                  <span class="ct-live-badge-num" id="cs-live-error">0</span>
+                  <span class="ct-live-badge-label">errors</span>
+                </div>
+              </div>
               <div class="ct-rule-feed-list" id="cs-rule-feed-list"></div>
             </div>
           </div>
@@ -1318,13 +1380,13 @@
                   <div class="ct-settings-row">
                     <label class="ct-settings-label" for="ct-setting-host-retention">Host scans</label>
                     <input class="pf-v6-c-form-control ct-settings-input ct-requires-admin" type="number"
-                           id="ct-setting-host-retention" min="1" max="50" value="10">
+                           id="ct-setting-host-retention" min="1" max="50" value="5">
                     <span class="ct-settings-unit">most recent scans retained</span>
                   </div>
                   <div class="ct-settings-row">
                     <label class="ct-settings-label" for="ct-setting-container-retention">Container scans</label>
                     <input class="pf-v6-c-form-control ct-settings-input ct-requires-admin" type="number"
-                           id="ct-setting-container-retention" min="1" max="50" value="10">
+                           id="ct-setting-container-retention" min="1" max="50" value="5">
                     <span class="ct-settings-unit">most recent scans retained</span>
                   </div>
                 </div>

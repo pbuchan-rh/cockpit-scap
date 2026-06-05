@@ -21,7 +21,7 @@ const SDS_DISPLAY_NAMES = {
 };
 
 const SETTINGS_PATH      = '/var/lib/cockpit-scap/settings.json';
-const RETENTION_DEFAULT  = 10;
+const RETENTION_DEFAULT  = 5;
 const RETENTION_MIN      = 1;
 const RETENTION_MAX      = 50;
 let   hostRetention        = RETENTION_DEFAULT;
@@ -1145,12 +1145,12 @@ function runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath) {
 
     let scanOutput = '';
     let _ruleBuf = '';
-    let _ruleChecked = 0;
-    let _ruleFailed = 0;
+    let _rulePass = 0, _ruleFail = 0, _ruleError = 0;
     const _recent = [];
-    const feedEl  = document.getElementById('ct-rule-feed');
-    const tallyEl = document.getElementById('ct-rule-tally');
-    const listEl  = document.getElementById('ct-rule-feed-list');
+    const passEl   = document.getElementById('ct-live-pass');
+    const failEl   = document.getElementById('ct-live-fail');
+    const errorEl  = document.getElementById('ct-live-error');
+    const listEl   = document.getElementById('ct-rule-feed-list');
     const RULE_RE = /^(xccdf_\S+):(pass|fail|error|notchecked|notapplicable|informational|fixed)$/;
 
     currentScanProc = cockpit.spawn(args, { superuser: 'require', err: 'out' });
@@ -1163,14 +1163,15 @@ function runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath) {
             const m = line.trim().match(RULE_RE);
             if (!m) continue;
             const [, ruleId, result] = m;
-            _ruleChecked++;
-            if (result === 'fail' || result === 'error') _ruleFailed++;
+            if (result === 'pass' || result === 'fixed') _rulePass++;
+            else if (result === 'fail') _ruleFail++;
+            else if (result === 'error') _ruleError++;
             const name = ruleId.replace(/^.*content_rule_/, '').replace(/_/g, ' ');
             _recent.unshift({ name, result });
             if (_recent.length > 5) _recent.pop();
-            feedEl.classList.remove('hidden');
-            tallyEl.innerHTML = _ruleChecked + ' checked' +
-                (_ruleFailed ? ' &middot; <span class="ct-tally-fail">' + _ruleFailed + ' failing</span>' : '');
+            passEl.textContent  = _rulePass;
+            failEl.textContent  = _ruleFail;
+            errorEl.textContent = _ruleError;
             listEl.innerHTML = _recent.map(r =>
                 '<div class="ct-rule-feed-item">' +
                 '<span class="ct-rule-feed-dot ' + r.result + '"></span>' +
@@ -1722,8 +1723,8 @@ function onApplyGate2Execute() {
                     okEl.classList.remove('hidden');
                     persistLog(0);
                     appendActivityLog({ type: 'remediate_apply', tab: 'host',
-                        rules_applied: pendingApplyRules.length, exit_code: 0,
-                        log_path: logFile });
+                        rules_applied: pendingApplyRules.length, rule_ids: pendingApplyRules.slice(),
+                        exit_code: 0, log_path: logFile });
                     cockpit.spawn(['rm', '-f', applyPath], { superuser: 'require' }).catch(() => {});
                 })
                 .catch(err => {
@@ -1733,8 +1734,8 @@ function onApplyGate2Execute() {
                     errEl.classList.remove('hidden');
                     persistLog(code);
                     appendActivityLog({ type: 'remediate_apply', tab: 'host',
-                        rules_applied: pendingApplyRules.length, exit_code: code,
-                        log_path: logFile });
+                        rules_applied: pendingApplyRules.length, rule_ids: pendingApplyRules.slice(),
+                        exit_code: code, log_path: logFile });
                     cockpit.spawn(['rm', '-f', applyPath], { superuser: 'require' }).catch(() => {});
                 })
         )
@@ -2385,10 +2386,22 @@ function showResults(manifest) {
     if ((counts.notapplicable || 0) > 0) {
         badgeDefs.splice(3, 0, ['Not applicable', counts.notapplicable, 'ct-badge-na']);
     }
-    badgeDefs.forEach(([label, count, cls]) => {
+    badgeDefs.forEach(([label, count, cls], i) => {
+        if (i === 3) {
+            const spacer = document.createElement('span');
+            spacer.className = 'ct-badge-group-gap';
+            badges.appendChild(spacer);
+        }
         const span = document.createElement('span');
-        span.className   = 'ct-result-badge ' + cls;
-        span.textContent = label + ': ' + count;
+        span.className = 'ct-result-badge ' + cls;
+        const numEl = document.createElement('span');
+        numEl.className = 'ct-result-badge-num';
+        numEl.textContent = count;
+        const lblEl = document.createElement('span');
+        lblEl.className = 'ct-result-badge-label';
+        lblEl.textContent = label;
+        span.appendChild(numEl);
+        span.appendChild(lblEl);
         badges.appendChild(span);
     });
 
@@ -2571,9 +2584,22 @@ function showScanProgress() {
     fillEl.style.width = '0%';
     fillEl.classList.remove('ct-indeterminate');
     labelEl.textContent = '';
-    document.getElementById('ct-rule-feed').classList.add('hidden');
-    document.getElementById('ct-rule-feed-list').innerHTML = '';
-    document.getElementById('ct-rule-tally').textContent = '';
+    document.getElementById('ct-live-pass').textContent  = '0';
+    document.getElementById('ct-live-fail').textContent  = '0';
+    document.getElementById('ct-live-error').textContent = '0';
+    document.getElementById('ct-rule-feed-list').innerHTML =
+        '<div class="ct-rule-feed-item ct-rule-feed-waiting">' +
+        '<span class="ct-rule-feed-name">Waiting for first rule…</span></div>';
+    const _sdsEl    = document.getElementById('ct-content-select');
+    const _profEl   = document.getElementById('ct-profile-select');
+    const _tailEl   = document.getElementById('ct-tailor-file-select');
+    document.getElementById('ct-scan-ctx-content').textContent =
+        _sdsEl.options[_sdsEl.selectedIndex]?.text || '—';
+    document.getElementById('ct-scan-ctx-profile').textContent =
+        _profEl.options[_profEl.selectedIndex]?.text || '—';
+    document.getElementById('ct-scan-ctx-policy').textContent =
+        _tailEl.value ? (_tailEl.options[_tailEl.selectedIndex]?.text || '—') : '—';
+    document.getElementById('ct-scan-ctx-target').textContent = hostName || 'Local host';
     const _profileId = (document.getElementById('ct-profile-select') || {}).value || null;
     const _prevScan  = currentHostHistory.find(m =>
         m.profile_id === _profileId && m.sds_file === currentSdsPath && m.scan_duration_s != null
@@ -4722,12 +4748,16 @@ function buildJournalMessage(e) {
             return 'Scan failed — profile: ' + (e.profile || '?') + ', error: ' + (e.message || '?');
         case 'scan_delete':
             return 'Scan record deleted — ' + (e.timestamp || '?');
-        case 'remediate_apply':
-            return 'Remediation applied — rules: ' + (e.rules_applied || 0) + ', exit: ' + e.exit_code;
+        case 'remediate_apply': {
+            const ids = (e.rule_ids && e.rule_ids.length) ? ' [' + e.rule_ids.join(', ') + ']' : '';
+            return 'Remediation applied — rules: ' + (e.rules_applied || 0) + ids + ', exit: ' + e.exit_code;
+        }
         case 'content_upload':
             return 'SDS content uploaded — ' + (e.file || '?');
         case 'content_delete':
             return 'SDS content deleted — ' + (e.file || '?');
+        case 'tailor_upload':
+            return 'Tailoring policy uploaded — ' + (e.file || '?') + ', profile: ' + (e.profile || '?');
         case 'tailor_save':
             return 'Tailoring policy saved — ' + (e.file || e.profile || '?');
         case 'tailor_delete':

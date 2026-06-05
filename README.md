@@ -84,20 +84,22 @@ All runtime data is written to `/var/lib/cockpit-scap/`:
 ├── results/
 │   └── <TIMESTAMP>/          # One directory per scan
 │       ├── manifest.json     # Scan metadata (profile, SDS, score, timing)
-│       ├── report.html       # oscap HTML report
-│       ├── results.xml       # oscap XML results
+│       ├── results.arf.gz    # Compressed ARF bundle (~3 MB)
+│       ├── results.xml       # oscap XML results (~15 MB; used for report gen + remediation)
 │       ├── remediation.sh    # Bash remediation script
 │       └── remediation.yml   # Ansible remediation playbook
 ├── tailoring/
 │   ├── <name>-<timestamp>.xml   # XCCDF tailoring file
-│   └── <name>-<timestamp>.json  # Sidecar metadata
+│   └── <name>-<timestamp>.json  # Sidecar metadata (profile, threshold, notes)
 ├── content/
 │   └── ssg-rhel<N>-ds.xml    # User-staged SDS files (root:root ownership required)
 └── remediation-logs/
     └── <TIMESTAMP>-<profile>.log  # Apply Now audit log (user, rules applied, exit code)
 ```
 
-Scan history is pruned automatically after each scan. Retention defaults to 10 results per scan type and is configurable via the Settings tab (1–50).
+HTML reports are generated on demand when **View Report** or **Download Report** is clicked — they are not stored on disk. Each scan uses approximately 18 MB on disk. Retention defaults to 10 results per scan type and is configurable via the Settings tab.
+
+Scan history is pruned automatically after each scan.
 
 ## SELinux
 
@@ -108,6 +110,10 @@ The module is tested and confirmed working with SELinux in enforcing mode. All f
 Cockpit's native `{ superuser: "require" }` mechanism is used, scoped to scan execution, file writes, and remediation apply only. Browsing content, selecting profiles, viewing history, and generating compliance guides require no elevation. No polkit action file, sudoers entry, or setuid binary is required.
 
 Privileged actions (Run Scan, Apply Now, upload, delete) are visually disabled with a tooltip in limited Cockpit sessions — no error popup after the fact. Elevation is requested once via the standard Cockpit prompt and applies for the session.
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for known issues on CIS-hardened hosts (masked service, `use_pty`, sudoers entries wiped after remediation).
 
 ## Development status
 
