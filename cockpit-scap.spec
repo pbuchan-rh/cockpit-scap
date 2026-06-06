@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.8
+Version:        3.9
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -44,7 +44,7 @@ the browser console RHEL administrators already use.
 %install
 # Module files → /usr/share/cockpit/cockpit-scap/
 install -d -m 755 %{buildroot}%{_datadir}/cockpit/%{name}
-install -m 644 src/index.html src/index.js src/container-scan.js src/dashboard.js src/style.css src/manifest.json src/viewer.html \
+install -m 644 src/index.html src/index.js src/container-scan.js src/style.css src/manifest.json src/viewer.html \
     %{buildroot}%{_datadir}/cockpit/%{name}/
 
 # AppStream metadata
@@ -94,6 +94,39 @@ fi
 %dir /var/lib/%{name}/remediation-logs
 
 %changelog
+* Thu Jun 05 2026 Peter Buchan <pbuchan@redhat.com> - 3.9-1
+- Compliance threshold per saved policy: drives donut color, history row
+  color, and policy target label; stored in sidecar and scan manifest
+- Framework reference chips: NIST 800-53, PCI-DSS, DISA STIG, CIS labels
+  on saved policies derived from profile ID
+- All XCCDF result types surfaced: error, not-checked, not-applicable badges
+  shown with distinct styling; not-applicable omitted from score denominator
+- Two-column findings/action layout: failing rules and remediation action
+  board side by side; action board shows severity counts and automatable count
+- Scan progress card: three-column layout (context | live badges | rule stream)
+- Compliance Dashboard removed: 736 lines JS + 950 lines CSS cut; tabs
+  simplified; dashboard.js no longer shipped
+- PF6 empty states with action buttons on history, container scan, and
+  tailoring list cards
+- Hardening compatibility: umask 027 systemic fix — superuser:try on all
+  privileged file reads across index.js and container-scan.js; chmod 644
+  chained after all privileged writes; gzip race fix; ARF binary download
+  via cockpit.spawn cat with binary:true
+- ETA countdown fix: use tailored profile_id when a saved policy is selected
+- Activity log tombstone: clearing the log writes a single audit entry
+  recording the user and timestamp before truncating
+- Remediation filter chip added to activity log; remediate_download moved
+  from Scans filter to Remediation filter
+- Download Log button on remediate_apply activity entries
+- SDS content version: extracted at scan start, stored in manifest as
+  sds_version, shown in scan progress context bar and results header for
+  both host and container scans
+- Container scan UI unified with host scan: results shown immediately after
+  scan (remediation generates in background with spinner); uploaded content
+  warning; fix types aligned to Bash/Ansible/Puppet on both tabs
+- TROUBLESHOOTING.md: CIS L2 hardening compatibility guide added
+- Default scan retention changed from 10 to 5
+
 * Mon Jun 02 2026 Peter Buchan <pbuchan@redhat.com> - 3.8-1
 - Drawer remediation: remediation panel slides in from right; scan results
   remain visible; close with Esc, backdrop click, or Close button
