@@ -826,11 +826,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('ct-log-modal').classList.remove('hidden');
             })
             .catch(err => {
-                if (viewBtn) {
-                    document.getElementById('ct-log-modal-path').textContent = logPath;
-                    document.getElementById('ct-log-modal-content').textContent = 'Could not read log file:\n' + (err.message || String(err));
-                    document.getElementById('ct-log-modal').classList.remove('hidden');
-                }
+                document.getElementById('ct-log-modal-path').textContent = logPath;
+                document.getElementById('ct-log-modal-content').textContent =
+                    'Log file not found — it may have been removed when scan data was cleared.\n\n' +
+                    (err.message || String(err));
+                document.getElementById('ct-log-modal').classList.remove('hidden');
             });
     });
 
@@ -4670,7 +4670,6 @@ function clearScanData() {
             { superuser: 'require', err: 'message' })
             .catch(err => console.error('clearScanData: failed for ' + dir, err.message || err))
     ))
-    .then(() => cockpit.file(ACTIVITY_LOG, { superuser: 'require' }).replace(''))
     .then(() => {
         appendActivityLog({ type: 'data_clear', tab: 'settings' });
         loadHistory();
@@ -4685,7 +4684,7 @@ function clearPolicies() {
     cockpit.spawn(['find', TAILORING_BASE, '-mindepth', '1', '-delete'],
         { superuser: 'require', err: 'message' })
         .then(() => {
-            appendActivityLog({ type: 'data_clear', tab: 'settings' });
+            appendActivityLog({ type: 'policy_clear', tab: 'settings' });
             renderUserContentList();
             fetchDiskUsage();
         })
@@ -4813,7 +4812,9 @@ function buildJournalMessage(e) {
         case 'activity_clear':
             return 'Activity log cleared';
         case 'data_clear':
-            return 'All module data cleared';
+            return 'All scan data cleared';
+        case 'policy_clear':
+            return 'All policy data cleared';
         default:
             return null;
     }
@@ -4837,7 +4838,8 @@ const ACTIVITY_TYPE_LABELS = {
     tailor_delete:       'Tailoring Deleted',
     settings_change:     'Settings Updated',
     remediate_apply:     'Remediation Applied',
-    data_clear:          'All Data Cleared',
+    data_clear:          'All Scan Data Cleared',
+    policy_clear:        'Policy Data Cleared',
 };
 
 
