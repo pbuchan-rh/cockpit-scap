@@ -116,7 +116,7 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for known issues on CIS-hardened ho
 
 ## Development status
 
-**Current release:** v3.8 — available via COPR
+**Current release:** v3.9 — available via COPR
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
@@ -128,4 +128,4 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 | **v1** | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
 | **v2** | Multi-version SDS content management — RHEL 6–9 SDS staging, CPE OS detection |
 | **v3** | Container image scanning — `oscap-podman`, root Podman store, per-image history |
-| **v3.x** *(current)* | Selective remediation, Apply Now, compliance dashboard, drawer UX, scan ETA, ARF export, full profile remediation, action board, score trend chart |
+| **v3.x** *(current)* | Selective remediation, Apply Now, drawer UX, ARF export, full profile remediation, action board, compliance threshold, CIS L2 hardening compatibility, container scan UI parity |
