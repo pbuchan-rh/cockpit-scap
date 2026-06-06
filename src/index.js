@@ -347,6 +347,7 @@ let tailorFilterStatus    = 'all';
 let tailorFilterSev       = 'all';
 let tailoringFilesMap   = {};
 let tailoringFilesGen   = 0;
+let allTailoringSidecars = [];
 
 /* Module state — content */
 let hostOsVersion     = null;   /* cached from /etc/os-release at startup */
@@ -1696,7 +1697,7 @@ function onApplyGate1Proceed() {
     const remFile = remediationDir + 'remediation.sh';
     cockpit.spawn(
         ['python3', '-c', PY_FILTER_FIX, remFile, 'bash', JSON.stringify(pendingApplyRules)],
-        { err: 'message' }
+        { err: 'message', superuser: 'require' }
     )
     .then(scriptContent => {
         pendingApplyScript = scriptContent;
@@ -3136,6 +3137,7 @@ function detectTailoringFiles() {
                 if (gen !== tailoringFilesGen) return;
 
                 const all   = sidecars.filter(Boolean);
+                allTailoringSidecars = all;
                 /* Scan tab dropdown: only files matching the current SDS */
                 const forScan = all.filter(sc => !currentSdsPath || sc.sds_path === currentSdsPath);
 
@@ -4459,11 +4461,13 @@ function renderUserContentList() {
                     btn.type      = 'button';
                     btn.textContent = 'Delete';
                     btn.addEventListener('click', () => {
-                        showConfirmModal(
-                            'Delete content file',
-                            'Delete "' + e.name + '"? This cannot be undone.',
-                            () => deleteUserContent(e.xmlPath, e.jsonPath)
-                        );
+                        const orphaned = allTailoringSidecars.filter(sc => sc.sds_path === e.xmlPath);
+                        const body = orphaned.length > 0
+                            ? 'Delete "' + e.name + '"? The following saved policies reference this content and will no longer load:\n\n' +
+                              orphaned.map(sc => '• ' + sc.name).join('\n') +
+                              '\n\nThis cannot be undone.'
+                            : 'Delete "' + e.name + '"? This cannot be undone.';
+                        showConfirmModal('Delete content file', body, () => deleteUserContent(e.xmlPath, e.jsonPath));
                     });
                     tdA.appendChild(btn);
                 });
