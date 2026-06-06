@@ -770,6 +770,7 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 .finally(() => {
                     csRemediationGenerating = false;
                     updateCsRemGeneratingStatus();
+                    csRefreshActionBoardAutomatable(manifest);
                     cockpit.spawn(['gzip', csResultsDir + 'results.arf'], { superuser: 'require' }).catch(() => {});
                     cockpit.spawn(
                         ['chmod', '755', csResultsDir],
@@ -806,6 +807,21 @@ function csLoadScanFromHistory(manifest) {
 function updateCsRemGeneratingStatus() {
     const status = document.getElementById('cs-rem-generating-status');
     if (status) status.classList.toggle('hidden', !csRemediationGenerating);
+}
+
+function csRefreshActionBoardAutomatable(manifest) {
+    if (!csBashPath || !manifest) return;
+    const sev      = manifest.severity_counts || {};
+    const totalFail = (manifest.counts || {}).fail || 0;
+    cockpit.spawn(['python3', '-c', PY_EXTRACT_FAILING_RULES,
+                   csResultsDir + 'results.xml', csBashPath],
+                  { err: 'message', superuser: 'try' })
+        .then(output => {
+            const d = JSON.parse(output); csEagerRemRules = d.fails || d;
+            const recCount = csEagerRemRules.filter(r => ['high','critical'].includes(r.severity) && r.automated).length;
+            updateCsActionBoard(sev, totalFail, recCount);
+        })
+        .catch(() => updateCsActionBoard(sev, totalFail, 0));
 }
 
 function updateCsActionBoard(sev, totalFail, autoCount) {
