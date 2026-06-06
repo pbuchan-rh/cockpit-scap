@@ -903,51 +903,44 @@ function csShowResults(manifest) {
     }
     updateCsRemGeneratingStatus();
 
-    const badges = document.getElementById('cs-result-badges');
-    badges.innerHTML = '';
-    const csBadgeDefs = [
-        ['Pass',        counts.pass,       'ct-badge-pass'],
-        ['Fail',        counts.fail,       'ct-badge-fail'],
-        ['Error',       counts.error,      'ct-badge-error'],
-        ['Not checked', counts.notchecked, 'ct-badge-neutral'],
-    ];
-    if ((counts.notapplicable || 0) > 0) {
-        csBadgeDefs.splice(3, 0, ['Not applicable', counts.notapplicable, 'ct-badge-na']);
-    }
-    csBadgeDefs.forEach(([label, count, cls], i) => {
-        if (i === 3) {
-            const spacer = document.createElement('span');
-            spacer.className = 'ct-badge-group-gap';
-            badges.appendChild(spacer);
-        }
-        const span = document.createElement('span');
-        span.className = 'ct-result-badge ' + cls;
-        const numEl = document.createElement('span');
-        numEl.className = 'ct-result-badge-num';
-        numEl.textContent = count;
-        const lblEl = document.createElement('span');
-        lblEl.className = 'ct-result-badge-label';
-        lblEl.textContent = label;
-        span.appendChild(numEl);
-        span.appendChild(lblEl);
-        badges.appendChild(span);
-    });
+    const csBreakdownEl = document.getElementById('cs-result-badges');
+    csBreakdownEl.innerHTML = '';
+    const csPassSpan = document.createElement('span');
+    csPassSpan.className = 'ct-bd-pass';
+    csPassSpan.textContent = counts.pass + ' passed';
+    const csFailSpan = document.createElement('span');
+    csFailSpan.className = 'ct-bd-fail';
+    csFailSpan.textContent = counts.fail + ' failed';
+    csBreakdownEl.appendChild(csPassSpan);
+    csBreakdownEl.appendChild(document.createTextNode(' · '));
+    csBreakdownEl.appendChild(csFailSpan);
+    if ((counts.error || 0) > 0)
+        csBreakdownEl.appendChild(document.createTextNode(' · ' + counts.error + ' error' + (counts.error === 1 ? '' : 's')));
+    if ((counts.notapplicable || 0) > 0)
+        csBreakdownEl.appendChild(document.createTextNode(' · ' + counts.notapplicable + ' n/a'));
+    if ((counts.notchecked || 0) > 0)
+        csBreakdownEl.appendChild(document.createTextNode(' · ' + counts.notchecked + ' not checked'));
+    csBreakdownEl.classList.remove('hidden');
 
     const csArfBtn = document.getElementById('cs-download-arf-btn');
     csArfBtn.disabled = !manifest.has_arf;
     if (!manifest.has_arf) csArfBtn.title = 'ARF not available — rescan to generate';
 
-    const scoreEl    = document.getElementById('cs-result-score');
-    const csThresh   = manifest.compliance_threshold != null ? manifest.compliance_threshold : 90;
+    const scoreEl  = document.getElementById('cs-result-score');
+    const csThresh = manifest.compliance_threshold != null ? manifest.compliance_threshold : 90;
     scoreEl.innerHTML = '';
-    scoreEl.appendChild(buildScoreDonut(score, csThresh, true));
+    const csHeroSpan = document.createElement('span');
+    csHeroSpan.className = 'ct-score-hero-num ' + (score >= csThresh ? 'ct-score-above' : 'ct-score-below');
+    csHeroSpan.textContent = score.toFixed(1) + '%';
+    scoreEl.appendChild(csHeroSpan);
 
     const csTargetEl = document.getElementById('cs-results-target');
     if (manifest.compliance_threshold != null) {
-        csTargetEl.textContent = 'Policy target: ' + manifest.compliance_threshold + '%';
-        csTargetEl.classList.remove('hidden');
+        const csAbove = score >= csThresh;
+        csTargetEl.textContent = (csAbove ? '✓ Above' : '✗ Below') + ' policy target (' + csThresh + '%)';
+        csTargetEl.className = 'ct-results-target ' + (csAbove ? 'ct-score-above' : 'ct-score-below');
     } else {
-        csTargetEl.classList.add('hidden');
+        csTargetEl.className = 'ct-results-target hidden';
     }
 
     const csPrev = currentCsHistory.find(m =>

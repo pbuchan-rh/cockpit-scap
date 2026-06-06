@@ -1973,56 +1973,6 @@ function loadScanDiff(newXml, oldXml, containerId) {
         });
 }
 
-function buildScoreDonut(score, threshold, animate) {
-    const r      = 52;
-    const circ   = 2 * Math.PI * r;
-    const offset = circ * (1 - score / 100);
-    const color  = score >= threshold ? 'var(--ct-color-success)' : 'var(--ct-color-danger)';
-    const NS = 'http://www.w3.org/2000/svg';
-
-    const svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('width', '128');
-    svg.setAttribute('height', '128');
-    svg.setAttribute('viewBox', '0 0 128 128');
-    svg.classList.add('ct-score-donut');
-
-    const track = document.createElementNS(NS, 'circle');
-    track.setAttribute('cx', '64'); track.setAttribute('cy', '64');
-    track.setAttribute('r', String(r)); track.setAttribute('fill', 'none');
-    track.setAttribute('stroke-width', '8');
-    track.style.stroke = 'var(--ct-color-border)';
-    svg.appendChild(track);
-
-    const arc = document.createElementNS(NS, 'circle');
-    arc.setAttribute('cx', '64'); arc.setAttribute('cy', '64');
-    arc.setAttribute('r', String(r)); arc.setAttribute('fill', 'none');
-    arc.setAttribute('stroke-width', '8');
-    arc.setAttribute('stroke-linecap', 'round');
-    arc.setAttribute('stroke-dasharray', String(circ));
-    arc.setAttribute('stroke-dashoffset', String(offset));
-    arc.setAttribute('transform', 'rotate(-90 64 64)');
-    arc.style.stroke = color;
-    svg.appendChild(arc);
-
-    const text = document.createElementNS(NS, 'text');
-    text.setAttribute('x', '64'); text.setAttribute('y', '70');
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('font-size', '18');
-    text.setAttribute('font-weight', '700');
-    text.setAttribute('fill', 'currentColor');
-    text.textContent = score.toFixed(1) + '%';
-    svg.appendChild(text);
-
-    if (animate) {
-        arc.setAttribute('stroke-dashoffset', String(circ));
-        arc.style.transition = 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)';
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-            arc.setAttribute('stroke-dashoffset', String(offset));
-        }));
-    }
-
-    return svg;
-}
 
 function onFailingSummarySearch(groupsId, searchId) {
     const term   = document.getElementById(searchId).value.toLowerCase();
@@ -2456,51 +2406,44 @@ function showResults(manifest) {
         verEl.classList.add('hidden');
     }
 
-    const badges = document.getElementById('ct-result-badges');
-    badges.innerHTML = '';
-    const badgeDefs = [
-        ['Pass',          counts.pass,          'ct-badge-pass'],
-        ['Fail',          counts.fail,          'ct-badge-fail'],
-        ['Error',         counts.error,         'ct-badge-error'],
-        ['Not checked',   counts.notchecked,    'ct-badge-neutral'],
-    ];
-    if ((counts.notapplicable || 0) > 0) {
-        badgeDefs.splice(3, 0, ['Not applicable', counts.notapplicable, 'ct-badge-na']);
-    }
-    badgeDefs.forEach(([label, count, cls], i) => {
-        if (i === 3) {
-            const spacer = document.createElement('span');
-            spacer.className = 'ct-badge-group-gap';
-            badges.appendChild(spacer);
-        }
-        const span = document.createElement('span');
-        span.className = 'ct-result-badge ' + cls;
-        const numEl = document.createElement('span');
-        numEl.className = 'ct-result-badge-num';
-        numEl.textContent = count;
-        const lblEl = document.createElement('span');
-        lblEl.className = 'ct-result-badge-label';
-        lblEl.textContent = label;
-        span.appendChild(numEl);
-        span.appendChild(lblEl);
-        badges.appendChild(span);
-    });
+    const breakdownEl = document.getElementById('ct-result-badges');
+    breakdownEl.innerHTML = '';
+    const passSpan = document.createElement('span');
+    passSpan.className = 'ct-bd-pass';
+    passSpan.textContent = counts.pass + ' passed';
+    const failSpan = document.createElement('span');
+    failSpan.className = 'ct-bd-fail';
+    failSpan.textContent = counts.fail + ' failed';
+    breakdownEl.appendChild(passSpan);
+    breakdownEl.appendChild(document.createTextNode(' · '));
+    breakdownEl.appendChild(failSpan);
+    if ((counts.error || 0) > 0)
+        breakdownEl.appendChild(document.createTextNode(' · ' + counts.error + ' error' + (counts.error === 1 ? '' : 's')));
+    if ((counts.notapplicable || 0) > 0)
+        breakdownEl.appendChild(document.createTextNode(' · ' + counts.notapplicable + ' n/a'));
+    if ((counts.notchecked || 0) > 0)
+        breakdownEl.appendChild(document.createTextNode(' · ' + counts.notchecked + ' not checked'));
+    breakdownEl.classList.remove('hidden');
 
     const arfBtn = document.getElementById('ct-download-arf-btn');
     arfBtn.disabled = !manifest.has_arf;
     if (!manifest.has_arf) arfBtn.title = 'ARF not available — rescan to generate';
 
-    const scoreEl  = document.getElementById('ct-result-score');
+    const scoreEl   = document.getElementById('ct-result-score');
     const threshold = manifest.compliance_threshold != null ? manifest.compliance_threshold : 90;
     scoreEl.innerHTML = '';
-    scoreEl.appendChild(buildScoreDonut(score, threshold, true));
+    const heroSpan = document.createElement('span');
+    heroSpan.className = 'ct-score-hero-num ' + (score >= threshold ? 'ct-score-above' : 'ct-score-below');
+    heroSpan.textContent = score.toFixed(1) + '%';
+    scoreEl.appendChild(heroSpan);
 
     const targetEl = document.getElementById('ct-results-target');
     if (manifest.compliance_threshold != null) {
-        targetEl.textContent = 'Policy target: ' + manifest.compliance_threshold + '%';
-        targetEl.classList.remove('hidden');
+        const above = score >= threshold;
+        targetEl.textContent = (above ? '✓ Above' : '✗ Below') + ' policy target (' + threshold + '%)';
+        targetEl.className = 'ct-results-target ' + (above ? 'ct-score-above' : 'ct-score-below');
     } else {
-        targetEl.classList.add('hidden');
+        targetEl.className = 'ct-results-target hidden';
     }
 
     const uploadedWarn = document.getElementById('ct-uploaded-content-warning');

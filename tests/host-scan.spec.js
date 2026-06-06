@@ -161,22 +161,16 @@ test.describe('Host Scan', () => {
         await page.screenshot({ path: 'tests/screenshots/06b-scan-meta.png' });
     });
 
-    test('result badges include Not applicable when count > 0', async ({ page }) => {
+    test('result breakdown shows pass/fail counts', async ({ page }) => {
         const frame = await getModuleFrame(page);
         const loaded = await loadResultsFromHistory(frame);
         if (!loaded) { test.skip('No scan history available'); return; }
-        // Pass/Fail/Error/Not checked always shown; Not applicable only when > 0
-        await expect(frame.locator('#ct-result-badges .ct-badge-pass')).toBeVisible();
-        await expect(frame.locator('#ct-result-badges .ct-badge-fail')).toBeVisible();
-        // Not applicable badge — check it uses the outlined style (ct-badge-na) when present
-        const naBadge = frame.locator('#ct-result-badges .ct-badge-na');
-        const naCount = await naBadge.count();
-        if (naCount > 0) {
-            await expect(naBadge).toBeVisible();
-            const text = await naBadge.textContent();
-            expect(text).toContain('Not applicable');
-        }
-        await page.screenshot({ path: 'tests/screenshots/06c-result-badges.png' });
+        const breakdown = frame.locator('#ct-result-badges');
+        await expect(breakdown).toBeVisible();
+        const text = await breakdown.textContent();
+        expect(text).toContain('passed');
+        expect(text).toContain('failed');
+        await page.screenshot({ path: 'tests/screenshots/06c-result-breakdown.png' });
     });
 
     test('action board shows Remediation Builder buttons with correct labels', async ({ page }) => {
