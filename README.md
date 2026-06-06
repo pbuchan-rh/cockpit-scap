@@ -4,15 +4,17 @@ A native [Cockpit](https://cockpit-project.org/) module for RHEL 10 / CentOS Str
 
 ## Features
 
-- **Host scanning** — auto-detects installed SSG data streams across RHEL 6–10; shows scan ETA during the run based on prior matching scans; compliance score, severity breakdown, and regression detection on complete
-- **Failing rules** — collapsible HIGH/MEDIUM/LOW groups with CCE identifiers, inline description and rationale, and Automated/Manual annotation; search by rule title or CCE
-- **Selective remediation** — drawer slides in over scan results; search and select failing rules; download filtered bash or Ansible scripts; **Apply Now** remediates directly on the host with two-gate confirmation and live streaming output; **Quick Fix** pre-selects automatable critical/high rules
-- **Full profile remediation** — generate a bash or Ansible script for the entire selected profile without running a scan first; available on Host Scan, Container Scan, and Tailoring tabs
-- **Container image scanning** — scan images from the root Podman store via `oscap-podman`; per-image scan history, severity action bar, and remediation script download for build pipelines
-- **Policy tailoring** — XCCDF rule tree editor with variable adjustment and search; upload, download, edit, and delete saved tailoring files; active tailoring file included in remediation exports
-- **Scan history** — every result stored with score delta vs previous same-profile scan; reload any historical result or open it directly in the remediation drawer; configurable retention
-- **Export** — HTML report, XCCDF results XML, and ARF bundle per scan; compliance guide viewable for any profile; history exportable as CSV
-- **Settings** — tab visibility toggles, scan retention, Clear All Data, Content Library (system + uploaded SDS), and manual scheduling command for cron
+- **Host scanning** — auto-detects installed SSG data streams across RHEL 6–10; compliance score, severity breakdown, regression detection, and scan ETA during the run
+- **Container image scanning** — scan images from the root Podman store via `oscap-podman`; per-image history, severity action bar, and remediation scripts for build pipelines
+- **Failing rules** — collapsible HIGH/MEDIUM/LOW groups with CCE identifiers, inline description and rationale, and Automated/Manual annotation; search by title or CCE
+- **Selective remediation** — pick individual failing rules and download a filtered bash, Ansible, or Puppet script; **Apply Now** remediates directly on the host with two-gate confirmation and live output; **Quick Fix** pre-selects automatable critical/high rules
+- **Full profile remediation** — generate a remediation script for an entire profile without running a scan first; available on Host Scan, Container Scan, and Tailoring tabs
+- **Saved policies** — store a tailoring file + compliance threshold as a named policy; threshold drives score color coding in results and history; framework reference chips (NIST, PCI-DSS, DISA, CIS) derived from profile
+- **Policy tailoring** — XCCDF rule tree editor with variable adjustment and search; upload, download, edit, and delete saved tailoring files
+- **Scan history** — every result stored with score delta vs previous same-profile scan; reload any historical result or open it in the remediation drawer; configurable retention
+- **Activity log** — structured audit trail of all privileged actions (scans, remediation, tailoring, content operations); filter by type; each entry records the authenticated user; integrates with the systemd journal
+- **Export** — HTML report, XCCDF results XML, and ARF bundle per scan; compliance guide for any profile; history as CSV
+- **Settings** — tab visibility, scan retention, Clear All Data, Content Library (system + uploaded SDS files)
 
 ## Screenshots
 
@@ -128,4 +130,4 @@ no external CDN dependencies. Suitable for deployment on air-gapped systems.
 | **v1** | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
 | **v2** | Multi-version SDS content management — RHEL 6–9 SDS staging, CPE OS detection |
 | **v3** | Container image scanning — `oscap-podman`, root Podman store, per-image history |
-| **v3.x** *(current)* | Selective remediation, Apply Now, drawer UX, ARF export, full profile remediation, action board, compliance threshold, CIS L2 hardening compatibility, container scan UI parity |
+| **v3.x** *(current)* | Selective remediation, saved policies, compliance thresholds, full audit trail, CIS L2 hardening compatibility, container scan parity |
