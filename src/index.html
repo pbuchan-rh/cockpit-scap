@@ -388,7 +388,7 @@
                 </div>
               </div>
               <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn ct-requires-admin" type="button"
-                      id="ct-new-scan-btn">Run Again</button>
+                      id="ct-new-scan-btn">Load Config</button>
               <button class="pf-v6-c-button pf-m-secondary ct-results-close" type="button"
                       id="ct-results-close-btn">Close</button>
             </div>
@@ -442,7 +442,8 @@
                 </div>
                 <pre class="ct-apply-output" id="ct-apply-output"></pre>
                 <div class="hidden ct-apply-log-saved" id="ct-apply-log-saved">
-                  &#10003; Full remediation log saved. &nbsp;<button class="pf-v6-c-button pf-m-link" type="button"
+                  &#10003; Audit log saved. &nbsp;<button class="pf-v6-c-button pf-m-link" type="button"
+                    id="ct-apply-download-log">Download Log</button> &nbsp;<button class="pf-v6-c-button pf-m-link" type="button"
                     id="ct-apply-goto-activity">View in Activity tab &#8594;</button>
                 </div>
               </div>
@@ -903,7 +904,7 @@
                   </div>
                 </div>
                 <button class="pf-v6-c-button pf-m-secondary ct-new-scan-btn ct-requires-admin" type="button"
-                        id="cs-new-scan-btn">Run Again</button>
+                        id="cs-new-scan-btn">Load Config</button>
                 <button class="pf-v6-c-button pf-m-secondary ct-results-close" type="button"
                         id="cs-results-close-btn">Close</button>
               </div>
@@ -1480,7 +1481,7 @@
 
             <div class="ct-content-section-header">
               <h3 class="ct-settings-section-title">Uploaded Content</h3>
-              <div>
+              <div class="ct-content-upload-row">
                 <input type="file" id="ct-content-upload-input" accept=".xml" class="hidden">
                 <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
                         id="ct-content-upload-btn">Upload SDS File</button>
@@ -1530,8 +1531,7 @@
               <button class="ct-activity-chip pf-m-active" data-filter="all" type="button">All</button>
               <button class="ct-activity-chip" data-filter="scan" type="button">Scans</button>
               <button class="ct-activity-chip" data-filter="remediation" type="button">Remediation</button>
-              <button class="ct-activity-chip" data-filter="guide" type="button">Guide</button>
-              <button class="ct-activity-chip" data-filter="validate" type="button">Content</button>
+              <button class="ct-activity-chip" data-filter="content" type="button">Content</button>
               <button class="ct-activity-chip" data-filter="tailoring" type="button">Tailoring</button>
             </div>
           </div>

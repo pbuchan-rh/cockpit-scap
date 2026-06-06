@@ -516,7 +516,9 @@ document.addEventListener('DOMContentLoaded', () => {
         .addEventListener('click', () => {
             if (currentScanProc) {
                 document.getElementById('ct-results').classList.add('hidden');
+                syncHostHistoryHighlight();
             } else {
+                currentTimestamp = null;
                 showScanSetup();
             }
         });
@@ -837,6 +839,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('ct-apply-goto-activity')
         .addEventListener('click', () => { closeRemDrawer(); document.getElementById('tab-btn-activity').click(); });
+
+    document.getElementById('ct-apply-download-log')
+        .addEventListener('click', function() {
+            const logPath = this.dataset.logPath;
+            if (!logPath) return;
+            cockpit.file(logPath, { superuser: 'require' }).read()
+                .then(content => {
+                    const a = document.createElement('a');
+                    a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(content || '');
+                    a.download = logPath.split('/').pop();
+                    a.click();
+                }).catch(() => {});
+        });
 });
 
 /* ---- Tab wiring -------------------------------------------- */
@@ -1175,9 +1190,6 @@ function onScanClick() {
 
     hideScanError();
     showScanProgress();
-    appendActivityLog({ type: 'scan_start', tab: 'host',
-        content: currentSdsPath.split('/').pop(), profile: profileTitle,
-        tailoring: tailoringPath ? tailoringPath.split('/').pop() : null });
 
     cockpit.spawn(['mkdir', '-p', currentResultsDir], { superuser: 'require' })
         .then(() => runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath))
@@ -1308,6 +1320,11 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
             updateApplyGate1Btn();
             const remDir = currentResultsDir;
             generateRemediation(manifest.result_id, resultsXmlPath, tailoringPath)
+                .then(() => cockpit.spawn(
+                    ['find', remDir, '-maxdepth', '1', '-name', 'remediation.*',
+                     '-exec', 'chmod', '644', '{}', '+'],
+                    { superuser: 'require' }
+                ).catch(() => {}))
                 .catch(err => {
                     console.error('Remediation generation failed:', err.message || err);
                     currentRemBashPath    = null;
@@ -1317,11 +1334,6 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                     remediationGenerating = false;
                     updateApplyGate1Btn();
                     refreshActionBoardAutomatable();
-                    cockpit.spawn(
-                        ['find', remDir, '-maxdepth', '1', '-name', 'remediation.*',
-                         '-exec', 'chmod', '644', '{}', '+'],
-                        { superuser: 'require' }
-                    ).catch(() => {});
                 });
             pruneHistoryByType('host').catch(() => {});
             cockpit.spawn(['gzip', currentResultsDir + 'results.arf'], { superuser: 'require' })
@@ -1650,8 +1662,6 @@ function generateSelectiveFix(fixType, selectedIds, btnEl) {
             btn.textContent = '✓ Downloaded';
             setTimeout(() => { btn.textContent = orig; }, 2000);
         }
-        appendActivityLog({ type: 'remediate_download', tab: 'host',
-            fix_type: fixType, rules_selected: selected.length });
     })
     .catch(err => console.error('Selective remediation failed:', err.message || err));
 }
@@ -1735,7 +1745,11 @@ function onApplyGate2Execute() {
     logSavedEl.classList.add('hidden');
     titleEl.textContent = 'Applying remediation…';
     areaEl.classList.remove('hidden');
-    areaEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const drawerBody = areaEl.closest('.pf-v6-c-card__body');
+    if (drawerBody) {
+        const offset = areaEl.getBoundingClientRect().top - drawerBody.getBoundingClientRect().top;
+        drawerBody.scrollBy({ top: offset, behavior: 'smooth' });
+    }
 
     function persistLog(exitCode) {
         const profile   = (currentManifest && currentManifest.profile_title) || profileSlug;
@@ -1756,6 +1770,8 @@ function onApplyGate2Execute() {
                 .replace(header + outputEl.textContent))
             .then(() => {
                 logSavedEl.classList.remove('hidden');
+                const dlBtn = document.getElementById('ct-apply-download-log');
+                if (dlBtn) dlBtn.dataset.logPath = logFile;
                 cockpit.spawn([
                     'logger', '-t', 'cockpit-scap',
                     'Remediation script executed — user: ' + (currentUser || '?') +
@@ -2306,6 +2322,7 @@ function loadScanFromHistory(manifest) {
     currentSdsPath        = manifest.sds_file || null;
     document.getElementById('ct-scan-row').classList.add('hidden');
     showResults(manifest);
+    syncHostHistoryHighlight();
     document.getElementById('ct-results').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -2723,6 +2740,7 @@ function showScanSetup() {
     currentRemBashPath    = null;
     currentRemAnsiblePath = null;
     remediationGenerating = false;
+    syncHostHistoryHighlight();
 }
 
 /* ---- UI helpers -------------------------------------------- */
@@ -2890,7 +2908,6 @@ function onViewGuideClick() {
     cockpit.spawn(args, { err: 'message' })
         .then(html => storeReportInDB(html))
         .then(() => {
-            appendActivityLog({ type: 'guide', tab: 'host', profile: profileId });
             win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html';
         })
         .catch(err => {
@@ -2923,7 +2940,6 @@ function onTailorViewGuideClick() {
                   { err: 'message' })
         .then(html => storeReportInDB(html))
         .then(() => {
-            appendActivityLog({ type: 'guide', tab: 'tailoring', profile: profileId });
             win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html';
         })
         .catch(err => {
@@ -2998,11 +3014,20 @@ function renderHistory(manifests) {
     empty.classList.add('hidden');
     table.classList.remove('hidden');
     updateAdminControls();
+    syncHostHistoryHighlight();
+}
+
+function syncHostHistoryHighlight() {
+    const visible = !document.getElementById('ct-results').classList.contains('hidden');
+    document.querySelectorAll('#ct-history-tbody tr').forEach(r => {
+        r.classList.toggle('ct-row-active', visible && r.dataset.timestamp === currentTimestamp);
+    });
 }
 
 function buildHistoryRow(manifest) {
     const dir = RESULTS_BASE + manifest.timestamp + '/';
     const tr  = document.createElement('tr');
+    tr.dataset.timestamp = manifest.timestamp;
 
     const date = manifest.timestamp
         .replace('T', ' ')
@@ -3054,7 +3079,7 @@ function buildHistoryRow(manifest) {
     const rerunBtn = document.createElement('button');
     rerunBtn.className   = 'pf-v6-c-button pf-m-link ct-history-rerun-btn';
     rerunBtn.type        = 'button';
-    rerunBtn.textContent = 'Run Again';
+    rerunBtn.textContent = 'Load Config';
     rerunBtn.disabled    = !!currentScanProc;
     rerunBtn.addEventListener('click', () => rerunHostScan(manifest));
     actionsTd.appendChild(rerunBtn);
@@ -3283,6 +3308,7 @@ function resetTailorForm() {
     }
     document.getElementById('ct-tailor-load-btn').disabled = true;
     hideTailorProfileDesc();
+    syncTailorHighlight();
 }
 
 function showTailorProfileDesc(profileTitle, descText) {
@@ -3900,6 +3926,7 @@ function doUpdateTailoringFile() {
         detectTailoringFiles();
         if (typeof csDetectTailoringFiles === 'function') csDetectTailoringFiles();
         resetTailorForm();
+        tailorEditingSidecar = updatedSidecar;
     })
     .catch(err => {
         statusEl.textContent = 'Update failed: ' + (err.message || String(err));
@@ -3968,6 +3995,7 @@ function onTailorSaveClick() {
             detectTailoringFiles();
             if (typeof csDetectTailoringFiles === 'function') csDetectTailoringFiles();
             resetTailorForm();
+            tailorEditingSidecar = sidecar;
         })
         .catch(err => {
             statusEl.textContent = 'Save failed: ' + (err.message || String(err));
@@ -4003,6 +4031,14 @@ function generateTailoringXml(baseProfileId, newProfileId, newProfileTitle, rule
 
 /* ---- Saved tailoring files list ---------------------------- */
 
+function syncTailorHighlight() {
+    const visible    = !document.getElementById('ct-tailor-editor').classList.contains('hidden');
+    const activePath = tailorEditingSidecar && tailorEditingSidecar.path;
+    document.querySelectorAll('#ct-tailor-list-tbody tr').forEach(r => {
+        r.classList.toggle('ct-row-active', visible && !!activePath && r.dataset.path === activePath);
+    });
+}
+
 function renderTailoringList(sidecars) {
     const tbody = document.getElementById('ct-tailor-list-tbody');
     const table = document.getElementById('ct-tailor-list-table');
@@ -4022,6 +4058,7 @@ function renderTailoringList(sidecars) {
 
     sorted.forEach(sc => {
         const tr = document.createElement('tr');
+        tr.dataset.path = sc.path;
 
         const created = sc.created
             ? sc.created.slice(0, 10) + ' ' + sc.created.slice(11).replace(/-/g, ':')
@@ -4066,7 +4103,6 @@ function renderTailoringList(sidecars) {
         dlBtn.addEventListener('click', () => {
             const fname = sc.path.split('/').pop();
             downloadArtifact(sc.path, fname, 'application/xml');
-            appendActivityLog({ type: 'tailor_download', tab: 'tailoring', file: fname, profile: sc.name });
         });
 
         const delBtn       = document.createElement('button');
@@ -4082,6 +4118,7 @@ function renderTailoringList(sidecars) {
         tbody.appendChild(tr);
     });
     updateAdminControls();
+    syncTailorHighlight();
 }
 
 function onEditTailoringFile(sidecar) {
@@ -4101,11 +4138,11 @@ function onEditTailoringFile(sidecar) {
 }
 
 function doEditTailoringFile(sidecar) {
-    appendActivityLog({ type: 'tailor_load', tab: 'tailoring', file: sidecar.path.split('/').pop(), profile: sidecar.name });
     tailorSdsPath        = sidecar.sds_path;
     tailorRuleChanges    = {};
     tailorValueChanges   = {};
     tailorEditingSidecar = sidecar;
+    syncTailorHighlight();
 
     document.getElementById('ct-tailor-update-btn').classList.remove('hidden');
     const saveBtn = document.getElementById('ct-tailor-save-btn');
@@ -4849,16 +4886,12 @@ const ACTIVITY_TYPE_LABELS = {
     scan_cancel:         'Scan Cancelled',
     scan_error:          'Scan Failed',
     scan_delete:         'Scan Deleted',
-    guide:               'Compliance Guide Generated',
     validate:            'Content Validated',
     content_upload:      'Content Uploaded',
     content_delete:      'Content Deleted',
     tailor_upload:       'Tailoring Uploaded',
-    tailor_load:         'Tailoring Loaded',
     tailor_save:         'Tailoring Saved',
     tailor_delete:       'Tailoring Deleted',
-    tailor_download:     'Tailoring Downloaded',
-    remediate_download:  'Remediation Downloaded',
     settings_change:     'Settings Updated',
     remediate_apply:     'Remediation Applied',
     data_clear:          'All Data Cleared',
@@ -4866,11 +4899,10 @@ const ACTIVITY_TYPE_LABELS = {
 
 
 const ACTIVITY_FILTER_MAP = {
-    scan:        ['scan_start', 'scan_complete', 'scan_cancel', 'scan_error', 'scan_delete'],
-    remediation: ['remediate_apply', 'remediate_download'],
-    guide:       ['guide'],
-    validate:    ['validate', 'content_delete', 'content_upload'],
-    tailoring:   ['tailor_upload', 'tailor_load', 'tailor_save', 'tailor_delete', 'tailor_download'],
+    scan:        ['scan_complete', 'scan_cancel', 'scan_error', 'scan_delete'],
+    remediation: ['remediate_apply'],
+    content:     ['validate', 'content_delete', 'content_upload'],
+    tailoring:   ['tailor_upload', 'tailor_save', 'tailor_delete'],
 };
 
 function startActivityPoll() {

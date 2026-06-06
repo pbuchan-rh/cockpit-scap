@@ -185,7 +185,9 @@ function initContainerScan() {
         .addEventListener('click', () => {
             if (csProc) {
                 document.getElementById('cs-results').classList.add('hidden');
+                csSyncHistoryHighlight();
             } else {
+                csTimestamp = null;
                 csShowSetup();
             }
         });
@@ -620,9 +622,6 @@ function onCsScanClick() {
 
     csClearError();
     csShowProgress();
-    appendActivityLog({ type: 'scan_start', tab: 'container',
-        content: csSdsPath.split('/').pop(), profile: profileTitle, image: csImageName,
-        tailoring: tailoringPath ? tailoringPath.split('/').pop() : null });
 
     cockpit.spawn(['mkdir', '-p', csResultsDir], { superuser: 'require' })
         .then(() => {
@@ -801,6 +800,7 @@ function csLoadScanFromHistory(manifest) {
     csHidePrereq();
     document.getElementById('cs-scan-row').classList.add('hidden');
     csShowResults(manifest);
+    csSyncHistoryHighlight();
     document.getElementById('cs-results').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -1074,6 +1074,14 @@ function csRenderHistory(manifests) {
     empty.classList.add('hidden');
     table.classList.remove('hidden');
     updateAdminControls();
+    csSyncHistoryHighlight();
+}
+
+function csSyncHistoryHighlight() {
+    const visible = !document.getElementById('cs-results').classList.contains('hidden');
+    document.querySelectorAll('#cs-history-tbody tr').forEach(r => {
+        r.classList.toggle('ct-row-active', visible && r.dataset.timestamp === csTimestamp);
+    });
 }
 
 function csShortImageName(imageName) {
@@ -1095,6 +1103,7 @@ function csSdsLabel(sdsFile) {
 function csBuildHistoryRow(manifest) {
     const dir = RESULTS_BASE + manifest.timestamp + '/';
     const tr  = document.createElement('tr');
+    tr.dataset.timestamp = manifest.timestamp;
 
     const date = manifest.timestamp
         .replace('T', ' ')
@@ -1129,7 +1138,7 @@ function csBuildHistoryRow(manifest) {
     const rerunBtn = document.createElement('button');
     rerunBtn.className   = 'pf-v6-c-button pf-m-link cs-history-rerun-btn ct-requires-admin';
     rerunBtn.type        = 'button';
-    rerunBtn.textContent = 'Run Again';
+    rerunBtn.textContent = 'Load Config';
     rerunBtn.disabled    = !!csProc;
     rerunBtn.addEventListener('click', () => csRerunScan(manifest));
     actionsTd.appendChild(rerunBtn);
@@ -1200,7 +1209,6 @@ function onCsViewGuideClick() {
     cockpit.spawn(args, { err: 'message' })
         .then(html => storeReportInDB(html))
         .then(() => {
-            appendActivityLog({ type: 'guide', tab: 'container', profile: profileId });
             win.location.href = '/cockpit/@localhost/cockpit-scap/viewer.html';
         })
         .catch(err => {
@@ -1378,6 +1386,7 @@ function csShowSetup() {
     csProc        = null;
     csBashPath    = null;
     csAnsiblePath = null;
+    csSyncHistoryHighlight();
 }
 
 function csScanError(msg, output) {
@@ -1610,8 +1619,6 @@ function generateCsSelectiveFix(fixType, selectedIds, btnEl) {
             btn.textContent = '✓ Downloaded';
             setTimeout(() => { btn.textContent = orig; }, 2000);
         }
-        appendActivityLog({ type: 'remediate_download', tab: 'container',
-            fix_type: fixType, rules_selected: selected.length });
     })
     .catch(err => console.error('Container selective remediation failed:', err.message || err));
 }

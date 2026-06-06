@@ -2125,6 +2125,11 @@ details.ct-tailor-group .ct-tailor-rule {
   width: 1px;
 }
 
+.pf-v6-c-table tbody tr.ct-row-active,
+.pf-v6-c-table tbody tr.ct-row-active:hover {
+  background-color: color-mix(in srgb, var(--ct-blue) 8%, transparent) !important;
+}
+
 .ct-history-num-cell {
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -2555,7 +2560,14 @@ html.pf-v6-theme-dark .ct-badge-error {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--ct-color-text-secondary);
-  margin: 0 0 8px;
+  margin: 0 0 16px;
+}
+
+.ct-content-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
 .ct-settings-desc {
