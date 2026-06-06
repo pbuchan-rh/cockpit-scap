@@ -2724,21 +2724,6 @@ html.pf-v6-theme-dark .ct-badge-error {
 }
 
 /* Action type badges */
-.ct-activity-badge {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 10px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.ct-activity-scan      { background: #0066cc; color: #fff; }
-.ct-activity-guide     { background: #3e8635; color: #fff; }
-.ct-activity-validate  { background: #f0ab00; color: #000; }
-.ct-activity-tailor    { background: #009596; color: #fff; }
-.ct-activity-danger    { background: #c9190b; color: #fff; }
-.ct-activity-remediate { background: #f4860a; color: #fff; }
 
 .ct-activity-scan-cancel { color: var(--ct-color-warning); }
 
@@ -2749,6 +2734,14 @@ html.pf-v6-theme-dark .ct-badge-error {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ct-activity-view-log,
+.ct-activity-download-log {
+  padding-block: 0;
+  font-size: 0.82rem;
+  vertical-align: baseline;
+  line-height: inherit;
 }
 
 .ct-pass-count  { color: var(--pf-v6-global--success-color--100); }

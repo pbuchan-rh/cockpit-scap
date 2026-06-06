@@ -3334,7 +3334,7 @@ function onTailorProfileChange() {
     }
 
     const profileTitle   = profileSelect.options[profileSelect.selectedIndex].text;
-    nameInput.value      = profileTitle + ' — Custom';
+    nameInput.value      = '';
     nameInput.disabled   = false;
     updateTailorLoadBtn();
 
@@ -4864,26 +4864,6 @@ const ACTIVITY_TYPE_LABELS = {
     data_clear:          'All Data Cleared',
 };
 
-const ACTIVITY_BADGE_CLASS = {
-    scan_start:          'ct-activity-scan',
-    scan_complete:       'ct-activity-scan',
-    scan_cancel:         'ct-activity-scan',
-    scan_error:          'ct-activity-danger',
-    scan_delete:         'ct-activity-danger',
-    guide:               'ct-activity-guide',
-    validate:            'ct-activity-validate',
-    content_upload:      'ct-activity-validate',
-    content_delete:      'ct-activity-danger',
-    tailor_upload:       'ct-activity-tailor',
-    tailor_load:         'ct-activity-tailor',
-    tailor_save:         'ct-activity-tailor',
-    tailor_delete:       'ct-activity-danger',
-    tailor_download:     'ct-activity-tailor',
-    remediate_download:  'ct-activity-remediate',
-    settings_change:     'ct-activity-validate',
-    remediate_apply:     'ct-activity-danger',
-    data_clear:          'ct-activity-danger',
-};
 
 const ACTIVITY_FILTER_MAP = {
     scan:        ['scan_start', 'scan_complete', 'scan_cancel', 'scan_error', 'scan_delete'],
@@ -4968,7 +4948,7 @@ function renderActivityTable(entries, filter) {
             <td>${escHtmlRem(formatActivityTime(e.ts))}</td>
             <td class="ct-activity-user">${escHtmlRem(e.user || '—')}</td>
             <td>${escHtmlRem(activityTabLabel(e.tab))}</td>
-            <td><span class="ct-activity-badge ${ACTIVITY_BADGE_CLASS[e.type] || 'ct-activity-scan'}">${escHtmlRem(ACTIVITY_TYPE_LABELS[e.type] || e.type)}</span></td>
+            <td>${escHtmlRem(ACTIVITY_TYPE_LABELS[e.type] || e.type)}</td>
             <td class="ct-activity-details">${activityDetails(e)}</td>
             <td>${activityResult(e)}</td>
         `;
@@ -5005,8 +4985,8 @@ function activityDetails(e) {
         const rulesText = esc(e.rules_applied + ' rule' + (e.rules_applied !== 1 ? 's' : '') + ' applied');
         if (e.log_path) {
             return rulesText +
-                ' &nbsp;<button class="pf-v6-c-button pf-m-link ct-activity-view-log" type="button" data-log-path="' + escapeAttr(e.log_path) + '">View Log</button>' +
-                ' <button class="pf-v6-c-button pf-m-link ct-activity-download-log" type="button" data-log-path="' + escapeAttr(e.log_path) + '">Download Log</button>';
+                ' &nbsp;<button class="pf-v6-c-button pf-m-link pf-m-inline ct-activity-view-log" type="button" data-log-path="' + escapeAttr(e.log_path) + '">View Log</button>' +
+                ' <button class="pf-v6-c-button pf-m-link pf-m-inline ct-activity-download-log" type="button" data-log-path="' + escapeAttr(e.log_path) + '">Download Log</button>';
         }
         return rulesText;
     }
