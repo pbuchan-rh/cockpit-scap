@@ -1582,6 +1582,7 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
   z-index: 10;
   background: var(--ct-color-bg-card);
   border-bottom: 1px solid var(--ct-color-border);
+  padding-bottom: 0;
 }
 
 .ct-tailor-editor-header-inner {
@@ -1602,19 +1603,34 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
   display: flex;
   align-items: center;
   gap: var(--ct-space-md);
-  padding-top: var(--ct-space-xs);
+  padding-top: var(--ct-space-sm);
+  padding-bottom: var(--ct-space-sm);
   border-top: 1px solid var(--ct-color-border);
 }
 
 .ct-tailor-threshold-label {
-  font-size: var(--ct-font-size-sm);
-  font-weight: 600;
+  font-size: var(--ct-font-size-base);
+  font-weight: 700;
   color: var(--ct-color-text);
   white-space: nowrap;
 }
 
 .ct-tailor-threshold-input {
   width: 72px;
+  height: var(--pf-v6-c-form-control--Height, 2.25rem);
+  font-size: var(--ct-font-size-md);
+  font-weight: 600;
+  text-align: center;
+}
+
+.ct-tailor-editor-name-input input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  border-radius: inherit;
+  padding: 0 var(--pf-v6-global--spacer--sm, 0.5rem);
 }
 
 .ct-tailor-threshold-hint {
@@ -1635,14 +1651,6 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
   flex: 1;
   min-width: 0;
   max-width: 400px;
-}
-
-.ct-tailor-editor-name-edit-icon {
-  font-size: var(--ct-font-size-lg);
-  color: var(--ct-color-text-secondary);
-  opacity: 0.6;
-  flex-shrink: 0;
-  user-select: none;
 }
 
 .ct-tailor-section-title {
