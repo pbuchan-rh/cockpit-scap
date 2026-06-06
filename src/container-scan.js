@@ -9,7 +9,7 @@
             + delete CSS block in style.css
    ============================================================ */
 
-/* PY_PARSE_RESULTS is defined in index.js (shared global scope) */
+/* PY_PARSE_RESULTS and PY_SDS_VERSION are defined in index.js (shared global scope) */
 
 let csProc           = null;
 let currentCsHistory = [];
@@ -29,6 +29,7 @@ let csRemDir         = null;
 let csRemRules       = [];
 let csPendingQuickFix = false;
 let csEagerRemRules   = null;
+let csSdsVersion      = null;
 
 function openCsRemDrawer() {
     document.getElementById('cs-remediation-panel').classList.add('ct-drawer-open');
@@ -727,6 +728,7 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 scan_duration_s:  Math.round((Date.now() - csScanStart) / 1000),
                 scan_id:          generateScanId(),
                 has_arf:          true,
+                sds_version:      csSdsVersion || null,
             };
             return cockpit.file(csResultsDir + 'manifest.json', { superuser: 'require' })
                 .replace(JSON.stringify(manifest, null, 2))
@@ -857,6 +859,13 @@ function csShowResults(manifest) {
         csIdEl.classList.remove('hidden');
     } else {
         csIdEl.classList.add('hidden');
+    }
+    const csVerEl = document.getElementById('cs-results-version-container');
+    if (manifest.sds_version) {
+        csVerEl.textContent = 'SSG ' + manifest.sds_version;
+        csVerEl.classList.remove('hidden');
+    } else {
+        csVerEl.classList.add('hidden');
     }
 
     const badges = document.getElementById('cs-result-badges');
@@ -1272,6 +1281,15 @@ function csShowProgress() {
     document.getElementById('cs-scan-ctx-policy').textContent =
         _csTailEl.value ? (_csTailEl.options[_csTailEl.selectedIndex]?.text || '—') : '—';
     document.getElementById('cs-scan-ctx-image').textContent = csImageName || '—';
+    csSdsVersion = null;
+    document.getElementById('cs-scan-ctx-version').textContent = '—';
+    if (csSdsPath) {
+        cockpit.spawn(['python3', '-c', PY_SDS_VERSION, csSdsPath], { err: 'ignore' })
+            .then(out => {
+                csSdsVersion = (out.trim().split(' ')[1]) || null;
+                document.getElementById('cs-scan-ctx-version').textContent = csSdsVersion || '—';
+            }).catch(() => {});
+    }
     const _csProfileId = (document.getElementById('cs-profile-select') || {}).value || null;
     const _csPrevScan  = currentCsHistory.find(m =>
         m.profile_id === _csProfileId && m.sds_file === csSdsPath &&
