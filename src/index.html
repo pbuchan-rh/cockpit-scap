@@ -200,8 +200,6 @@
                         title="Ansible playbook for automated configuration management">Ansible Playbook (.yml)</button>
                 <button type="button" data-fix-type="puppet"
                         title="Puppet manifest for Puppet-managed infrastructure">Puppet Manifest (.pp)</button>
-                <button type="button" data-fix-type="kubernetes"
-                        title="Kubernetes manifest for container workload hardening">Kubernetes Manifest (.yml)</button>
               </div>
             </div>
           </div>
@@ -704,8 +702,6 @@
                           title="Ansible playbook for automated configuration management">Ansible Playbook (.yml)</button>
                   <button type="button" data-fix-type="puppet"
                           title="Puppet manifest for Puppet-managed infrastructure">Puppet Manifest (.pp)</button>
-                  <button type="button" data-fix-type="ignition"
-                          title="Ignition config for RHCOS/Fedora CoreOS first-boot provisioning">Ignition Config (.ign)</button>
                   </div>
               </div>
             </div>
@@ -739,6 +735,10 @@
                   <span class="ct-scan-ctx-value" id="cs-scan-ctx-content">—</span>
                 </div>
                 <div class="ct-scan-ctx-row">
+                  <span class="ct-scan-ctx-label">Version</span>
+                  <span class="ct-scan-ctx-value" id="cs-scan-ctx-version">—</span>
+                </div>
+                <div class="ct-scan-ctx-row">
                   <span class="ct-scan-ctx-label">Profile</span>
                   <span class="ct-scan-ctx-value" id="cs-scan-ctx-profile">—</span>
                 </div>
@@ -749,10 +749,6 @@
                 <div class="ct-scan-ctx-row">
                   <span class="ct-scan-ctx-label">Image</span>
                   <span class="ct-scan-ctx-value" id="cs-scan-ctx-image">—</span>
-                </div>
-                <div class="ct-scan-ctx-row">
-                  <span class="ct-scan-ctx-label">Version</span>
-                  <span class="ct-scan-ctx-value" id="cs-scan-ctx-version">—</span>
                 </div>
               </div>
               <div class="ct-live-badges">
@@ -813,6 +809,15 @@
                     <button class="pf-v6-c-button pf-m-secondary" type="button"
                             id="cs-review-all-btn"
                             title="Opens the remediation builder with all failing rules. Review, select, and generate a fix script — nothing is applied until you confirm.">All Failures</button>
+                    <span class="ct-rem-generating-status hidden" id="cs-rem-generating-status"
+                          title="Remediation scripts are generated after each scan and may take several minutes on large profiles.">
+                      <span class="pf-v6-c-spinner pf-m-sm" role="progressbar" aria-label="Preparing scripts">
+                        <span class="pf-v6-c-spinner__clipper"></span>
+                        <span class="pf-v6-c-spinner__lead-ball"></span>
+                        <span class="pf-v6-c-spinner__tail-ball"></span>
+                      </span>
+                      Preparing scripts…
+                    </span>
                   </div>
                 </div>
               </div>
@@ -829,6 +834,19 @@
                   </div>
                 </div>
               </div>
+            <!-- Shown only when scan used uploaded (not system-package) content -->
+            <div class="pf-v6-c-alert pf-m-warning ct-uploaded-warn hidden"
+                 id="cs-uploaded-content-warning" aria-label="Uploaded content warning">
+              <div class="pf-v6-c-alert__icon" aria-hidden="true">&#9888;</div>
+              <div>
+                <h4 class="pf-v6-c-alert__title">Remediation from uploaded content</h4>
+                <div class="pf-v6-c-alert__description">
+                  This scan used content staged in <code>/var/lib/cockpit-scap/content/</code>,
+                  not a system-installed package. Review the remediation script carefully
+                  before applying it.
+                </div>
+              </div>
+            </div>
             <!-- Improvement — shown when fail count decreased vs previous scan -->
             <div class="ct-improvement-line hidden" id="cs-improvement-alert">
               <span class="ct-improvement-icon">&#10003;</span>
@@ -1115,10 +1133,6 @@
                       title="Ansible playbook for automated configuration management">Ansible Playbook (.yml)</button>
               <button type="button" data-fix-type="puppet"
                       title="Puppet manifest for Puppet-managed infrastructure">Puppet Manifest (.pp)</button>
-              <button type="button" data-fix-type="ignition"
-                      title="Ignition config for RHCOS/Fedora CoreOS first-boot provisioning">Ignition Config (.ign)</button>
-              <button type="button" data-fix-type="kubernetes"
-                      title="Kubernetes manifest for container workload hardening">Kubernetes Manifest (.yml)</button>
             </div>
           </div>
         </div>

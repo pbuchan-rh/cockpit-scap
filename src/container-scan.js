@@ -28,8 +28,9 @@ let csVersionBlocked = false;
 let csRemDir         = null;
 let csRemRules       = [];
 let csPendingQuickFix = false;
-let csEagerRemRules   = null;
-let csSdsVersion      = null;
+let csEagerRemRules        = null;
+let csSdsVersion           = null;
+let csRemediationGenerating = false;
 
 function openCsRemDrawer() {
     document.getElementById('cs-remediation-panel').classList.add('ct-drawer-open');
@@ -735,6 +736,21 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                 .then(() => manifest);
         })
         .then(manifest => {
+            return cockpit.spawn(
+                ['chmod', '644', resultsXmlPath, csResultsDir + 'manifest.json'],
+                { superuser: 'require' }
+            ).catch(() => {}).then(() => manifest);
+        })
+        .then(manifest => {
+            appendActivityLog({ type: 'scan_complete', tab: 'container',
+                content: manifest.sds_file.split('/').pop(), profile: manifest.profile_title,
+                image: manifest.image_name, score: manifest.score.toFixed(1),
+                pass: manifest.counts.pass, fail: manifest.counts.fail });
+            pruneHistoryByType('container').then(() => csShowResults(manifest));
+
+            /* Remediation generation runs in the background so results display immediately */
+            csRemediationGenerating = true;
+            updateCsRemGeneratingStatus();
             const tailArgs = tailoringPath ? ['--tailoring-file', tailoringPath] : [];
             const genFix   = (type, out) => cockpit.spawn([
                 'oscap', 'xccdf', 'generate', 'fix',
@@ -746,33 +762,23 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
             ], { superuser: 'require', err: 'out' });
 
             const genBash    = genFix('bash', csBashPath)
-                .catch(err => {
-                    console.error('Container bash remediation failed:', err.message || err);
-                    csBashPath = null;
-                });
+                .catch(err => { console.error('Container bash remediation failed:', err.message || err); csBashPath = null; });
             const genAnsible = genFix('ansible', csAnsiblePath)
-                .catch(err => {
-                    console.error('Container ansible remediation failed:', err.message || err);
-                    csAnsiblePath = null;
+                .catch(err => { console.error('Container ansible remediation failed:', err.message || err); csAnsiblePath = null; });
+
+            Promise.all([genBash, genAnsible])
+                .finally(() => {
+                    csRemediationGenerating = false;
+                    updateCsRemGeneratingStatus();
+                    cockpit.spawn(['gzip', csResultsDir + 'results.arf'], { superuser: 'require' }).catch(() => {});
+                    cockpit.spawn(
+                        ['chmod', '755', csResultsDir],
+                        { superuser: 'require' }
+                    ).then(() => cockpit.spawn(
+                        ['find', csResultsDir, '-maxdepth', '1', '-type', 'f', '-exec', 'chmod', '644', '{}', '+'],
+                        { superuser: 'require' }
+                    )).catch(err => console.error('chmod failed:', err.message || err));
                 });
-            return Promise.all([genBash, genAnsible]).then(() => manifest);
-        })
-        .then(manifest => {
-            return cockpit.spawn(['chmod', '755', csResultsDir], { superuser: 'require' })
-                .then(() => cockpit.spawn(
-                    ['find', csResultsDir, '-maxdepth', '1', '-type', 'f', '-exec', 'chmod', '644', '{}', '+'],
-                    { superuser: 'require' }
-                ))
-                .catch(err => console.error('chmod failed:', err.message || err))
-                .then(() => manifest);
-        })
-        .then(manifest => {
-            appendActivityLog({ type: 'scan_complete', tab: 'container',
-                content: manifest.sds_file.split('/').pop(), profile: manifest.profile_title,
-                image: manifest.image_name, score: manifest.score.toFixed(1),
-                pass: manifest.counts.pass, fail: manifest.counts.fail });
-            cockpit.spawn(['gzip', csResultsDir + 'results.arf'], { superuser: 'require' }).catch(() => {});
-            pruneHistoryByType('container').then(() => csShowResults(manifest));
         })
         .catch(err => csScanError('Failed to process results: ' + (err.message || String(err))));
 }
@@ -790,10 +796,16 @@ function csLoadScanFromHistory(manifest) {
     csAnsiblePath = dir + 'remediation.yml';
     csImageName   = manifest.image_name || null;
     csImageId     = manifest.image_id   || null;
+    csRemediationGenerating = false;
     csHidePrereq();
     document.getElementById('cs-scan-row').classList.add('hidden');
     csShowResults(manifest);
     document.getElementById('cs-results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function updateCsRemGeneratingStatus() {
+    const status = document.getElementById('cs-rem-generating-status');
+    if (status) status.classList.toggle('hidden', !csRemediationGenerating);
 }
 
 function updateCsActionBoard(sev, totalFail, autoCount) {
@@ -867,6 +879,13 @@ function csShowResults(manifest) {
     } else {
         csVerEl.classList.add('hidden');
     }
+    const csUploadedWarn = document.getElementById('cs-uploaded-content-warning');
+    if (manifest.sds_file && manifest.sds_file.startsWith(CONTENT_BASE)) {
+        csUploadedWarn.classList.remove('hidden');
+    } else {
+        csUploadedWarn.classList.add('hidden');
+    }
+    updateCsRemGeneratingStatus();
 
     const badges = document.getElementById('cs-result-badges');
     badges.innerHTML = '';
