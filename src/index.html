@@ -1426,10 +1426,10 @@
                   <div><span class="pf-v6-c-alert__title">Reducing retention will permanently delete older scan results.</span></div>
                 </div>
 
-                <div class="ct-settings-footer">
+                <div class="ct-settings-footer ct-settings-footer-centered">
+                  <span class="ct-settings-saved hidden" id="ct-settings-saved">&#10003; Settings saved</span>
                   <button class="pf-v6-c-button pf-m-primary ct-requires-admin" type="button"
                           id="ct-settings-save-btn">Save</button>
-                  <span class="ct-settings-saved hidden" id="ct-settings-saved">&#10003; Settings saved</span>
                 </div>
                 <div class="pf-v6-c-alert pf-m-danger hidden" id="ct-settings-save-error"
                      aria-label="Settings save error">
@@ -1499,8 +1499,9 @@
               </div>
             </div>
             <p class="ct-content-help">
-              Upload SDS files for other RHEL versions directly, or copy them to
-              <code>/var/lib/cockpit-scap/content/</code> via SCP.
+              Upload SDS files for other RHEL versions directly, or manually stage them in
+              <code>/var/lib/cockpit-scap/content/</code>. After staging the content, run
+              <code>chmod 644 /var/lib/cockpit-scap/content/*.xml</code> to ensure the module can read the files.
               Tailoring works for any version;
               scanning is blocked for content that does not match this host.
             </p>

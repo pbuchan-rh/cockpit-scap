@@ -2657,6 +2657,10 @@ html.pf-v6-theme-dark .ct-badge-error {
   gap: 16px;
 }
 
+.ct-settings-footer-centered {
+  justify-content: flex-end;
+}
+
 #ct-settings-save-error {
   margin-top: 16px;
 }
