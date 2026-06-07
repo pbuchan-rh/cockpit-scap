@@ -681,14 +681,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.classList.toggle('hidden', term.length > 0 && !text.includes(term));
             });
         });
-    document.getElementById('ct-tailor-values-collapse')
+    document.getElementById('ct-tailor-rules-header')
+        .addEventListener('click', function () {
+            const body = document.getElementById('ct-tailor-rules-body');
+            const isCollapsed = body.classList.toggle('hidden');
+            document.getElementById('ct-tailor-rules-collapse').textContent =
+                isCollapsed ? 'Expand' : 'Collapse';
+        });
+    document.getElementById('ct-tailor-values-header')
         .addEventListener('click', function () {
             const grid   = document.getElementById('ct-tailor-values-grid');
             const search = document.getElementById('ct-tailor-values-search')
                                .closest('.ct-tailor-search-wrap');
             const isCollapsed = grid.classList.toggle('hidden');
             search.classList.toggle('hidden', isCollapsed);
-            this.textContent = isCollapsed ? 'Expand' : 'Collapse';
+            document.getElementById('ct-tailor-values-collapse').textContent =
+                isCollapsed ? 'Expand' : 'Collapse';
         });
     document.getElementById('ct-tailor-upload-btn')
         .addEventListener('click', () => document.getElementById('ct-tailor-upload-input').click());
@@ -3437,6 +3445,8 @@ function renderTailorEditor(data) {
     document.getElementById('ct-tailor-values-search')
         .closest('.ct-tailor-search-wrap').classList.add('hidden');
     document.getElementById('ct-tailor-values-collapse').textContent = 'Expand';
+    document.getElementById('ct-tailor-rules-body').classList.add('hidden');
+    document.getElementById('ct-tailor-rules-collapse').textContent = 'Expand';
     renderTailorTree(data);
     renderTailorValues(data.values || []);
     const statusEl = document.getElementById('ct-tailor-save-status');
@@ -3455,6 +3465,10 @@ function renderTailorTree(data) {
         const isAll = b.dataset.filterStatus === 'all' || b.dataset.filterSev === 'all';
         b.classList.toggle('active', isAll);
     });
+
+    const totalRules = flattenTailorRules().length;
+    const rulesCountEl = document.getElementById('ct-tailor-rules-count');
+    if (rulesCountEl) rulesCountEl.textContent = totalRules + ' rules';
 
     function countGroup(group) {
         let total = (group.rules || []).length;
@@ -3579,6 +3593,8 @@ function renderTailorValues(values) {
 
     section.classList.remove('hidden');
     divider.classList.remove('hidden');
+    const countSpan = document.getElementById('ct-tailor-values-count');
+    if (countSpan) countSpan.textContent = values.length + ' variable' + (values.length !== 1 ? 's' : '');
     values.forEach(val => {
         const isModified  = val.id in tailorValueChanges;
         const row         = document.createElement('div');
@@ -3710,6 +3726,14 @@ function updateTailorSummary() {
         hintEl.classList.remove('hidden');
         contentEl.classList.add('hidden');
         exportBtn.classList.add('hidden');
+        const rulesCountReset = document.getElementById('ct-tailor-rules-count');
+        if (rulesCountReset) rulesCountReset.classList.remove('ct-tailor-group-count-modified');
+        const valCountSpanReset = document.getElementById('ct-tailor-values-count');
+        if (valCountSpanReset && tailorData && tailorData.values) {
+            const n = tailorData.values.length;
+            valCountSpanReset.textContent = n + ' variable' + (n !== 1 ? 's' : '');
+            valCountSpanReset.classList.remove('ct-tailor-group-count-modified');
+        }
         return;
     }
 
@@ -3721,6 +3745,21 @@ function updateTailorSummary() {
     hintEl.textContent  = parts.join(', ') + ' deviate from the base profile.';
     contentEl.classList.remove('hidden');
     exportBtn.classList.remove('hidden');
+
+    const rulesCountEl2 = document.getElementById('ct-tailor-rules-count');
+    if (rulesCountEl2 && tailorData) {
+        const n = flattenTailorRules().length;
+        rulesCountEl2.textContent = n + ' rules' + (ruleCount > 0 ? ' · ' + ruleCount + ' modified' : '');
+        rulesCountEl2.classList.toggle('ct-tailor-group-count-modified', ruleCount > 0);
+    }
+
+    const valCountSpan = document.getElementById('ct-tailor-values-count');
+    if (valCountSpan && tailorData && tailorData.values) {
+        const total = tailorData.values.length;
+        valCountSpan.textContent = total + ' variable' + (total !== 1 ? 's' : '') +
+            (valueCount > 0 ? ' · ' + valueCount + ' modified' : '');
+        valCountSpan.classList.toggle('ct-tailor-group-count-modified', valueCount > 0);
+    }
 
     const ruleMap = {};
     flattenTailorRules().forEach(r => { ruleMap[r.id] = r; });
@@ -3754,8 +3793,9 @@ function updateTailorSummary() {
     const valMap = {};
     (tailorData.values || []).forEach(v => { valMap[v.id] = v; });
 
+    const noVarsEl = document.getElementById('ct-tailor-sum-no-vars');
     if (valueCount > 0) {
-        valuesSec.classList.remove('hidden');
+        if (noVarsEl) noVarsEl.classList.add('hidden');
         valuesEl.innerHTML = Object.entries(tailorValueChanges).map(([id, newVal]) => {
             const val  = valMap[id] || { title: id, current: '?', default: '?' };
             const from = val.current || val.default || '?';
@@ -3769,7 +3809,8 @@ function updateTailorSummary() {
                 '</div>';
         }).join('');
     } else {
-        valuesSec.classList.add('hidden');
+        valuesEl.innerHTML = '';
+        if (noVarsEl) noVarsEl.classList.remove('hidden');
     }
 
     /* Update group count badges to reflect current tailorRuleChanges */

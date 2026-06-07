@@ -1698,6 +1698,23 @@ details[open] .ct-rule-row-expandable .ct-rule-title::before { content: '▼ '; 
   max-width: 24rem;
 }
 
+.ct-tailor-section-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+}
+
+.ct-tailor-rules-header-toggle,
+.ct-tailor-values-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.ct-tailor-rules-header-toggle:hover .ct-tailor-section-title,
+.ct-tailor-values-header:hover .ct-tailor-section-title {
+  color: var(--pf-v6-global--primary-color--100, #06c);
+}
+
 /* Rule tree */
 .ct-tailor-tree-body {
   max-height: 560px;
@@ -1976,14 +1993,33 @@ details.ct-tailor-group .ct-tailor-rule {
 .ct-tailor-summary-content {
   margin-top: var(--ct-space-md);
   display: flex;
-  flex-direction: column;
-  gap: var(--ct-space-md);
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--ct-space-lg, 24px);
+}
+
+.ct-tailor-summary-rules-col {
+  flex: 1;
+  min-width: 0;
+  border-right: 1px solid var(--pf-v6-global--BorderColor--100, rgba(0,0,0,0.12));
+  padding-right: var(--ct-space-lg, 24px);
+}
+
+.ct-tailor-summary-values-col {
+  flex: 1;
+  min-width: 0;
 }
 
 .ct-tailor-summary-sub {
   display: flex;
   flex-direction: column;
   gap: var(--ct-space-xs, 4px);
+}
+
+.ct-tailor-sum-no-changes {
+  font-size: var(--ct-font-size-sm);
+  color: var(--ct-color-text-secondary);
+  margin: 0;
 }
 
 .ct-tailor-summary-sub-title {

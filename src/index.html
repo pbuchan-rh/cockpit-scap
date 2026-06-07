@@ -1193,51 +1193,62 @@
 
         <!-- Rules section -->
         <div class="pf-v6-c-card__body ct-tailor-editor-section">
-          <div class="ct-tailor-rules-header">
+          <div class="ct-tailor-rules-header ct-tailor-rules-header-toggle" id="ct-tailor-rules-header">
             <div>
-              <h3 class="ct-tailor-section-title">Rules</h3>
+              <div class="ct-tailor-section-title-row">
+                <h3 class="ct-tailor-section-title">Rules</h3>
+                <span class="ct-tailor-group-count" id="ct-tailor-rules-count"></span>
+              </div>
               <p class="ct-tailor-editor-hint">Check or uncheck rules to enable or disable them.</p>
             </div>
             <div class="ct-tailor-tree-controls">
+              <button class="pf-v6-c-button pf-m-link" type="button"
+                      id="ct-tailor-rules-collapse" tabindex="-1">Collapse</button>
+            </div>
+          </div>
+          <div class="ct-tailor-rules-body" id="ct-tailor-rules-body">
+            <div class="ct-tailor-filter-bar" id="ct-tailor-filter-bar">
+              <div class="ct-tailor-filter-group">
+                <button class="ct-tailor-filter-btn active" data-filter-status="all">All</button>
+                <button class="ct-tailor-filter-btn" data-filter-status="disabled">Disabled</button>
+                <button class="ct-tailor-filter-btn" data-filter-status="modified">Modified</button>
+              </div>
+              <div class="ct-tailor-filter-sep"></div>
+              <div class="ct-tailor-filter-group">
+                <button class="ct-tailor-filter-btn active" data-filter-sev="all">All</button>
+                <button class="ct-tailor-filter-btn ct-filter-high" data-filter-sev="high">HIGH</button>
+                <button class="ct-tailor-filter-btn ct-filter-medium" data-filter-sev="medium">MED</button>
+                <button class="ct-tailor-filter-btn ct-filter-low" data-filter-sev="low">LOW</button>
+              </div>
+              <div class="ct-tailor-filter-sep"></div>
               <button class="pf-v6-c-button pf-m-link" type="button"
                       id="ct-tailor-expand-all">Expand All</button>
               <button class="pf-v6-c-button pf-m-link" type="button"
                       id="ct-tailor-collapse-all">Collapse All</button>
             </div>
-          </div>
-          <div class="ct-tailor-filter-bar" id="ct-tailor-filter-bar">
-            <div class="ct-tailor-filter-group">
-              <button class="ct-tailor-filter-btn active" data-filter-status="all">All</button>
-              <button class="ct-tailor-filter-btn" data-filter-status="disabled">Disabled</button>
-              <button class="ct-tailor-filter-btn" data-filter-status="modified">Modified</button>
-            </div>
-            <div class="ct-tailor-filter-sep"></div>
-            <div class="ct-tailor-filter-group">
-              <button class="ct-tailor-filter-btn active" data-filter-sev="all">All</button>
-              <button class="ct-tailor-filter-btn ct-filter-high" data-filter-sev="high">HIGH</button>
-              <button class="ct-tailor-filter-btn ct-filter-medium" data-filter-sev="medium">MED</button>
-              <button class="ct-tailor-filter-btn ct-filter-low" data-filter-sev="low">LOW</button>
-            </div>
-          </div>
           <div class="ct-tailor-search-wrap">
             <span class="pf-v6-c-form-control ct-tailor-search-control">
               <input type="text" id="ct-tailor-search" placeholder="Search rules&hellip;">
             </span>
           </div>
           <div class="ct-tailor-tree-body" id="ct-tailor-tree"></div>
+          </div><!-- end ct-tailor-rules-body -->
         </div>
 
         <!-- Variables section (hidden if no variables) -->
         <hr class="ct-tailor-section-divider hidden" id="ct-tailor-values-divider">
         <div class="pf-v6-c-card__body ct-tailor-editor-section hidden" id="ct-tailor-values-section">
-          <div class="ct-tailor-rules-header">
+          <div class="ct-tailor-rules-header ct-tailor-values-header" id="ct-tailor-values-header">
             <div>
-              <h3 class="ct-tailor-section-title">Variables</h3>
+              <div class="ct-tailor-section-title-row">
+                <h3 class="ct-tailor-section-title">Variables</h3>
+                <span class="ct-tailor-group-count" id="ct-tailor-values-count"></span>
+              </div>
               <p class="ct-tailor-editor-hint">Adjust variable values to customize profile behavior.</p>
             </div>
             <div class="ct-tailor-tree-controls">
               <button class="pf-v6-c-button pf-m-link" type="button"
-                      id="ct-tailor-values-collapse">Collapse</button>
+                      id="ct-tailor-values-collapse" tabindex="-1">Collapse</button>
             </div>
           </div>
           <div class="ct-tailor-search-wrap ct-tailor-values-search-wrap">
@@ -1260,13 +1271,14 @@
                     id="ct-tailor-export-btn">Copy Summary</button>
           </div>
           <div class="ct-tailor-summary-content hidden" id="ct-tailor-summary-content">
-            <div class="ct-tailor-summary-sub hidden" id="ct-tailor-summary-rules-section">
+            <div class="ct-tailor-summary-sub ct-tailor-summary-rules-col hidden" id="ct-tailor-summary-rules-section">
               <div class="ct-tailor-summary-sub-title">Rules</div>
               <div id="ct-tailor-summary-rules-list"></div>
             </div>
-            <div class="ct-tailor-summary-sub hidden" id="ct-tailor-summary-values-section">
+            <div class="ct-tailor-summary-sub ct-tailor-summary-values-col" id="ct-tailor-summary-values-section">
               <div class="ct-tailor-summary-sub-title">Variables</div>
               <div id="ct-tailor-summary-values-list"></div>
+              <p class="ct-tailor-sum-no-changes hidden" id="ct-tailor-sum-no-vars">No variable changes.</p>
             </div>
           </div>
         </div>
