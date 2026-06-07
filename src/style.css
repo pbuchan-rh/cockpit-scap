@@ -2640,6 +2640,17 @@ html.pf-v6-theme-dark .ct-badge-error {
   margin-bottom: 20px;
 }
 
+.ct-module-version-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--ct-space-sm) 0 0;
+}
+
+.ct-module-version {
+  font-size: 0.72rem;
+  color: var(--ct-color-text-secondary);
+}
+
 .ct-settings-footer {
   display: flex;
   align-items: center;

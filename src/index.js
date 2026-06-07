@@ -367,6 +367,9 @@ let hostScanStart    = null;
 let pendingApplyScript = '';
 
 document.addEventListener('DOMContentLoaded', () => {
+    const verEl = document.getElementById('ct-module-version');
+    if (verEl) verEl.textContent = MODULE_VERSION;
+
     cockpit.file('/etc/os-release').read()
         .then(content => {
             const m = content && content.match(/^VERSION_ID="?(\d+)/m);
