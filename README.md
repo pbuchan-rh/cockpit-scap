@@ -79,7 +79,6 @@ After installation, reload Cockpit and navigate to **SCAP Compliance** in the si
 - **Remediate from history** — clicking **Remediate** in the Scan History table loads the historical result and opens the remediation drawer directly; no need to re-run the scan
 - **Tailoring files** — files saved in the Policy Tailoring tab appear automatically in the Scan tab's Tailoring File selector
 - **Update vs Save as New** — when editing an existing tailoring file, **Update** overwrites it in place; **Save as New** creates a timestamped copy
-- **Manual Scheduling** — the Settings tab shows the exact `oscap xccdf eval` command from your most recent scan, ready to paste into a cron job
 
 ## Storage
 
