@@ -328,11 +328,11 @@ Displayed below the pass/fail/score badges, loaded asynchronously after the resu
 
 **Why async:** `PY_EXTRACT_FAILING_RULES` spawns a Python subprocess against `results.xml`. On slower machines this is noticeable. Showing the score and badges immediately, then populating the rule groups when ready, gives a better perceived-performance experience.
 
-### Score Donut
+### Score Box
 
-Plain SVG arc (`stroke-dasharray` / `stroke-dashoffset` technique). Arc length = compliance %. Color is binary: green = score at or above the policy's compliance threshold, red = below. Default threshold is 90%; per-policy thresholds are stored in the tailoring sidecar JSON and carried into `manifest.json` at scan time. Score percentage shown in center text. No library.
+Large score percentage displayed in a color-tiered box (`ct-score-box`). Three tiers: green (`ct-score-box-high`) = at or above the compliance threshold; yellow (`ct-score-box-warn`) = within 10 points below threshold; red (`ct-score-box-low`) = more than 10 points below. Default threshold is 100% when no per-policy threshold is configured. A "Policy target: X%" label always renders below the score. The history table score uses a simpler binary green/red (no yellow band — row context is too compact for a third state to add information).
 
-**Why binary color:** A three-tier (green/yellow/red) scale implies that 70–89% is "cautionary but acceptable." For a compliance tool used by security-focused admins, partial compliance is either meeting the target or not — a yellow middle ground adds ambiguity without adding information. Binary maps cleanly to the compliance threshold concept already familiar from audit frameworks.
+**Why three tiers:** The original design used binary color on the theory that partial compliance is either passing or failing. In practice, a score of 89% against a 90% threshold and a score of 50% against the same threshold are not the same operational situation — the first is a near-miss likely fixable in one pass; the second is a deeper gap requiring planning. The yellow band (within 10 points) surfaces that distinction without implying 70–89% is inherently acceptable, because the threshold itself is admin-configurable per policy.
 
 ### View Scan / Results Persistence
 
@@ -347,6 +347,45 @@ This solves the "no way back" problem: the results card survives navigation and 
 The previous two-card split (form card left + profile description card right) is replaced by a single `pf-v6-c-card` with an internal CSS grid (`ct-scan-body-grid: 1fr 1fr`). Form fields on the left, profile description on the right behind a border divider.
 
 **Why:** The two-card layout caused a jarring layout shift — idle state showed two cards at half-width, but scan progress and results were full-width. A single card eliminates the shift and reads as one coherent form. Profile description still has its own visual column without being a separate card.
+
+---
+
+## Post-v3.4 Design Decisions
+
+### Apply Now — Two-Gate Remediation (v3.5)
+
+Remediation execution uses a two-gate confirmation modal before any script runs. Gate 1 is a summary warning — rule count, profile name, a reminder that this modifies the live system. Gate 2 shows the actual script content alongside a per-rule list of what will be applied; the admin must explicitly confirm a second time before execution begins.
+
+After gate 2 confirmation, the script is written to the scan's remediation directory (`results/<timestamp>/remediation-apply.sh`), executed via `cockpit.spawn()` with `superuser: 'require'`, and output is streamed live to a `<pre>` element in the drawer. Exit code is captured; a success or error banner appears on completion.
+
+A full audit log is persisted to `/var/lib/cockpit-scap/remediation-logs/<timestamp>-<profile>.log` with a structured header (timestamp, user, profile, SDS, rules applied, exit code) followed by the raw script output. A `logger` call also writes a one-line summary to syslog via `cockpit.spawn(['logger', ...])`.
+
+**Why two gates:** Remediation scripts modify system configuration — file permissions, sysctl values, PAM settings — with no automatic rollback. A single "Are you sure?" is too easy to click through. Gate 2 forces the admin to see the script before it runs, which is the minimum bar for a security tool operating on production systems. The per-rule list at gate 2 serves as the human-readable confirmation of exactly what is being authorized.
+
+**Why stream output:** Remediation scripts on hardened hosts can take 30–90 seconds. A spinner with no feedback creates uncertainty about whether the process is hung or running. Live output gives immediate confidence the script is progressing and surfaces failures at the rule level rather than as a final error code.
+
+**Container Apply Now:** Permanently disabled with a tooltip explaining why — container remediations must be applied to image builds (Dockerfile/build pipeline), not running containers. Applying in-place to a running container defeats immutability and will be lost on the next container restart.
+
+---
+
+### Settings Tab (v3.5)
+
+Settings are persisted to `/var/lib/cockpit-scap/settings.json` and loaded at startup via `cockpit.file()` with `superuser: 'try'` (unprivileged read when possible). Four sections:
+
+- **Module Features** — tab visibility toggles for Container Scan and Policy Tailoring. When a tab is hidden while active, the module falls back to the Host Scan tab automatically.
+- **Scan Retention** — separate numeric limits for host and container scan history (enforced at scan completion via `pruneHistoryByType()`). Bounds are validated on save.
+- **Data Management** — "Clear Scan Data" wipes results directories but never touches the activity log; the log receives a tombstone event instead. This was a deliberate v3.9 correction — clearing scan data is an operational action, not an audit event to erase.
+- **Content Library** — read-only summary of staged SDS files with a hint about manual staging and `chmod 644` on CIS L2 hardened hosts.
+
+**Why tab visibility in Settings rather than per-user:** The target environment is a shared Cockpit console on a managed RHEL host, often accessed by multiple admins. Tab visibility is an environment-level configuration (e.g., "this host has no containers") rather than a per-user preference.
+
+---
+
+### ARF Storage + On-Demand Report (v3.8)
+
+**ARF gzip:** Immediately after scan results are processed, the ARF file (`results.arf`) is compressed with `gzip` via `cockpit.spawn()`. Compressed ARF files run ~2 MB vs ~40 MB uncompressed — a significant reduction for hosts with many historical scans. The download handler checks for `results.arf.gz` first and falls back to uncompressed `results.arf` for pre-v3.8 scan history. `cockpit.file()` cannot read binary files; the download path uses `cockpit.spawn(['cat'], { binary: true })` to get a `Uint8Array` which is wrapped in a `Blob` for browser download.
+
+**On-demand report.html:** The HTML report is not generated at scan time — `oscap xccdf generate report` is only called when the admin clicks "View Report." This avoids a 5–15 second blocking subprocess on every scan. When triggered, the report is generated to a `/tmp` path, read into memory, stored in IndexedDB (`cockpit-scap` database, `reports` store, key `current`), then `viewer.html` is opened in a new tab which reads from IndexedDB. This approach is required because Cockpit's CSP headers block inline script in dynamically injected HTML; serving via IndexedDB + a pre-approved `viewer.html` is the only CSP-compliant path.
 
 ---
 

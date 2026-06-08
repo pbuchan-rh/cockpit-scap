@@ -381,7 +381,7 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 - **REQ-184:** ✅ A shared `buildRemPanelDOM(container, rules)` function MUST be extracted from the near-identical `renderRemediationRules()` and `renderCsRemRules()` implementations before adding the Recommended section — this extraction is a prerequisite for REQ-182
 
-- **REQ-185:** ✅ Settings tab MUST include a "Manual Scheduling" section showing the exact `oscap xccdf eval` command for the most recently used content + profile, with a Copy to Clipboard button — provides a cron-paste path without requiring systemd units
+- **REQ-185:** ✅ ~~Settings tab MUST include a "Manual Scheduling" section~~ — **corrected:** a "View oscap command" collapsible disclosure on the Host Scan tab shows the `oscap xccdf eval` command built from the current UI selections (content file + profile + optional tailoring), with a Copy button. This is a reference aid, not a cron-paste path — results dropped manually without a companion `manifest.json` do not appear in scan history. "Manual Scheduling" framing was removed from the README as misleading; scheduled scanning remains deliberately deferred (see DESIGN.md).
 
 - **REQ-186:** ✅ All v3.7 UI additions MUST use PatternFly v6 tokens exclusively — no hardcoded hex values, no custom colors outside `--ct-` custom property definitions; Cockpit native aesthetic is a hard requirement; dark mode MUST work on all new elements without additional effort (token-only colors guarantee this automatically)
 
