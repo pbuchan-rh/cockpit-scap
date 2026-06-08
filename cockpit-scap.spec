@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.9
+Version:        3.9.1
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -94,6 +94,24 @@ fi
 %dir /var/lib/%{name}/remediation-logs
 
 %changelog
+* Mon Jun 08 2026 Peter Buchan <pbuchan@redhat.com> - 3.9.1-1
+- Results view redesign: large score hero number with pass/fail breakdown
+  replaces tile badges; score color-coded vs policy threshold
+- Clear Scan Data no longer wipes the activity log; event labels fixed
+- SDS orphan protection: warns before deleting content referenced by policies
+- Apply Now remediation script generation runs as superuser on CIS L2 hosts
+- Policy editor header: proper PF6 input heights, "Policy name :" label,
+  centered threshold value, balanced row spacing
+- Policy editor Rules and Variables sections collapse by default; clickable
+  headers to expand; inline counts show total and modified rules/variables
+- Deviations section: two-column Rules/Variables layout with divider
+- Settings: Save button right-aligned; module version badge bottom-right;
+  content library hint updated with chmod 644 note for hardened hosts
+- Firefox Playwright: networkidle cap fixes 10-minute hang; first-class browser
+- Compliance score rendered as color-tiered box (green/yellow/red vs policy target);
+  policy target always shown, defaults to 100% when no threshold configured
+- Responsive layout: scan results, scan form, and settings grids all stack at narrow widths
+
 * Thu Jun 05 2026 Peter Buchan <pbuchan@redhat.com> - 3.9-1
 - Compliance threshold per saved policy: drives donut color, history row
   color, and policy target label; stored in sidecar and scan manifest
