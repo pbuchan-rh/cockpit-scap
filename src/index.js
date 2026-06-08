@@ -2442,21 +2442,27 @@ function showResults(manifest) {
     if (!manifest.has_arf) arfBtn.title = 'ARF not available — rescan to generate';
 
     const scoreEl   = document.getElementById('ct-result-score');
-    const threshold = manifest.compliance_threshold != null ? manifest.compliance_threshold : 90;
+    const threshold = manifest.compliance_threshold != null ? manifest.compliance_threshold : 100;
     scoreEl.innerHTML = '';
-    const heroSpan = document.createElement('span');
-    heroSpan.className = 'ct-score-hero-num ' + (score >= threshold ? 'ct-score-above' : 'ct-score-below');
-    heroSpan.textContent = score.toFixed(1) + '%';
-    scoreEl.appendChild(heroSpan);
+    const scoreTier = score >= threshold ? 'ct-score-box-high'
+                    : score >= threshold - 10 ? 'ct-score-box-warn'
+                    : 'ct-score-box-low';
+    const box = document.createElement('div');
+    box.className = 'ct-score-box ' + scoreTier;
+    const numSpan = document.createElement('span');
+    numSpan.className = 'ct-score-box-num';
+    numSpan.textContent = score.toFixed(1) + '%';
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'ct-score-box-label';
+    labelSpan.textContent = 'Compliance Score';
+    box.appendChild(numSpan);
+    box.appendChild(labelSpan);
+    scoreEl.appendChild(box);
 
     const targetEl = document.getElementById('ct-results-target');
-    if (manifest.compliance_threshold != null) {
-        const above = score >= threshold;
-        targetEl.textContent = (above ? '✓ Above' : '✗ Below') + ' policy target (' + threshold + '%)';
-        targetEl.className = 'ct-results-target ' + (above ? 'ct-score-above' : 'ct-score-below');
-    } else {
-        targetEl.className = 'ct-results-target hidden';
-    }
+    const above = score >= threshold;
+    targetEl.textContent = (above ? '✓ Above' : '✗ Below') + ' policy target (' + threshold + '%)';
+    targetEl.className = 'ct-results-target ' + (above ? 'ct-score-above' : 'ct-score-below');
 
     const uploadedWarn = document.getElementById('ct-uploaded-content-warning');
     if (currentSdsPath && currentSdsPath.startsWith(CONTENT_BASE)) {
@@ -2993,7 +2999,7 @@ function buildHistoryRow(manifest) {
     const prev      = findPreviousScan(manifest, currentHostHistory);
     const score     = manifest.score || 0;
     const scoreText = score.toFixed(1) + '%';
-    const threshold = manifest.compliance_threshold != null ? manifest.compliance_threshold : 90;
+    const threshold = manifest.compliance_threshold != null ? manifest.compliance_threshold : 100;
     const scoreCls  = score >= threshold ? 'ct-score-high' : 'ct-score-low';
     const scoreTitle = score >= threshold ? 'Compliant (target: ' + threshold + '%)' : 'Non-compliant (target: ' + threshold + '%)';
     let   scoreDelta = '';

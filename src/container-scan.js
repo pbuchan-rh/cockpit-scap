@@ -927,21 +927,27 @@ function csShowResults(manifest) {
     if (!manifest.has_arf) csArfBtn.title = 'ARF not available — rescan to generate';
 
     const scoreEl  = document.getElementById('cs-result-score');
-    const csThresh = manifest.compliance_threshold != null ? manifest.compliance_threshold : 90;
+    const csThresh = manifest.compliance_threshold != null ? manifest.compliance_threshold : 100;
     scoreEl.innerHTML = '';
-    const csHeroSpan = document.createElement('span');
-    csHeroSpan.className = 'ct-score-hero-num ' + (score >= csThresh ? 'ct-score-above' : 'ct-score-below');
-    csHeroSpan.textContent = score.toFixed(1) + '%';
-    scoreEl.appendChild(csHeroSpan);
+    const csScoreTier = score >= csThresh ? 'ct-score-box-high'
+                      : score >= csThresh - 10 ? 'ct-score-box-warn'
+                      : 'ct-score-box-low';
+    const csBox = document.createElement('div');
+    csBox.className = 'ct-score-box ' + csScoreTier;
+    const csNumSpan = document.createElement('span');
+    csNumSpan.className = 'ct-score-box-num';
+    csNumSpan.textContent = score.toFixed(1) + '%';
+    const csLabelSpan = document.createElement('span');
+    csLabelSpan.className = 'ct-score-box-label';
+    csLabelSpan.textContent = 'Compliance Score';
+    csBox.appendChild(csNumSpan);
+    csBox.appendChild(csLabelSpan);
+    scoreEl.appendChild(csBox);
 
     const csTargetEl = document.getElementById('cs-results-target');
-    if (manifest.compliance_threshold != null) {
-        const csAbove = score >= csThresh;
-        csTargetEl.textContent = (csAbove ? '✓ Above' : '✗ Below') + ' policy target (' + csThresh + '%)';
-        csTargetEl.className = 'ct-results-target ' + (csAbove ? 'ct-score-above' : 'ct-score-below');
-    } else {
-        csTargetEl.className = 'ct-results-target hidden';
-    }
+    const csAbove = score >= csThresh;
+    csTargetEl.textContent = (csAbove ? '✓ Above' : '✗ Below') + ' policy target (' + csThresh + '%)';
+    csTargetEl.className = 'ct-results-target ' + (csAbove ? 'ct-score-above' : 'ct-score-below');
 
     const csPrev = currentCsHistory.find(m =>
         m.timestamp  <  manifest.timestamp &&
