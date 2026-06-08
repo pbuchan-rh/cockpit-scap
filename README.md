@@ -18,17 +18,22 @@ A native [Cockpit](https://cockpit-project.org/) module for RHEL 10 / CentOS Str
 
 ## Screenshots
 
-**Host Scan — content and profile selection, scan history with score delta, and scan timing**
-![Host Scan](docs/screenshots/host-scan.png)
+**Host Scan**
+![Host Scan](docs/screenshots/host-scan-tab.png)
 
-**Scan Results — compliance score, severity action bar, failing rules with CCE identifiers and inline description**
-![Scan Results](docs/screenshots/scan-results.png)
+**Scan Results**
+![Scan Results](docs/screenshots/host-scan-results.png)
 
-**Selective Remediation — select failing rules, review the script, apply directly on the host with live streaming output**
-![Selective Remediation](docs/screenshots/selective-remediations.png)
+**Selective Remediation**
+![Selective Remediation](docs/screenshots/remediation-builder-selections.png)
 
-**Policy Tailoring — rule tree editor with severity indicators, search, and variable editor**
-![Policy Tailoring](docs/screenshots/tailoring.png)
+**Policy Tailoring**
+![Policy Tailoring](docs/screenshots/policy-editor1.png)
+
+**Activity Log**
+![Activity Log](docs/screenshots/activity-tab.png)
+
+[View all screenshots](docs/screenshots/)
 
 ## Requirements
 
@@ -118,7 +123,7 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for known issues on CIS-hardened ho
 
 ## Development status
 
-**Current release:** v3.9 — available via COPR
+**Current release:** v3.9.1 — available via COPR
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
