@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scan Results Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;700;900&family=Red+Hat+Text:ital,wght@0,400;0,500;0,700;1,400&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ct-color-primary:        #0066cc;
+  --ct-color-danger:         #c9190b;
+  --ct-color-success:        #3e8635;
+  --ct-color-warning:        #f0ab00;
+  --ct-color-text:           #151515;
+  --ct-color-text-secondary: #4d4d4d;
+  --ct-color-bg-page:        #f2f2f2;
+  --ct-color-bg-card:        #ffffff;
+  --ct-color-border:         #c7c7c7;
+  --ct-border-radius:        16px;
+  --ct-border-radius-sm:     6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Red Hat Text', sans-serif;
+  font-size: 14px;
+  color: var(--ct-color-text);
+  background: var(--ct-color-bg-page);
+  padding: 1.25rem 1.5rem 3rem;
+}
+
+/* ── Card ── */
+.card {
+  background: var(--ct-color-bg-card);
+  border-radius: var(--ct-border-radius);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 18px;
+  border-radius: 999px;
+  font-family: 'Red Hat Text', sans-serif;
+  font-size: 0.83rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  white-space: nowrap;
+  transition: all 0.12s;
+}
+.btn-primary   { background: var(--ct-color-primary); border-color: var(--ct-color-primary); color: #fff; }
+.btn-primary:hover { background: #004d99; border-color: #004d99; }
+.btn-secondary { background: transparent; border-color: var(--ct-color-primary); color: var(--ct-color-primary); }
+.btn-secondary:hover { background: rgba(0,102,204,.07); }
+.btn-ghost     { background: transparent; border-color: var(--ct-color-border); color: var(--ct-color-text-secondary); }
+.btn-ghost:hover { background: var(--ct-color-bg-page); color: var(--ct-color-text); }
+.btn-danger    { background: transparent; border-color: rgba(201,25,11,.4); color: var(--ct-color-danger); }
+.btn-danger:hover { background: rgba(201,25,11,.06); }
+.btn-sm { padding: 3px 12px; font-size: 0.75rem; }
+
+/* ════════════════════════════════════════
+   CARD HEADER
+   ════════════════════════════════════════ */
+.results-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1rem 1.5rem 0.9rem;
+  border-bottom: 1px solid var(--ct-color-border);
+}
+
+.results-header-left { display: flex; flex-direction: column; gap: 2px; }
+
+.results-eyebrow {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ct-color-text-secondary);
+}
+
+.results-policy-name {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ct-color-text);
+  line-height: 1.2;
+}
+
+.results-timestamp {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 0.73rem;
+  color: var(--ct-color-text-secondary);
+  margin-top: 1px;
+}
+
+.results-header-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--ct-color-text-secondary);
+  background: var(--ct-color-bg-page);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ct-color-border);
+  font-family: 'Red Hat Mono', monospace;
+}
+
+/* ════════════════════════════════════════
+   SCORE ZONE  — full-width stripe
+   ════════════════════════════════════════ */
+.score-zone {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.5rem 1.5rem 1.25rem;
+  border-bottom: 1px solid var(--ct-color-border);
+}
+
+/* ── Arc gauge ── */
+.gauge-wrap {
+  position: relative;
+  width: 140px;
+  height: 80px;
+  flex-shrink: 0;
+}
+
+.gauge-svg {
+  width: 140px;
+  height: 80px;
+  overflow: visible;
+}
+
+.gauge-track {
+  fill: none;
+  stroke: #e8e8e8;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.gauge-fill {
+  fill: none;
+  stroke: var(--ct-color-success);
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 283; /* half-circle circumference for r=90 at 140px */
+  stroke-dashoffset: 283;
+  transition: stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1);
+}
+
+.gauge-fill.animate {
+  stroke-dashoffset: 46; /* 283 * (1 - 0.837) */
+}
+
+.gauge-threshold-marker {
+  transition: opacity 0.3s;
+}
+
+.gauge-score-label {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.gauge-score-number {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--ct-color-success);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.gauge-score-label-text {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ct-color-text-secondary);
+  display: block;
+  margin-top: 1px;
+}
+
+/* ── Stats column ── */
+.score-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.score-target-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.target-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.target-badge.above {
+  background: rgba(62,134,53,.1);
+  color: var(--ct-color-success);
+  border: 1px solid rgba(62,134,53,.25);
+}
+
+.target-badge.below {
+  background: rgba(201,25,11,.08);
+  color: var(--ct-color-danger);
+  border: 1px solid rgba(201,25,11,.2);
+}
+
+.delta-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ct-color-success);
+  font-family: 'Red Hat Mono', monospace;
+}
+
+/* Stacked pass/fail/na bar */
+.dist-bar-wrap { display: flex; flex-direction: column; gap: 5px; }
+
+.dist-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #e8e8e8;
+  overflow: hidden;
+  display: flex;
+}
+
+.dist-seg {
+  height: 100%;
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+}
+
+.dist-seg-pass { background: var(--ct-color-success); }
+.dist-seg-fail { background: var(--ct-color-danger); }
+.dist-seg-na   { background: #c7c7c7; }
+
+.dist-legend {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dist-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--ct-color-text-secondary);
+}
+
+.dist-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dist-num {
+  font-family: 'Red Hat Mono', monospace;
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--ct-color-text);
+}
+
+/* ── Severity distribution column ── */
+.sev-dist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+
+.sev-dist-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ct-color-text-secondary);
+  margin-bottom: 2px;
+}
+
+.sev-bar-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 28px;
+  align-items: center;
+  gap: 6px;
+}
+
+.sev-bar-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: right;
+}
+
+.sev-bar-track {
+  height: 10px;
+  background: #e8e8e8;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.sev-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  width: 0;
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+}
+
+.sev-bar-count {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.sev-high   .sev-bar-label,
+.sev-high   .sev-bar-count { color: var(--ct-color-danger); }
+.sev-high   .sev-bar-fill  { background: var(--ct-color-danger); }
+
+.sev-medium .sev-bar-label,
+.sev-medium .sev-bar-count { color: #7a5700; }
+.sev-medium .sev-bar-fill  { background: var(--ct-color-warning); }
+
+.sev-low    .sev-bar-label,
+.sev-low    .sev-bar-count { color: var(--ct-color-text-secondary); }
+.sev-low    .sev-bar-fill  { background: #c7c7c7; }
+
+/* ════════════════════════════════════════
+   IMPROVEMENT / REGRESSION BANNER
+   ════════════════════════════════════════ */
+.improvement-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.5rem;
+  background: rgba(62,134,53,.06);
+  border-bottom: 1px solid rgba(62,134,53,.15);
+  font-size: 0.82rem;
+  color: var(--ct-color-success);
+}
+
+.improvement-bar .icon { font-size: 0.9rem; }
+
+.improvement-bar .link-btn {
+  background: none; border: none;
+  color: var(--ct-color-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 4px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ════════════════════════════════════════
+   REMEDIATION CALL-TO-ACTION
+   Full-width strip above the failing rules
+   ════════════════════════════════════════ */
+.rem-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.5rem;
+  border-bottom: 1px solid var(--ct-color-border);
+  background: rgba(0,102,204,.025);
+  flex-wrap: wrap;
+}
+
+.rem-cta-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rem-cta-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.rem-cta-sub {
+  font-size: 0.78rem;
+  color: var(--ct-color-text-secondary);
+}
+
+.rem-cta-sub strong { color: var(--ct-color-text); }
+
+.rem-cta-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* ════════════════════════════════════════
+   FAILING RULES SECTION
+   ════════════════════════════════════════ */
+.rules-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  border-bottom: 1px solid var(--ct-color-border);
+  background: var(--ct-color-bg-page);
+  flex-wrap: wrap;
+}
+
+.rules-search {
+  flex: 1;
+  min-width: 160px;
+  max-width: 320px;
+  padding: 5px 12px;
+  border: 1.5px solid var(--ct-color-border);
+  border-radius: 999px;
+  font-family: 'Red Hat Text', sans-serif;
+  font-size: 0.82rem;
+  background: var(--ct-color-bg-card);
+  color: var(--ct-color-text);
+}
+
+.rules-search:focus { outline: none; border-color: var(--ct-color-primary); }
+
+.rules-section { padding: 0.25rem 0; }
+
+/* Severity group */
+.sev-group { border-bottom: 1px solid rgba(0,0,0,.05); }
+.sev-group:last-child { border-bottom: none; }
+
+.sev-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1.5rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+
+.sev-group-header:hover { background: var(--ct-color-bg-page); }
+
+.sev-group-bar {
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.grp-high   .sev-group-bar { background: var(--ct-color-danger); }
+.grp-medium .sev-group-bar { background: var(--ct-color-warning); }
+.grp-low    .sev-group-bar { background: #a8a8a8; }
+.grp-na     .sev-group-bar { background: var(--ct-color-border); }
+
+.sev-group-name {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex: 1;
+}
+
+.grp-high   .sev-group-name { color: var(--ct-color-danger); }
+.grp-medium .sev-group-name { color: #7a5700; }
+.grp-low    .sev-group-name { color: var(--ct-color-text-secondary); }
+.grp-na     .sev-group-name { color: var(--ct-color-text-secondary); }
+
+.sev-group-count {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.grp-high   .sev-group-count { background: rgba(201,25,11,.1);  color: var(--ct-color-danger); }
+.grp-medium .sev-group-count { background: rgba(240,171,0,.15); color: #7a5700; }
+.grp-low    .sev-group-count { background: rgba(0,0,0,.06);     color: var(--ct-color-text-secondary); }
+.grp-na     .sev-group-count { background: rgba(0,0,0,.06);     color: var(--ct-color-text-secondary); }
+
+.sev-group-arrow {
+  font-size: 0.55rem;
+  color: var(--ct-color-text-secondary);
+  transition: transform 0.15s;
+}
+
+.sev-group.open .sev-group-arrow { transform: rotate(90deg); }
+
+.sev-group-body { display: none; padding-left: 1.5rem; }
+.sev-group.open .sev-group-body { display: block; }
+
+/* Rule rows */
+.rule-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.55rem 1.5rem 0.55rem 0;
+  border-top: 1px solid rgba(0,0,0,.04);
+  transition: background 0.1s;
+  cursor: default;
+}
+
+.rule-row:hover { background: rgba(0,0,0,.02); }
+
+.rule-sev-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.grp-high   .rule-sev-dot { background: var(--ct-color-danger); }
+.grp-medium .rule-sev-dot { background: var(--ct-color-warning); }
+.grp-low    .rule-sev-dot { background: #a8a8a8; }
+
+.rule-info { flex: 1; min-width: 0; }
+
+.rule-title {
+  font-size: 0.83rem;
+  color: var(--ct-color-text);
+  line-height: 1.4;
+}
+
+.rule-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.rule-cce {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 0.67rem;
+  color: var(--ct-color-text-secondary);
+  background: var(--ct-color-bg-page);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--ct-color-border);
+}
+
+.rule-auto-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(62,134,53,.1);
+  color: var(--ct-color-success);
+  border: 1px solid rgba(62,134,53,.2);
+}
+
+.rule-add-btn {
+  background: none;
+  border: none;
+  color: var(--ct-color-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 999px;
+  transition: background 0.1s;
+  flex-shrink: 0;
+  font-family: 'Red Hat Text', sans-serif;
+}
+
+.rule-add-btn:hover { background: rgba(0,102,204,.08); }
+
+/* ════════════════════════════════════════
+   CARD FOOTER
+   ════════════════════════════════════════ */
+.results-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem 1.5rem;
+  border-top: 1px solid var(--ct-color-border);
+  flex-wrap: wrap;
+}
+
+/* Split button */
+.split-btn { display: flex; position: relative; }
+.split-btn-main { border-radius: 999px 0 0 999px !important; border-right-width: 0 !important; }
+.split-btn-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 0 999px 999px 0;
+  font-size: 0.7rem;
+  cursor: pointer;
+  border: 1.5px solid var(--ct-color-primary);
+  border-left: 1px solid rgba(0,102,204,.3);
+  background: transparent;
+  color: var(--ct-color-primary);
+  transition: background 0.1s;
+}
+.split-btn-toggle:hover { background: rgba(0,102,204,.07); }
+
+.split-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  background: var(--ct-color-bg-card);
+  border: 1px solid var(--ct-color-border);
+  border-radius: var(--ct-border-radius-sm);
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  display: none;
+  z-index: 10;
+  overflow: hidden;
+}
+
+.split-menu.open { display: block; }
+
+.split-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  font-family: 'Red Hat Text', sans-serif;
+  font-size: 0.82rem;
+  color: var(--ct-color-text);
+  cursor: pointer;
+}
+
+.split-menu button:hover { background: var(--ct-color-bg-page); }
+
+.footer-spacer { flex: 1; }
+
+/* ════════════════════════════════════════
+   PAGE-LOAD ANIMATION
+   ════════════════════════════════════════ */
+.card { animation: cardIn 0.3s ease both; }
+.card:nth-child(2) { animation-delay: 0.08s; }
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- Header -->
+  <div class="results-header">
+    <div class="results-header-left">
+      <span class="results-eyebrow">Host Scan Results</span>
+      <span class="results-policy-name">RHEL10_CIS2_DEV</span>
+      <span class="results-timestamp">2026-06-09T14:32:00</span>
+    </div>
+    <div class="results-header-meta">
+      <span class="meta-chip">Completed in 45s</span>
+      <span class="meta-chip">scan-m5lc12n/gko</span>
+      <span class="meta-chip">SSG 0.1.80</span>
+    </div>
+  </div>
+
+  <!-- Score Zone -->
+  <div class="score-zone">
+
+    <!-- Arc gauge -->
+    <div class="gauge-wrap">
+      <svg class="gauge-svg" viewBox="0 0 140 80">
+        <!-- track: half-circle from 180° to 0°, r=60, cx=70, cy=75 -->
+        <path class="gauge-track"
+          d="M 10 75 A 60 60 0 0 1 130 75"
+          fill="none" stroke="#e8e8e8" stroke-width="10" stroke-linecap="round"/>
+        <!-- fill arc, driven by stroke-dashoffset via JS -->
+        <path class="gauge-fill" id="gauge-fill-path"
+          d="M 10 75 A 60 60 0 0 1 130 75"
+          fill="none" stroke-width="10" stroke-linecap="round"/>
+        <!-- threshold marker at 80% -->
+        <g id="threshold-marker">
+          <!-- 80% along the arc: angle = 180 - 0.8*180 = 36° from right, i.e. 144° from left
+               Point: cx + r*cos(π - 0.8π) = 70 + 60*cos(0.2π)
+                      cy - r*sin(π - 0.8π) = 75 - 60*sin(0.2π) -->
+          <line id="thresh-line" stroke="var(--ct-color-primary)" stroke-width="2"
+                stroke-linecap="round" opacity="0.7"/>
+          <text id="thresh-label" font-family="Red Hat Text, sans-serif"
+                font-size="8" fill="var(--ct-color-primary)" opacity="0.7" text-anchor="middle">80%</text>
+        </g>
+      </svg>
+      <div class="gauge-score-label">
+        <span class="gauge-score-number" id="score-number">83.7%</span>
+        <span class="gauge-score-label-text">Compliance Score</span>
+      </div>
+    </div>
+
+    <!-- Stats column -->
+    <div class="score-stats">
+      <div class="score-target-row">
+        <span class="target-badge above">✓ Above target (80%)</span>
+        <span class="delta-badge">+4.0 pts vs. last scan</span>
+      </div>
+      <div class="dist-bar-wrap">
+        <div class="dist-bar-track">
+          <div class="dist-seg dist-seg-pass" id="bar-pass" style="width:0"></div>
+          <div class="dist-seg dist-seg-fail" id="bar-fail" style="width:0"></div>
+          <div class="dist-seg dist-seg-na"   id="bar-na"   style="width:0"></div>
+        </div>
+        <div class="dist-legend">
+          <span class="dist-legend-item">
+            <span class="dist-dot" style="background:var(--ct-color-success)"></span>
+            <span class="dist-num">236</span> passed
+          </span>
+          <span class="dist-legend-item">
+            <span class="dist-dot" style="background:var(--ct-color-danger)"></span>
+            <span class="dist-num">160</span> failed
+          </span>
+          <span class="dist-legend-item">
+            <span class="dist-dot" style="background:#c7c7c7"></span>
+            <span class="dist-num">32</span> n/a
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Severity distribution -->
+    <div class="sev-dist">
+      <div class="sev-dist-title">Failing by severity</div>
+      <div class="sev-bar-row sev-high">
+        <span class="sev-bar-label">HIGH</span>
+        <div class="sev-bar-track"><div class="sev-bar-fill" id="sev-high-fill" style="width:0"></div></div>
+        <span class="sev-bar-count">1</span>
+      </div>
+      <div class="sev-bar-row sev-medium">
+        <span class="sev-bar-label">MED</span>
+        <div class="sev-bar-track"><div class="sev-bar-fill" id="sev-med-fill" style="width:0"></div></div>
+        <span class="sev-bar-count">150</span>
+      </div>
+      <div class="sev-bar-row sev-low">
+        <span class="sev-bar-label">LOW</span>
+        <div class="sev-bar-track"><div class="sev-bar-fill" id="sev-low-fill" style="width:0"></div></div>
+        <span class="sev-bar-count">9</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Improvement banner -->
+  <div class="improvement-bar">
+    <span class="icon">✓</span>
+    <span>20 fewer failing rules than your previous scan on 2026-06-08 15:18:46 (180 → 160).</span>
+    <button class="link-btn">See what changed</button>
+  </div>
+
+  <!-- Remediation CTA -->
+  <div class="rem-cta">
+    <div class="rem-cta-left">
+      <span class="rem-cta-title">Remediation Builder</span>
+      <span class="rem-cta-sub">
+        <strong>1</strong> critical rule can be auto-remediated &nbsp;·&nbsp;
+        <strong>160</strong> failing rules total
+      </span>
+    </div>
+    <div class="rem-cta-actions">
+      <button class="btn btn-primary">Critical Rules (1)</button>
+      <button class="btn btn-secondary">All Failures (160)</button>
+    </div>
+  </div>
+
+  <!-- Rules controls -->
+  <div class="rules-controls">
+    <input class="rules-search" type="text" placeholder="Search failing rules…" oninput="doSearch(this.value)">
+    <button class="btn btn-ghost btn-sm" onclick="expandAll()">Expand All</button>
+    <button class="btn btn-ghost btn-sm" onclick="collapseAll()">Collapse All</button>
+  </div>
+
+  <!-- Failing rules -->
+  <div class="rules-section">
+
+    <!-- HIGH -->
+    <div class="sev-group grp-high open" id="grp-high">
+      <div class="sev-group-header" onclick="toggleGrp('grp-high')">
+        <span class="sev-group-bar"></span>
+        <span class="sev-group-name">HIGH</span>
+        <span class="sev-group-count">1 failing</span>
+        <span class="sev-group-arrow">▶</span>
+      </div>
+      <div class="sev-group-body">
+        <div class="rule-row">
+          <span class="rule-sev-dot"></span>
+          <div class="rule-info">
+            <div class="rule-title">Set Boot Loader Password in grub2</div>
+            <div class="rule-meta">
+              <span class="rule-cce">CCE-87614-4</span>
+              <span class="rule-auto-badge">Auto-remediable</span>
+            </div>
+          </div>
+          <button class="rule-add-btn">+ Add to builder</button>
+        </div>
+        <div class="rule-row">
+          <span class="rule-sev-dot"></span>
+          <div class="rule-info">
+            <div class="rule-title">Ensure root is the only UID 0 account</div>
+            <div class="rule-meta"><span class="rule-cce">CCE-83659-4</span></div>
+          </div>
+          <button class="rule-add-btn">+ Add to builder</button>
+        </div>
+        <div class="rule-row">
+          <span class="rule-sev-dot"></span>
+          <div class="rule-info">
+            <div class="rule-title">Disable SSH Root Login</div>
+            <div class="rule-meta"><span class="rule-cce">CCE-90818-8</span></div>
+          </div>
+          <button class="rule-add-btn">+ Add to builder</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEDIUM -->
+    <div class="sev-group grp-medium" id="grp-medium">
+      <div class="sev-group-header" onclick="toggleGrp('grp-medium')">
+        <span class="sev-group-bar"></span>
+        <span class="sev-group-name">MEDIUM</span>
+        <span class="sev-group-count">150 failing</span>
+        <span class="sev-group-arrow">▶</span>
+      </div>
+      <div class="sev-group-body">
+        <div class="rule-row">
+          <span class="rule-sev-dot"></span>
+          <div class="rule-info">
+            <div class="rule-title">Ensure SSH MaxAuthTries is set to 4 or less</div>
+            <div class="rule-meta"><span class="rule-cce">CCE-90820-4</span></div>
+          </div>
+          <button class="rule-add-btn">+ Add to builder</button>
+        </div>
+        <div class="rule-row">
+          <span class="rule-sev-dot"></span>
+          <div class="rule-info">
+            <div class="rule-title">Ensure password hashing algorithm is SHA-512 or yescrypt</div>
+            <div class="rule-meta"><span class="rule-cce">CCE-83655-2</span></div>
+          </div>
+          <button class="rule-add-btn">+ Add to builder</button>
+        </div>
+        <div class="rule-row">
+          <span class="rule-sev-dot"></span>
+          <div class="rule-info">
+            <div class="rule-title">Set SSH MaxSessions to 10 or less</div>
+            <div class="rule-meta"><span class="rule-cce">CCE-90823-8</span></div>
+          </div>
+          <button class="rule-add-btn">+ Add to builder</button>
+        </div>
+        <div class="rule-row">
+          <span class="rule-sev-dot"></span>
+          <div class="rule-info">
+            <div class="rule-title">Configure audit system to halt on full disk</div>
+            <div class="rule-meta"><span class="rule-cce">CCE-87617-7</span></div>
+          </div>
+          <button class="rule-add-btn">+ Add to builder</button>
+        </div>
+        <div class="rule-row">
+          <span class="rule-sev-dot"></span>
+          <div class="rule-info">
+            <div class="rule-title">Ensure password complexity policy is configured</div>
+            <div class="rule-meta"><span class="rule-cce">CCE-83665-1</span></div>
+          </div>
+          <button class="rule-add-btn">+ Add to builder</button>
+        </div>
+        <div class="rule-row">
+          <span class="rule-sev-dot"></span>
+          <div class="rule-info">
+            <div class="rule-title">Restrict Access to the su Command</div>
+            <div class="rule-meta"><span class="rule-cce">CCE-83677-6</span></div>
+          </div>
+          <button class="rule-add-btn">+ Add to builder</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOW -->
+    <div class="sev-group grp-low" id="grp-low">
+      <div class="sev-group-header" onclick="toggleGrp('grp-low')">
+        <span class="sev-group-bar"></span>
+        <span class="sev-group-name">LOW</span>
+        <span class="sev-group-count">9 failing</span>
+        <span class="sev-group-arrow">▶</span>
+      </div>
+      <div class="sev-group-body">
+        <div class="rule-row">
+          <span class="rule-sev-dot"></span>
+          <div class="rule-info">
+            <div class="rule-title">Ensure MOTD is configured properly</div>
+            <div class="rule-meta"><span class="rule-cce">CCE-83692-5</span></div>
+          </div>
+          <button class="rule-add-btn">+ Add to builder</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOT APPLICABLE -->
+    <div class="sev-group grp-na" id="grp-na">
+      <div class="sev-group-header" onclick="toggleGrp('grp-na')">
+        <span class="sev-group-bar"></span>
+        <span class="sev-group-name" style="color:var(--ct-color-text-secondary)">NOT APPLICABLE</span>
+        <span class="sev-group-count">32 rules</span>
+        <span class="sev-group-arrow">▶</span>
+      </div>
+      <div class="sev-group-body">
+        <div class="rule-row">
+          <span class="rule-sev-dot" style="background:#ccc"></span>
+          <div class="rule-info">
+            <div class="rule-title" style="color:var(--ct-color-text-secondary)">Ensure SELinux is not disabled in bootloader configuration</div>
+            <div class="rule-meta"><span class="rule-cce">CCE-83649-5</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="results-footer">
+    <button class="btn btn-primary">View Full Report</button>
+    <div class="split-btn">
+      <button class="btn btn-secondary split-btn-main">Download Report</button>
+      <button class="split-btn-toggle" onclick="toggleSplitMenu()" id="split-toggle">▾</button>
+      <div class="split-menu" id="split-menu">
+        <button>Download HTML (default)</button>
+        <button>Download Results XML</button>
+        <button>Download ARF</button>
+      </div>
+    </div>
+    <button class="btn btn-ghost">Load Config</button>
+    <div class="footer-spacer"></div>
+    <button class="btn btn-ghost">Close</button>
+  </div>
+
+</div>
+
+<script>
+// ── Arc gauge animation ──
+(function () {
+  const score = 0.837;
+  const target = 0.80;
+
+  // Arc path: half circle M 10 75 A 60 60 0 0 1 130 75
+  // Total arc length for r=60 half circle = π*60 ≈ 188.5
+  const ARC_LEN = Math.PI * 60;
+
+  const fill = document.getElementById('gauge-fill-path');
+  fill.style.strokeDasharray = ARC_LEN;
+  fill.style.strokeDashoffset = ARC_LEN;
+
+  // Animate after paint
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      fill.style.strokeDashoffset = ARC_LEN * (1 - score);
+    }, 80);
+  });
+
+  // Threshold marker
+  // Angle along arc: 0% = left end (angle=π), 100% = right end (angle=0)
+  // For fraction t: angle = π - t*π = π(1-t)
+  // cx=70, cy=75, r=60
+  const t = target;
+  const angle = Math.PI * (1 - t);
+  const mx = 70 + 60 * Math.cos(angle);
+  const my = 75 - 60 * Math.sin(angle);
+
+  // Draw a small tick outward
+  const outLen = 10, inLen = 5;
+  const nx = Math.cos(angle), ny = -Math.sin(angle);
+  const x1 = mx - nx * inLen,  y1 = my - ny * inLen;
+  const x2 = mx + nx * outLen, y2 = my + ny * outLen;
+
+  document.getElementById('thresh-line').setAttribute('x1', x1);
+  document.getElementById('thresh-line').setAttribute('y1', y1);
+  document.getElementById('thresh-line').setAttribute('x2', x2);
+  document.getElementById('thresh-line').setAttribute('y2', y2);
+
+  const lx = mx + nx * (outLen + 8), ly = my + ny * (outLen + 8);
+  const lbl = document.getElementById('thresh-label');
+  lbl.setAttribute('x', lx);
+  lbl.setAttribute('y', ly + 3);
+})();
+
+// ── Pass/fail/na bar animation ──
+(function () {
+  const total = 236 + 160 + 32;
+  const passW = (236 / total * 100).toFixed(1) + '%';
+  const failW = (160 / total * 100).toFixed(1) + '%';
+  const naW   = (32  / total * 100).toFixed(1) + '%';
+  setTimeout(() => {
+    document.getElementById('bar-pass').style.width = passW;
+    document.getElementById('bar-fail').style.width = failW;
+    document.getElementById('bar-na').style.width   = naW;
+  }, 80);
+})();
+
+// ── Severity bars animation ──
+(function () {
+  const max = 150;
+  setTimeout(() => {
+    document.getElementById('sev-high-fill').style.width = (1/max * 100).toFixed(1) + '%';
+    document.getElementById('sev-med-fill').style.width  = '100%';
+    document.getElementById('sev-low-fill').style.width  = (9/max * 100).toFixed(1) + '%';
+  }, 80);
+})();
+
+// ── Group toggle ──
+function toggleGrp(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+function expandAll()   { document.querySelectorAll('.sev-group').forEach(g => g.classList.add('open')); }
+function collapseAll() { document.querySelectorAll('.sev-group').forEach(g => g.classList.remove('open')); }
+
+// ── Search ──
+function doSearch(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('.rule-row').forEach(row => {
+    const text = row.querySelector('.rule-title').textContent.toLowerCase();
+    row.style.display = text.includes(q) ? '' : 'none';
+  });
+}
+
+// ── Split menu ──
+function toggleSplitMenu() {
+  document.getElementById('split-menu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.split-btn')) {
+    document.getElementById('split-menu').classList.remove('open');
+  }
+});
+</script>
+</body>
+</html>

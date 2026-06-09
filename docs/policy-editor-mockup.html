@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Policy Editor — Reimagined Layout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;700&family=Red+Hat+Text:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ct-color-primary:       #0066cc;
+  --ct-color-danger:        #c9190b;
+  --ct-color-success:       #3e8635;
+  --ct-color-warning:       #f0ab00;
+  --ct-color-text:          #151515;
+  --ct-color-text-secondary:#4d4d4d;
+  --ct-color-bg-page:       #f2f2f2;
+  --ct-color-bg-card:       #ffffff;
+  --ct-color-border:        #c7c7c7;
+  --ct-border-radius:       16px;
+  --ct-border-radius-sm:    6px;
+  --ct-font-display: 'Red Hat Display', sans-serif;
+  --ct-font-text:    'Red Hat Text', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: var(--ct-font-text);
+  font-size: 14px;
+  color: var(--ct-color-text);
+  background: var(--ct-color-bg-page);
+  overflow: hidden;
+}
+
+/* ============================================================
+   THREE-PANE SHELL
+   Left: Saved Policies list
+   Center: Rules tree + filter
+   Right: Live deviations + variables
+   ============================================================ */
+
+.shell {
+  display: grid;
+  grid-template-columns: 260px 1fr 300px;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+  gap: 0;
+}
+
+/* ---- TOP HEADER (spans all 3 cols) ---- */
+.editor-header {
+  grid-column: 1 / -1;
+  background: var(--ct-color-bg-card);
+  border-bottom: 1px solid var(--ct-color-border);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-header-top {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--ct-color-border);
+}
+
+.editor-profile-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ct-color-text-secondary);
+  background: var(--ct-color-bg-page);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ct-color-border);
+  white-space: nowrap;
+}
+
+.editor-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-name-label {
+  font-size: 0.75rem;
+  color: var(--ct-color-text-secondary);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.editor-name-input {
+  flex: 1;
+  min-width: 0;
+  max-width: 320px;
+  padding: 5px 10px;
+  border: 1px solid var(--ct-color-border);
+  border-radius: var(--ct-border-radius-sm);
+  font-family: var(--ct-font-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ct-color-text);
+  background: var(--ct-color-bg-page);
+}
+
+.editor-name-input:focus {
+  outline: 2px solid var(--ct-color-primary);
+  outline-offset: 1px;
+  background: var(--ct-color-bg-card);
+}
+
+.editor-threshold-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-left: 1px solid var(--ct-color-border);
+  padding-left: 1rem;
+}
+
+.editor-threshold-label {
+  font-size: 0.75rem;
+  color: var(--ct-color-text-secondary);
+  white-space: nowrap;
+}
+
+.editor-threshold-input {
+  width: 56px;
+  padding: 5px 8px;
+  border: 1px solid var(--ct-color-border);
+  border-radius: var(--ct-border-radius-sm);
+  font-family: var(--ct-font-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--ct-color-text);
+  background: var(--ct-color-bg-page);
+}
+
+.editor-threshold-unit {
+  font-size: 0.75rem;
+  color: var(--ct-color-text-secondary);
+}
+
+.editor-change-pill {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ct-color-primary);
+  background: rgba(0,102,204,0.08);
+  border: 1px solid rgba(0,102,204,0.2);
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+.change-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--ct-color-primary);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 16px;
+  border-radius: 999px;
+  font-family: var(--ct-font-text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  white-space: nowrap;
+  transition: all 0.1s;
+}
+
+.btn-primary {
+  background: var(--ct-color-primary);
+  border-color: var(--ct-color-primary);
+  color: #fff;
+}
+.btn-primary:hover { background: #004d99; border-color: #004d99; }
+
+.btn-secondary {
+  background: transparent;
+  border-color: var(--ct-color-primary);
+  color: var(--ct-color-primary);
+}
+.btn-secondary:hover { background: rgba(0,102,204,0.07); }
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--ct-color-border);
+  color: var(--ct-color-text-secondary);
+}
+.btn-ghost:hover { background: var(--ct-color-bg-page); color: var(--ct-color-text); }
+
+.header-spacer { flex: 1; }
+
+.editor-save-hint {
+  font-size: 0.75rem;
+  color: var(--ct-color-text-secondary);
+  font-style: italic;
+  margin-left: 0.25rem;
+}
+
+/* ============================================================
+   LEFT PANE — Saved Policies
+   ============================================================ */
+
+.pane-policies {
+  grid-column: 1;
+  grid-row: 2;
+  background: var(--ct-color-bg-card);
+  border-right: 1px solid var(--ct-color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--ct-color-border);
+  flex-shrink: 0;
+}
+
+.pane-title {
+  font-family: var(--ct-font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ct-color-text-secondary);
+}
+
+.pane-scroll { flex: 1; overflow-y: auto; }
+.pane-scroll::-webkit-scrollbar { width: 3px; }
+.pane-scroll::-webkit-scrollbar-thumb { background: var(--ct-color-border); border-radius: 2px; }
+
+.policy-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: background 0.1s;
+  position: relative;
+}
+
+.policy-row:hover { background: var(--ct-color-bg-page); }
+
+.policy-row.active {
+  background: rgba(0,102,204,0.06);
+  border-left: 3px solid var(--ct-color-primary);
+  padding-left: calc(1rem - 3px);
+}
+
+.policy-row-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ct-color-text);
+  line-height: 1.3;
+}
+
+.policy-row.active .policy-row-name { color: var(--ct-color-primary); }
+
+.policy-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--ct-color-text-secondary);
+}
+
+.policy-row-profile {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.policy-threshold-chip {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0,102,204,0.1);
+  color: var(--ct-color-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.policy-row-date {
+  font-size: 0.7rem;
+  color: var(--ct-color-text-secondary);
+  margin-top: 1px;
+}
+
+.pane-footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--ct-color-border);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   CENTER PANE — Rules Tree
+   ============================================================ */
+
+.pane-rules {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--ct-color-border);
+  background: var(--ct-color-bg-card);
+}
+
+.rules-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--ct-color-border);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  background: var(--ct-color-bg-card);
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ct-color-border);
+  background: transparent;
+  font-family: var(--ct-font-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ct-color-text-secondary);
+  cursor: pointer;
+  transition: all 0.1s;
+  user-select: none;
+}
+
+.filter-chip:hover { background: var(--ct-color-bg-page); color: var(--ct-color-text); }
+.filter-chip.active-all {
+  background: var(--ct-color-text);
+  border-color: var(--ct-color-text);
+  color: #fff;
+}
+.filter-chip.active-high {
+  background: var(--ct-color-danger);
+  border-color: var(--ct-color-danger);
+  color: #fff;
+}
+.filter-chip.active-med {
+  background: var(--ct-color-warning);
+  border-color: var(--ct-color-warning);
+  color: var(--ct-color-text);
+}
+.filter-chip.active-low {
+  background: #6e9e69;
+  border-color: #6e9e69;
+  color: #fff;
+}
+.filter-chip.active-disabled {
+  background: rgba(201,25,11,0.1);
+  border-color: rgba(201,25,11,0.3);
+  color: var(--ct-color-danger);
+}
+
+.rules-search {
+  flex: 1;
+  min-width: 120px;
+  max-width: 220px;
+  padding: 4px 10px;
+  border: 1.5px solid var(--ct-color-border);
+  border-radius: 999px;
+  font-family: var(--ct-font-text);
+  font-size: 0.78rem;
+  color: var(--ct-color-text);
+  background: var(--ct-color-bg-page);
+}
+
+.rules-search:focus {
+  outline: none;
+  border-color: var(--ct-color-primary);
+  background: var(--ct-color-bg-card);
+}
+
+.rules-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+}
+.rules-scroll::-webkit-scrollbar { width: 3px; }
+.rules-scroll::-webkit-scrollbar-thumb { background: var(--ct-color-border); border-radius: 2px; }
+
+/* Rule groups */
+.rule-group { margin-bottom: 2px; }
+
+.rule-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 1rem;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 0;
+  transition: background 0.1s;
+}
+
+.rule-group-header:hover { background: var(--ct-color-bg-page); }
+
+.rule-group-arrow {
+  font-size: 0.6rem;
+  color: var(--ct-color-text-secondary);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.rule-group.open .rule-group-arrow { transform: rotate(90deg); }
+
+.rule-group-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ct-color-text);
+  flex: 1;
+}
+
+.rule-group-count {
+  font-size: 0.7rem;
+  color: var(--ct-color-text-secondary);
+}
+
+.rule-group-body {
+  display: none;
+  padding-left: 1.5rem;
+}
+
+.rule-group.open .rule-group-body { display: block; }
+
+/* Individual rules */
+.rule-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 1rem 5px 0;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-radius: var(--ct-border-radius-sm);
+}
+
+.rule-item:hover { background: rgba(0,102,204,0.04); }
+
+.rule-check {
+  margin-top: 2px;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--ct-color-primary);
+}
+
+.rule-text-col { flex: 1; min-width: 0; }
+
+.rule-title {
+  font-size: 0.82rem;
+  color: var(--ct-color-text);
+  line-height: 1.4;
+}
+
+.rule-item.unchecked .rule-title {
+  color: var(--ct-color-text-secondary);
+  text-decoration: line-through;
+  text-decoration-color: rgba(201,25,11,0.4);
+}
+
+.sev-chip {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.sev-high   { background: rgba(201,25,11,0.1);  color: var(--ct-color-danger); }
+.sev-medium { background: rgba(240,171,0,0.15);  color: #8a6300; }
+.sev-low    { background: rgba(62,134,53,0.1);   color: var(--ct-color-success); }
+
+/* ============================================================
+   RIGHT PANE — Live Deviations + Variables
+   ============================================================ */
+
+.pane-deviations {
+  grid-column: 3;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ct-color-bg-card);
+}
+
+.dev-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--ct-color-border);
+  flex-shrink: 0;
+}
+
+.dev-pane-title {
+  font-family: var(--ct-font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ct-color-text-secondary);
+}
+
+.dev-live-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(62,134,53,0.1);
+  color: var(--ct-color-success);
+  border: 1px solid rgba(62,134,53,0.2);
+}
+
+.dev-scroll { flex: 1; overflow-y: auto; padding: 0.75rem 1rem; }
+.dev-scroll::-webkit-scrollbar { width: 3px; }
+.dev-scroll::-webkit-scrollbar-thumb { background: var(--ct-color-border); border-radius: 2px; }
+
+.dev-section { margin-bottom: 1rem; }
+
+.dev-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0.4rem;
+}
+
+.dev-section-label {
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ct-color-text-secondary);
+}
+
+.dev-section-line {
+  flex: 1;
+  height: 1px;
+  background: var(--ct-color-border);
+}
+
+.dev-pills { display: flex; flex-direction: column; gap: 3px; }
+
+.dev-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  padding: 4px 8px;
+  border-radius: var(--ct-border-radius-sm);
+  border-left: 3px solid transparent;
+  background: var(--ct-color-bg-page);
+  animation: pillIn 0.18s ease;
+}
+
+@keyframes pillIn {
+  from { opacity: 0; transform: translateX(6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.dev-pill-disabled {
+  border-left-color: var(--ct-color-danger);
+  background: rgba(201,25,11,0.04);
+}
+
+.dev-pill-enabled {
+  border-left-color: var(--ct-color-success);
+  background: rgba(62,134,53,0.04);
+}
+
+.dev-pill-name {
+  flex: 1;
+  color: var(--ct-color-text);
+  line-height: 1.35;
+  font-size: 0.77rem;
+}
+
+.dev-pill-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.badge-off { background: rgba(201,25,11,0.1); color: var(--ct-color-danger); }
+.badge-on  { background: rgba(62,134,53,0.1); color: var(--ct-color-success); }
+
+.dev-empty {
+  font-size: 0.8rem;
+  color: var(--ct-color-text-secondary);
+  font-style: italic;
+  padding: 0.25rem 0;
+}
+
+/* Variables section at bottom of right pane */
+.var-section {
+  border-top: 1px solid var(--ct-color-border);
+  padding: 0.75rem 1rem;
+  flex-shrink: 0;
+}
+
+.var-section-title {
+  font-family: var(--ct-font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ct-color-text-secondary);
+  margin-bottom: 0.6rem;
+}
+
+.var-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 0.75rem;
+}
+
+.var-row:last-child { margin-bottom: 0; }
+
+.var-label {
+  font-size: 0.77rem;
+  font-weight: 600;
+  color: var(--ct-color-text);
+}
+
+.var-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.var-input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--ct-color-border);
+  border-radius: var(--ct-border-radius-sm);
+  font-family: var(--ct-font-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ct-color-primary);
+  background: rgba(0,102,204,0.04);
+}
+
+.var-input:focus {
+  outline: 2px solid var(--ct-color-primary);
+  outline-offset: 1px;
+  background: var(--ct-color-bg-card);
+}
+
+.var-unit {
+  font-size: 0.72rem;
+  color: var(--ct-color-text-secondary);
+  white-space: nowrap;
+}
+
+.var-default {
+  font-size: 0.7rem;
+  color: var(--ct-color-text-secondary);
+}
+
+.var-default span {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ============================================================
+       HEADER — spans full width
+       ============================================================ -->
+  <header class="editor-header">
+    <div class="editor-header-top">
+      <span class="editor-profile-badge">CIS Red Hat Enterprise Linux 10 Benchmark</span>
+
+      <div class="editor-name-wrap">
+        <span class="editor-name-label">Policy :</span>
+        <input class="editor-name-input" type="text" value="RHEL10_CIS2_DEV" spellcheck="false">
+      </div>
+
+      <div class="editor-threshold-wrap">
+        <span class="editor-threshold-label">Compliance target</span>
+        <input class="editor-threshold-input" type="number" value="80" min="0" max="100">
+        <span class="editor-threshold-unit">%</span>
+      </div>
+
+      <div class="editor-change-pill" id="change-pill">
+        <span class="change-dot"></span>
+        <span id="change-count-text">9 rules · 1 variable changed</span>
+      </div>
+    </div>
+
+    <div class="editor-header-actions">
+      <button class="btn btn-primary" onclick="showSaveStatus()">Update</button>
+      <button class="btn btn-secondary">Save as New</button>
+      <button class="btn btn-ghost">Cancel</button>
+      <span class="header-spacer"></span>
+      <span class="editor-save-hint" id="save-hint"></span>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       LEFT PANE — Saved Policies
+       ============================================================ -->
+  <aside class="pane-policies">
+    <div class="pane-header">
+      <span class="pane-title">Saved Policies</span>
+    </div>
+    <div class="pane-scroll">
+      <div class="policy-row active" onclick="selectPolicy(this)">
+        <span class="policy-row-name">RHEL10_CIS2_DEV</span>
+        <div class="policy-row-meta">
+          <span class="policy-row-profile">CIS RHEL 10 Level 2</span>
+          <span class="policy-threshold-chip">80%</span>
+        </div>
+        <span class="policy-row-date">Modified Jun 9, 2026</span>
+      </div>
+      <div class="policy-row" onclick="selectPolicy(this)">
+        <span class="policy-row-name">Production Baseline</span>
+        <div class="policy-row-meta">
+          <span class="policy-row-profile">DISA STIG RHEL 10</span>
+          <span class="policy-threshold-chip">95%</span>
+        </div>
+        <span class="policy-row-date">Modified Jun 7, 2026</span>
+      </div>
+      <div class="policy-row" onclick="selectPolicy(this)">
+        <span class="policy-row-name">Dev Workstations</span>
+        <div class="policy-row-meta">
+          <span class="policy-row-profile">CIS RHEL 10 Level 1</span>
+          <span class="policy-threshold-chip">70%</span>
+        </div>
+        <span class="policy-row-date">Modified Jun 3, 2026</span>
+      </div>
+      <div class="policy-row" onclick="selectPolicy(this)">
+        <span class="policy-row-name">PCI Scope Servers</span>
+        <div class="policy-row-meta">
+          <span class="policy-row-profile">PCI-DSS v4 RHEL 10</span>
+          <span class="policy-threshold-chip">90%</span>
+        </div>
+        <span class="policy-row-date">Modified May 31, 2026</span>
+      </div>
+    </div>
+    <div class="pane-footer">
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:0.78rem;">Upload Policy</button>
+    </div>
+  </aside>
+
+  <!-- ============================================================
+       CENTER PANE — Rules Tree
+       ============================================================ -->
+  <main class="pane-rules">
+    <div class="rules-filter-bar">
+      <button class="filter-chip active-all" onclick="setFilter('all', this)">All</button>
+      <button class="filter-chip" onclick="setFilter('disabled', this)">Disabled</button>
+      <button class="filter-chip" onclick="setFilter('high', this)">HIGH</button>
+      <button class="filter-chip" onclick="setFilter('med', this)">MED</button>
+      <button class="filter-chip" onclick="setFilter('low', this)">LOW</button>
+      <input class="rules-search" type="text" placeholder="Search rules…" oninput="filterSearch(this.value)">
+      <button class="btn btn-ghost" style="font-size:0.72rem;padding:3px 10px;margin-left:auto">Expand All</button>
+      <button class="btn btn-ghost" style="font-size:0.72rem;padding:3px 10px">Collapse All</button>
+    </div>
+
+    <div class="rules-scroll" id="rules-scroll">
+
+      <!-- Group: Access Control -->
+      <div class="rule-group open" id="group-access">
+        <div class="rule-group-header" onclick="toggleGroup('group-access')">
+          <span class="rule-group-arrow">▶</span>
+          <span class="rule-group-name">Access Control</span>
+          <span class="rule-group-count">3 rules</span>
+        </div>
+        <div class="rule-group-body">
+          <div class="rule-item" id="rule-sudo">
+            <input class="rule-check" type="checkbox" checked onchange="toggleRule(this, 'rule-sudo', 'Ensure sudo requires authentication', 'high')">
+            <div class="rule-text-col">
+              <div class="rule-title">Ensure sudo requires authentication for each sudo user</div>
+            </div>
+            <span class="sev-chip sev-high">HIGH</span>
+          </div>
+          <div class="rule-item unchecked" id="rule-pam">
+            <input class="rule-check" type="checkbox" onchange="toggleRule(this, 'rule-pam', 'Ensure password complexity requirements are configured', 'medium')">
+            <div class="rule-text-col">
+              <div class="rule-title">Ensure password complexity requirements are configured</div>
+            </div>
+            <span class="sev-chip sev-medium">MED</span>
+          </div>
+          <div class="rule-item unchecked" id="rule-root">
+            <input class="rule-check" type="checkbox" onchange="toggleRule(this, 'rule-root', 'Ensure root is the only UID 0 account', 'high')">
+            <div class="rule-text-col">
+              <div class="rule-title">Ensure root is the only UID 0 account</div>
+            </div>
+            <span class="sev-chip sev-high">HIGH</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group: SSH -->
+      <div class="rule-group open" id="group-ssh">
+        <div class="rule-group-header" onclick="toggleGroup('group-ssh')">
+          <span class="rule-group-arrow">▶</span>
+          <span class="rule-group-name">SSH Server</span>
+          <span class="rule-group-count">3 rules</span>
+        </div>
+        <div class="rule-group-body">
+          <div class="rule-item unchecked" id="rule-sshmax">
+            <input class="rule-check" type="checkbox" onchange="toggleRule(this, 'rule-sshmax', 'Set SSH MaxAuthTries to 4 or less', 'medium')">
+            <div class="rule-text-col">
+              <div class="rule-title">Set SSH MaxAuthTries to 4 or less</div>
+            </div>
+            <span class="sev-chip sev-medium">MED</span>
+          </div>
+          <div class="rule-item unchecked" id="rule-sshroot">
+            <input class="rule-check" type="checkbox" onchange="toggleRule(this, 'rule-sshroot', 'Set SSH PermitRootLogin to no', 'high')">
+            <div class="rule-text-col">
+              <div class="rule-title">Set SSH PermitRootLogin to no</div>
+            </div>
+            <span class="sev-chip sev-high">HIGH</span>
+          </div>
+          <div class="rule-item" id="rule-sshmacs">
+            <input class="rule-check" type="checkbox" checked onchange="toggleRule(this, 'rule-sshmacs', 'Use only FIPS 140-2 approved MACs', 'high')">
+            <div class="rule-text-col">
+              <div class="rule-title">Use only FIPS 140-2 approved MACs</div>
+            </div>
+            <span class="sev-chip sev-high">HIGH</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group: Audit -->
+      <div class="rule-group open" id="group-audit">
+        <div class="rule-group-header" onclick="toggleGroup('group-audit')">
+          <span class="rule-group-arrow">▶</span>
+          <span class="rule-group-name">Audit &amp; Logging</span>
+          <span class="rule-group-count">2 rules</span>
+        </div>
+        <div class="rule-group-body">
+          <div class="rule-item unchecked" id="rule-audithalt">
+            <input class="rule-check" type="checkbox" onchange="toggleRule(this, 'rule-audithalt', 'Configure audit system to halt on full disk', 'high')">
+            <div class="rule-text-col">
+              <div class="rule-title">Configure audit system to halt on full disk</div>
+            </div>
+            <span class="sev-chip sev-high">HIGH</span>
+          </div>
+          <div class="rule-item" id="rule-auditboot">
+            <input class="rule-check" type="checkbox" checked onchange="toggleRule(this, 'rule-auditboot', 'Enable auditing for processes prior to audit daemon', 'medium')">
+            <div class="rule-text-col">
+              <div class="rule-title">Enable auditing for processes prior to audit daemon</div>
+            </div>
+            <span class="sev-chip sev-medium">MED</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ============================================================
+       RIGHT PANE — Live Deviations + Variables
+       ============================================================ -->
+  <aside class="pane-deviations">
+    <div class="dev-pane-header">
+      <span class="dev-pane-title">Deviations</span>
+      <span class="dev-live-badge">live</span>
+    </div>
+
+    <div class="dev-scroll" id="dev-scroll">
+      <div class="dev-section">
+        <div class="dev-section-header">
+          <span class="dev-section-label">Disabled</span>
+          <div class="dev-section-line"></div>
+          <span id="disabled-count" style="font-size:0.7rem;color:var(--ct-color-text-secondary);font-variant-numeric:tabular-nums"></span>
+        </div>
+        <div class="dev-pills" id="disabled-list"></div>
+      </div>
+
+      <div class="dev-section">
+        <div class="dev-section-header">
+          <span class="dev-section-label">Enabled</span>
+          <div class="dev-section-line"></div>
+          <span id="enabled-count" style="font-size:0.7rem;color:var(--ct-color-text-secondary);font-variant-numeric:tabular-nums"></span>
+        </div>
+        <div class="dev-pills" id="enabled-list"></div>
+      </div>
+    </div>
+
+    <!-- Variables always pinned at bottom -->
+    <div class="var-section">
+      <div class="var-section-title">Variables · 2 modified</div>
+
+      <div class="var-row">
+        <span class="var-label">Maximum password age</span>
+        <div class="var-input-row">
+          <input class="var-input" type="number" value="60">
+          <span class="var-unit">days</span>
+        </div>
+        <span class="var-default">Default: <span>99</span></span>
+      </div>
+
+      <div class="var-row">
+        <span class="var-label">SSH idle timeout interval</span>
+        <div class="var-input-row">
+          <input class="var-input" type="number" value="900">
+          <span class="var-unit">seconds</span>
+        </div>
+        <span class="var-default">Default: <span>0</span></span>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+// Track rule state: true = enabled (checked), false = disabled (unchecked)
+// Default state = checked (all rules enabled in base profile)
+// Unchecked = DISABLED (deviation from base)
+// A rule that starts unchecked (like pam, sshmax) and gets checked = ENABLED deviation
+
+const baseState = {
+  'rule-sudo':     true,   // checked in base
+  'rule-pam':      true,   // checked in base — currently disabled
+  'rule-root':     true,   // checked in base — currently disabled
+  'rule-sshmax':   true,   // checked in base — currently disabled
+  'rule-sshroot':  true,   // checked in base — currently disabled
+  'rule-sshmacs':  true,   // checked in base
+  'rule-audithalt':true,   // checked in base — currently disabled
+  'rule-auditboot':true,   // checked in base
+};
+
+const ruleNames = {};
+
+function toggleRule(checkbox, id, name, sev) {
+  ruleNames[id] = name;
+  const item = document.getElementById(id);
+  if (checkbox.checked) {
+    item.classList.remove('unchecked');
+  } else {
+    item.classList.add('unchecked');
+  }
+  renderDeviations();
+}
+
+function renderDeviations() {
+  const disabled = [];
+  const enabled  = [];
+
+  document.querySelectorAll('.rule-check').forEach(cb => {
+    const id   = cb.closest('.rule-item').id;
+    const name = cb.closest('.rule-item').querySelector('.rule-title').textContent;
+    const base = baseState[id] !== undefined ? baseState[id] : true;
+    const now  = cb.checked;
+
+    if (base && !now) disabled.push(name);
+    if (!base && now)  enabled.push(name);
+  });
+
+  // Render disabled list
+  const dl = document.getElementById('disabled-list');
+  const dc = document.getElementById('disabled-count');
+  dl.innerHTML = '';
+  dc.textContent = disabled.length ? disabled.length : '';
+  if (disabled.length === 0) {
+    dl.innerHTML = '<span class="dev-empty">None</span>';
+  } else {
+    disabled.forEach(name => {
+      const pill = document.createElement('div');
+      pill.className = 'dev-pill dev-pill-disabled';
+      pill.innerHTML = `<span class="dev-pill-name">${name}</span><span class="dev-pill-badge badge-off">off</span>`;
+      dl.appendChild(pill);
+    });
+  }
+
+  // Render enabled list
+  const el = document.getElementById('enabled-list');
+  const ec = document.getElementById('enabled-count');
+  el.innerHTML = '';
+  ec.textContent = enabled.length ? enabled.length : '';
+  if (enabled.length === 0) {
+    el.innerHTML = '<span class="dev-empty">None</span>';
+  } else {
+    enabled.forEach(name => {
+      const pill = document.createElement('div');
+      pill.className = 'dev-pill dev-pill-enabled';
+      pill.innerHTML = `<span class="dev-pill-name">${name}</span><span class="dev-pill-badge badge-on">on</span>`;
+      el.appendChild(pill);
+    });
+  }
+
+  // Update change count
+  const total = disabled.length + enabled.length;
+  document.getElementById('change-count-text').textContent =
+    `${total} rule${total !== 1 ? 's' : ''} · 2 variables changed`;
+}
+
+function toggleGroup(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+function setFilter(type, btn) {
+  document.querySelectorAll('.filter-chip').forEach(c => {
+    c.classList.remove('active-all','active-high','active-med','active-low','active-disabled');
+  });
+  btn.classList.add('active-' + type);
+
+  document.querySelectorAll('.rule-item').forEach(item => {
+    if (type === 'all') {
+      item.style.display = '';
+      return;
+    }
+    if (type === 'disabled') {
+      item.style.display = item.classList.contains('unchecked') ? '' : 'none';
+      return;
+    }
+    const chip = item.querySelector('.sev-chip');
+    const sev  = chip ? chip.textContent.trim().toLowerCase() : '';
+    const match = (type === 'high' && sev === 'high') ||
+                  (type === 'med'  && sev === 'med')  ||
+                  (type === 'low'  && sev === 'low');
+    item.style.display = match ? '' : 'none';
+  });
+}
+
+function filterSearch(val) {
+  const q = val.toLowerCase();
+  document.querySelectorAll('.rule-item').forEach(item => {
+    const title = item.querySelector('.rule-title').textContent.toLowerCase();
+    item.style.display = title.includes(q) ? '' : 'none';
+  });
+}
+
+function selectPolicy(row) {
+  document.querySelectorAll('.policy-row').forEach(r => r.classList.remove('active'));
+  row.classList.add('active');
+}
+
+function showSaveStatus() {
+  const hint = document.getElementById('save-hint');
+  hint.textContent = '✓ Saved';
+  hint.style.color = 'var(--ct-color-success)';
+  setTimeout(() => { hint.textContent = ''; }, 2000);
+}
+
+// Initial render
+renderDeviations();
+</script>
+</body>
+</html>
