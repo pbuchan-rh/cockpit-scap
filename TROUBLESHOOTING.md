@@ -4,14 +4,22 @@ These issues only surface on hosts with CIS Level 2 or similar hardening applied
 
 ## Cockpit service masked after hardening
 
-CIS rule `xccdf_org.ssgproject.content_rule_mask_nonessential_services` masks `cockpit.service`. After rebooting a hardened host, Cockpit's socket will not start.
+CIS profiles include rules that mask services considered non-essential, including Cockpit. This affects **any system where a CIS remediation has been applied** — RHEL, CentOS Stream, Fedora, Oracle Linux, and AlmaLinux are all affected.
+
+After remediation, both `cockpit.service` and `cockpit.socket` may be masked. The socket will fail to start with: `Socket service cockpit.service not loaded, refusing.`
+
+Restore Cockpit with:
 
 ```bash
-sudo systemctl unmask cockpit.service
+sudo systemctl unmask cockpit.service cockpit.socket
 sudo systemctl enable --now cockpit.socket
+sudo firewall-cmd --add-service=cockpit --permanent
+sudo firewall-cmd --reload
 ```
 
-To prevent recurrence, tailor this rule out of the profile in the Policy Tailoring tab before applying remediation.
+Note that the firewall rule for Cockpit (port 9090) may also be removed by remediation — all four commands are needed.
+
+**To prevent recurrence:** tailor the service-masking and firewall rules out of the profile in the Policy Tailoring tab before applying remediation. This is the recommended workflow — scan, review, tailor out rules that would break management access, then remediate.
 
 ## Privileged operations fail after hardening (`use_pty`)
 
