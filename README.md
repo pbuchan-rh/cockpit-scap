@@ -14,7 +14,7 @@ A native [Cockpit](https://cockpit-project.org/) module for RHEL 10 / CentOS Str
 - **Scan history** — every result stored with score delta vs previous same-profile scan; reload any historical result or open it in the remediation drawer; configurable retention
 - **Activity log** — structured audit trail of all privileged actions (scans, remediation, tailoring, content operations); filter by type; each entry records the authenticated user; integrates with the systemd journal
 - **Export** — HTML report, XCCDF results XML, and ARF bundle per scan; compliance guide for any profile; history as CSV
-- **Settings** — tab visibility, scan retention, Clear All Data, Content Library (system + uploaded SDS files)
+- **Settings** — tab visibility, in-place remediation control, scan retention, Clear All Data, Content Library (system + uploaded SDS files)
 
 ## Screenshots
 

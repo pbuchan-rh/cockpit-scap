@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.9.1
+Version:        3.9.2
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
@@ -94,6 +94,15 @@ fi
 %dir /var/lib/%{name}/remediation-logs
 
 %changelog
+* Mon Jun 09 2026 Peter Buchan <pbuchan@redhat.com> - 3.9.2-1
+- Add Enable Host Scanning toggle: hides Host Scan tab system-wide when disabled
+- Add Enable In-Place Remediation toggle: disables Apply Now button system-wide
+- Fix settings load race condition on CIS L2 hardened hosts (remove superuser:'try'
+  from loadSettings — settings.json is 644 world-readable, no elevation needed)
+- Fix Apply Now button re-enabling after in-place remediation setting disabled
+  (updateAdminControls post-loop guard added)
+- Fix policy table row highlight not applying when editor opens
+
 * Mon Jun 08 2026 Peter Buchan <pbuchan@redhat.com> - 3.9.1-1
 - Results view redesign: large score hero number with pass/fail breakdown
   replaces tile badges; score color-coded vs policy threshold
