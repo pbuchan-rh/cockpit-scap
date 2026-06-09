@@ -3464,6 +3464,7 @@ function renderTailorEditor(data) {
     statusEl.textContent = '';
     statusEl.className   = 'ct-tailor-save-status hidden';
     document.getElementById('ct-tailor-editor').classList.remove('hidden');
+    syncTailorHighlight();
     updateTailorSummary();
 }
 
