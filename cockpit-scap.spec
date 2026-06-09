@@ -1,7 +1,7 @@
 Name:           cockpit-scap
 Version:        3.9.2
 Release:        1%{?dist}
-Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
+Summary:        Cockpit module for SCAP compliance scanning and tailoring
 
 License:        LGPL-2.1-or-later
 URL:            https://github.com/pbuchan-rh/cockpit-scap
@@ -18,7 +18,7 @@ Requires(post): policycoreutils-python-utils
 %description
 cockpit-scap is a native Cockpit module that brings OpenSCAP compliance
 scanning, profile tailoring, and selective remediation directly into
-the browser console RHEL administrators already use.
+the Cockpit browser console.
 
   - Host and container image scanning on demand; configurable history
     retention per scan type; regression and improvement detection;
