@@ -1,7 +1,7 @@
 # cockpit-scap — Requirements
 
 **Status:** v1 requirements locked  
-**Last updated:** 2026-06-01
+**Last updated:** 2026-06-09
 
 ---
 
@@ -400,6 +400,16 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 - **REQ-193:** ✅ Container Scan and Dashboard tabs MUST default to disabled on a fresh install (no settings.json); users opt in via Settings; existing installs that already have settings.json are unaffected
 
 - **REQ-194:** ✅ The Settings page two-column grid MUST collapse to a single column below 900px viewport width via CSS media query
+
+### Feature Toggles (v3.9.2)
+
+- **REQ-195:** ✅ The Module Features section in Settings MUST include an "Enable Host Scanning" toggle; when disabled the Host Scan tab MUST be hidden entirely; if the Host Scan tab was active when the toggle is disabled the module MUST redirect to the Settings tab; checkbox order MUST be: Host Scanning, Container Scanning, Policy Tailoring, In-Place Remediation
+
+- **REQ-196:** ✅ The Module Features section in Settings MUST include an "Enable In-Place Remediation" toggle; when disabled the Apply Now button in the Selective Remediation panel MUST be permanently disabled regardless of rule selection state or admin privilege; build-and-download (Bash and Ansible) is unaffected
+
+- **REQ-197:** ✅ All four feature toggles MUST default to enabled on a fresh install (no settings.json); Container Scan remains the only tab disabled by default (REQ-193 unchanged)
+
+- **REQ-198:** ✅ Settings load MUST NOT use `superuser: 'try'` — `/var/lib/cockpit-scap/settings.json` is written as `644` (world-readable) and MUST be read unprivileged; using `superuser: 'try'` on hardened hosts caused a race condition where the privilege channel was not ready at page load, silently failing the read and leaving all values at defaults
 
 ---
 

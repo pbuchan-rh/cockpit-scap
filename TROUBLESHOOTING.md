@@ -64,3 +64,13 @@ To fix permissions on existing scan results without rescanning:
 sudo find /var/lib/cockpit-scap -type f -exec chmod 644 {} +
 sudo find /var/lib/cockpit-scap -type d -exec chmod 755 {} +
 ```
+
+## Viewing cockpit-scap syslog entries
+
+Remediation apply events are written to syslog via `logger -t cockpit-scap`. To view them:
+
+```bash
+journalctl -t cockpit-scap
+```
+
+Add `-f` to follow live, or `-n 50` to limit to the last 50 lines.

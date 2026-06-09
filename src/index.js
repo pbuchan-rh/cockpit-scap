@@ -28,6 +28,8 @@ let   hostRetention        = RETENTION_DEFAULT;
 let   containerRetention   = RETENTION_DEFAULT;
 let   containerScanEnabled  = false;
 let   tailoringEnabled      = true;
+let   hostScanTabEnabled    = true;
+let   inPlaceRemEnabled     = true;
 
 const PERSISTENCE_CACHE_PATH = '/var/lib/cockpit-scap/persistence-cache.json';
 const ACTIVITY_LOG   = '/var/lib/cockpit-scap/activity.log';
@@ -1624,7 +1626,7 @@ function updateRemediationCount() {
     document.getElementById('ct-remediation-count').textContent =
         checked + ' of ' + all.length + ' rules selected';
     const disabled = checked === 0;
-    document.getElementById('ct-rem-apply-btn').disabled   = disabled;
+    document.getElementById('ct-rem-apply-btn').disabled   = disabled || !inPlaceRemEnabled;
     document.getElementById('ct-rem-bash-btn').disabled    = disabled;
     document.getElementById('ct-rem-ansible-btn').disabled = disabled;
 
@@ -4363,6 +4365,9 @@ function updateAdminControls() {
     const scanBtn = document.getElementById('ct-scan-btn');
     if (scanBtn && !scanBtn.disabled) setScanButtonEnabled(true);
     if (typeof csUpdateScanBtn === 'function') csUpdateScanBtn();
+
+    if (!inPlaceRemEnabled)
+        document.getElementById('ct-rem-apply-btn').disabled = true;
 }
 
 /* ---- Content tab ------------------------------------------- */
@@ -4628,7 +4633,7 @@ function doWriteContent(file, destPath, sizeMB) {
 /* ---- Settings tab ------------------------------------------ */
 
 function loadSettings() {
-    return cockpit.file(SETTINGS_PATH, { superuser: 'try' }).read()
+    return cockpit.file(SETTINGS_PATH).read()
         .then(content => {
             if (!content) return;
             const s = JSON.parse(content);
@@ -4640,21 +4645,34 @@ function loadSettings() {
                 containerScanEnabled = s.container_scan_enabled;
             if (typeof s.tailoring_enabled === 'boolean')
                 tailoringEnabled = s.tailoring_enabled;
+            if (typeof s.host_scan_tab_enabled === 'boolean')
+                hostScanTabEnabled = s.host_scan_tab_enabled;
+            if (typeof s.in_place_remediation_enabled === 'boolean')
+                inPlaceRemEnabled = s.in_place_remediation_enabled;
         })
         .catch(() => {})
-        .then(() => applyTabVisibility());
+        .then(() => { applyTabVisibility(); applyRemediationState(); });
 }
 
 function applyTabVisibility() {
+    document.getElementById('tab-btn-scan').closest('li')
+        .classList.toggle('hidden', !hostScanTabEnabled);
     document.getElementById('tab-btn-container-scan').closest('li')
         .classList.toggle('hidden', !containerScanEnabled);
     document.getElementById('tab-btn-tailoring').closest('li')
         .classList.toggle('hidden', !tailoringEnabled);
 
+    const hActive = document.getElementById('tab-btn-scan').getAttribute('aria-selected') === 'true';
     const cActive = document.getElementById('tab-btn-container-scan').getAttribute('aria-selected') === 'true';
     const tActive = document.getElementById('tab-btn-tailoring').getAttribute('aria-selected') === 'true';
-    if ((!containerScanEnabled && cActive) || (!tailoringEnabled && tActive))
+    if (!hostScanTabEnabled && hActive)
+        document.getElementById('tab-btn-settings').click();
+    else if ((!containerScanEnabled && cActive) || (!tailoringEnabled && tActive))
         document.getElementById('tab-btn-scan').click();
+}
+
+function applyRemediationState() {
+    document.getElementById('ct-rem-apply-btn').disabled = !inPlaceRemEnabled;
 }
 
 function initSettings() {
@@ -4693,8 +4711,10 @@ function initSettings() {
 function onSettingsTabOpen() {
     document.getElementById('ct-setting-host-retention').value          = hostRetention;
     document.getElementById('ct-setting-container-retention').value     = containerRetention;
+    document.getElementById('ct-setting-host-scan-tab-enabled').checked  = hostScanTabEnabled;
     document.getElementById('ct-setting-container-enabled').checked     = containerScanEnabled;
     document.getElementById('ct-setting-tailoring-enabled').checked     = tailoringEnabled;
+    document.getElementById('ct-setting-in-place-rem-enabled').checked  = inPlaceRemEnabled;
     document.getElementById('ct-settings-warn').classList.add('hidden');
     document.getElementById('ct-settings-saved').classList.add('hidden');
     document.getElementById('ct-settings-save-error').classList.add('hidden');
@@ -4762,19 +4782,25 @@ function saveSettings() {
     hInput.value = hVal;
     cInput.value = cVal;
 
+    const hsVal = document.getElementById('ct-setting-host-scan-tab-enabled').checked;
     const ceVal = document.getElementById('ct-setting-container-enabled').checked;
     const teVal = document.getElementById('ct-setting-tailoring-enabled').checked;
+    const irVal = document.getElementById('ct-setting-in-place-rem-enabled').checked;
 
     const prevHost      = hostRetention;
     const prevContainer = containerRetention;
+    const prevHs        = hostScanTabEnabled;
     const prevCe        = containerScanEnabled;
     const prevTe        = tailoringEnabled;
+    const prevIr        = inPlaceRemEnabled;
 
     const newSettings = JSON.stringify({
-        host_retention:         hVal,
-        container_retention:    cVal,
-        container_scan_enabled: ceVal,
-        tailoring_enabled:      teVal,
+        host_retention:              hVal,
+        container_retention:         cVal,
+        host_scan_tab_enabled:       hsVal,
+        container_scan_enabled:      ceVal,
+        tailoring_enabled:           teVal,
+        in_place_remediation_enabled: irVal,
     }, null, 2);
 
     cockpit.file(SETTINGS_PATH, { superuser: 'require' })
@@ -4783,9 +4809,12 @@ function saveSettings() {
         .then(() => {
             hostRetention        = hVal;
             containerRetention   = cVal;
+            hostScanTabEnabled   = hsVal;
             containerScanEnabled = ceVal;
             tailoringEnabled     = teVal;
+            inPlaceRemEnabled    = irVal;
             applyTabVisibility();
+            applyRemediationState();
             return Promise.all([
                 pruneHistoryByType('host'),
                 pruneHistoryByType('container'),
@@ -4795,8 +4824,10 @@ function saveSettings() {
             const parts = [];
             if (hVal  !== prevHost)      parts.push('host retention: ' + prevHost + ' → ' + hVal);
             if (cVal  !== prevContainer) parts.push('container retention: ' + prevContainer + ' → ' + cVal);
+            if (hsVal !== prevHs)        parts.push('host scan tab: ' + (hsVal ? 'enabled' : 'disabled'));
             if (ceVal !== prevCe)        parts.push('container scan: ' + (ceVal ? 'enabled' : 'disabled'));
             if (teVal !== prevTe)        parts.push('policy tailoring: ' + (teVal ? 'enabled' : 'disabled'));
+            if (irVal !== prevIr)        parts.push('in-place remediation: ' + (irVal ? 'enabled' : 'disabled'));
             if (parts.length)
                 appendActivityLog({ type: 'settings_change', tab: 'settings',
                                     detail: parts.join(', ') });

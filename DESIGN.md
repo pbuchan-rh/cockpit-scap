@@ -1,7 +1,7 @@
 # cockpit-scap — Design Document
 
-**Status:** v3.9-dev (in progress)  
-**Last updated:** 2026-06-05
+**Status:** v3.9.2  
+**Last updated:** 2026-06-09
 
 ---
 
@@ -370,14 +370,28 @@ A full audit log is persisted to `/var/lib/cockpit-scap/remediation-logs/<timest
 
 ### Settings Tab (v3.5)
 
-Settings are persisted to `/var/lib/cockpit-scap/settings.json` and loaded at startup via `cockpit.file()` with `superuser: 'try'` (unprivileged read when possible). Four sections:
+Settings are persisted to `/var/lib/cockpit-scap/settings.json` and loaded at startup via `cockpit.file()` (unprivileged — file is always written as `644`). Four sections:
 
-- **Module Features** — tab visibility toggles for Container Scan and Policy Tailoring. When a tab is hidden while active, the module falls back to the Host Scan tab automatically.
+- **Module Features** — tab visibility and feature toggles. When a tab is hidden while active, the module redirects: Host Scan hidden → Settings tab; Container Scan or Tailoring hidden → Host Scan tab.
 - **Scan Retention** — separate numeric limits for host and container scan history (enforced at scan completion via `pruneHistoryByType()`). Bounds are validated on save.
 - **Data Management** — "Clear Scan Data" wipes results directories but never touches the activity log; the log receives a tombstone event instead. This was a deliberate v3.9 correction — clearing scan data is an operational action, not an audit event to erase.
 - **Content Library** — read-only summary of staged SDS files with a hint about manual staging and `chmod 644` on CIS L2 hardened hosts.
 
 **Why tab visibility in Settings rather than per-user:** The target environment is a shared Cockpit console on a managed RHEL host, often accessed by multiple admins. Tab visibility is an environment-level configuration (e.g., "this host has no containers") rather than a per-user preference.
+
+**Why no `superuser: 'try'` on settings read:** The settings file is written with `chmod 644` immediately after every save, making it world-readable. On CIS L2 hardened hosts, `superuser: 'try'` triggers a privilege escalation attempt at page load — before the privileged bridge channel is ready. This race caused the read to fail silently (`.catch(() => {})` swallows it), leaving all values at their defaults. Because the file is always 644, no privilege is needed to read it.
+
+---
+
+### Feature Toggles (v3.9.2)
+
+Two new Module Features toggles address distinct deployment patterns:
+
+**Enable Host Scanning** — for environments that use cockpit-scap purely as a policy storage and editing tool. Hiding the Host Scan tab removes the scan workflow entirely without uninstalling the module.
+
+**Enable In-Place Remediation** — for environments that allow scanning but prohibit applying remediations directly from Cockpit (change-control requirements, air-gapped prod hosts, etc.). Build-and-download (Bash and Ansible scripts) is unaffected; only the Apply Now button is disabled.
+
+**Why `updateAdminControls()` must re-enforce the remediation setting:** `ct-rem-apply-btn` carries the `ct-requires-admin` class so it participates in the standard admin-gating loop. `updateAdminControls()` iterates all `.ct-requires-admin` elements and sets `disabled = !allowed` — when the user is an admin, this re-enables the button, overwriting whatever `applyRemediationState()` set. The fix adds a post-loop guard in `updateAdminControls()`: if `!inPlaceRemEnabled`, force the button back to disabled after the loop runs. `updateRemediationCount()` is also guarded with `disabled || !inPlaceRemEnabled` to prevent rule selection from re-enabling the button mid-session.
 
 ---
 
