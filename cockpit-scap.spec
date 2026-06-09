@@ -1,7 +1,7 @@
 Name:           cockpit-scap
 Version:        3.9.2
 Release:        1%{?dist}
-Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL and Fedora
+Summary:        Cockpit module for SCAP compliance scanning and tailoring on RHEL
 
 License:        LGPL-2.1-or-later
 URL:            https://github.com/pbuchan-rh/cockpit-scap
