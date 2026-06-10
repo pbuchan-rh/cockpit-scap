@@ -636,7 +636,6 @@ function updateTailorSummary() {
     const contentEl = document.getElementById('ct-tailor-summary-content');
     const exportBtn = document.getElementById('ct-tailor-export-btn');
     const rulesSec  = document.getElementById('ct-tailor-summary-rules-section');
-    const valuesSec = document.getElementById('ct-tailor-summary-values-section');
     const rulesEl   = document.getElementById('ct-tailor-summary-rules-list');
     const valuesEl  = document.getElementById('ct-tailor-summary-values-list');
 

@@ -373,7 +373,6 @@ function csDetectContent() {
 function csDetectTailoringFiles() {
     csTailoringMap = {};
     const select = document.getElementById('cs-tailor-file-select');
-    const group  = document.getElementById('cs-tailor-file-group');
 
     return cockpit.spawn(['ls', TAILORING_BASE], { err: 'message' })
         .then(output => {
