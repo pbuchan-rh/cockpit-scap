@@ -124,7 +124,7 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for known issues on CIS-hardened ho
 
 ## Development status
 
-**Current release:** v3.9.2 — available via COPR
+**Current release:** v3.10.0 — available via COPR
 
 Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
 no external CDN dependencies. Suitable for deployment on air-gapped systems.
