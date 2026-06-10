@@ -1,7 +1,7 @@
 # cockpit-scap — Requirements
 
 **Status:** v1 requirements locked  
-**Last updated:** 2026-06-09
+**Last updated:** 2026-06-10
 
 ---
 
@@ -410,6 +410,24 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 - **REQ-197:** ✅ All four feature toggles MUST default to enabled on a fresh install (no settings.json); Container Scan remains the only tab disabled by default (REQ-193 unchanged)
 
 - **REQ-198:** ✅ Settings load MUST NOT use `superuser: 'try'` — `/var/lib/cockpit-scap/settings.json` is written as `644` (world-readable) and MUST be read unprivileged; using `superuser: 'try'` on hardened hosts caused a race condition where the privilege channel was not ready at page load, silently failing the read and leaving all values at defaults
+
+---
+
+## v4.0 Requirements (Code Quality & CSP Hardening)
+
+### JS File Split
+
+- **REQ-199:** ✅ `index.js` MUST be refactored into separate files per functional area: `settings.js`, `tailoring.js`, `remediation.js`, `host-scan.js`; `container-scan.js` remains unchanged; `index.js` retains constants, globals, shared utilities, content/profile loading, activity log tab, and `DOMContentLoaded` wiring
+- **REQ-200:** ✅ All JS files MUST use classic `<script defer>` loading in `index.html` — no ES modules; all top-level declarations share one browser global scope; load order is enforced by tag order
+
+### CSP Hardening
+
+- **REQ-201:** ✅ `manifest.json` `content-security-policy` MUST NOT include `'unsafe-inline'` in `script-src` — all scripts must be external files loaded via `src=`
+- **REQ-202:** ✅ `viewer.html`'s inline `<script>` MUST be extracted to `viewer.js`; its inline `<style>` MUST be extracted to `viewer.css`; both files MUST be included in `MODULE_FILES` (Makefile) and the `%install` section of the spec file
+
+### ESLint
+
+- **REQ-203:** ✅ An `eslint.config.js` MUST exist at the project root; `eslint src/**/*.js` MUST complete with 0 errors and 0 warnings
 
 ---
 
