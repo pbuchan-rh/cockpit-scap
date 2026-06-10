@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.10.0
+Version:        3.10.1
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring
 
@@ -96,6 +96,11 @@ fi
 %dir /var/lib/%{name}/remediation-logs
 
 %changelog
+* Wed Jun 10 2026 Peter Buchan <pbuchan@redhat.com> - 3.10.1-1
+- EPEL prep: add <releases> to AppStream metainfo; fix metadata_license to CC0-1.0
+- Exclude docs/screenshots/ from release tarballs via .gitattributes export-ignore
+- Update README current release reference to v3.10.0
+
 * Tue Jun 10 2026 Peter Buchan <pbuchan@redhat.com> - 3.10.0-1
 - Split index.js into settings.js, tailoring.js, remediation.js, host-scan.js
   for maintainability; all files use classic script loading with shared global

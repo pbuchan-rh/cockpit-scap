@@ -22,6 +22,7 @@
   <url type="homepage">https://github.com/pbuchan-rh/cockpit-scap</url>
   <url type="bugtracker">https://github.com/pbuchan-rh/cockpit-scap/issues</url>
   <releases>
+    <release version="3.10.1" date="2026-06-10"/>
     <release version="3.10.0" date="2026-06-10"/>
     <release version="3.9.2" date="2026-06-09"/>
     <release version="3.9.1" date="2026-06-08"/>
