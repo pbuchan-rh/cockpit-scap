@@ -1,6 +1,8 @@
 # cockpit-scap
 
-A native [Cockpit](https://cockpit-project.org/) module for RHEL 10 / CentOS Stream 10 / Fedora 43+ that brings OpenSCAP compliance scanning, container image scanning, profile tailoring, and selective remediation directly into the Cockpit browser console — no separate tools, no context switching.
+A native [Cockpit](https://cockpit-project.org/) module for RHEL 10 / CentOS Stream 10 / Fedora 43+ that brings OpenSCAP compliance scanning, container image scanning, profile tailoring, and selective remediation directly in the Cockpit browser console — no separate tools, no context switching.
+
+> **Note:** This is an independent community project and is not an official Red Hat product or affiliated with Red Hat, Inc.
 
 ## Features
 

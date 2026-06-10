@@ -56,8 +56,9 @@ install:
 
 	@echo "--- Configuring SELinux file context"
 	semanage fcontext -a -t $(SELINUX_CTX) '$(SELINUX_PATH)' 2>/dev/null || \
-		semanage fcontext -m -t $(SELINUX_CTX) '$(SELINUX_PATH)'
-	restorecon -Rv $(DATA_DIR)
+		semanage fcontext -m -t $(SELINUX_CTX) '$(SELINUX_PATH)' 2>/dev/null || \
+		echo "WARNING: semanage not available; skipping SELinux context configuration"
+	restorecon -Rv $(DATA_DIR) 2>/dev/null || true
 
 	@echo ""
 	@echo ">>> cockpit-scap installed successfully."
