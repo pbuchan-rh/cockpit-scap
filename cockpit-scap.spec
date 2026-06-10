@@ -44,7 +44,9 @@ the Cockpit browser console.
 %install
 # Module files → /usr/share/cockpit/cockpit-scap/
 install -d -m 755 %{buildroot}%{_datadir}/cockpit/%{name}
-install -m 644 src/index.html src/index.js src/container-scan.js src/style.css src/manifest.json src/viewer.html \
+install -m 644 src/index.html src/index.js src/settings.js src/tailoring.js src/remediation.js \
+    src/host-scan.js src/container-scan.js src/style.css src/manifest.json \
+    src/viewer.html src/viewer.js src/viewer.css \
     %{buildroot}%{_datadir}/cockpit/%{name}/
 
 # AppStream metadata
