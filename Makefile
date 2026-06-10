@@ -12,7 +12,7 @@ SELINUX_CTX   = cockpit_var_lib_t
 SELINUX_PATH  = /var/lib/cockpit-scap(/.*)?
 
 SRC_DIR       = src
-MODULE_FILES  = index.html index.js settings.js container-scan.js dashboard.js style.css manifest.json viewer.html
+MODULE_FILES  = index.html index.js settings.js tailoring.js container-scan.js dashboard.js style.css manifest.json viewer.html
 
 DEV_HOST     ?= rhel10cis
 DEV_PATH      = ~/.local/share/cockpit/cockpit-scap
