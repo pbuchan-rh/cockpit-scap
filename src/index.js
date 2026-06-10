@@ -354,6 +354,7 @@ let allTailoringSidecars = [];
 
 /* Module state — content */
 let hostOsVersion     = null;   /* cached from /etc/os-release at startup */
+let hostOsId          = null;   /* cached from /etc/os-release at startup */
 let hostName          = 'Local host';
 let currentHostHistory = [];    /* last rendered host scan manifests */
 
@@ -375,8 +376,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cockpit.file('/etc/os-release').read()
         .then(content => {
-            const m = content && content.match(/^VERSION_ID="?(\d+)/m);
-            hostOsVersion = m ? parseInt(m[1], 10) : null;
+            const mv = content && content.match(/^VERSION_ID="?(\d+)/m);
+            hostOsVersion = mv ? parseInt(mv[1], 10) : null;
+            const mi = content && content.match(/^ID="?([^"\n]+)"?/m);
+            hostOsId = mi ? mi[1].trim() : null;
         })
         .catch(() => {});
 
@@ -917,6 +920,22 @@ function hideConfirmModal() {
 
 /* ---- Content (SDS) detection ------------------------------- */
 
+function hostSdsFilename() {
+    if (!hostOsId) return null;
+    const major = String(hostOsVersion || '');
+    const nodot = major.replace('.', '');
+    const map = {
+        rhel:      `ssg-rhel${major}-ds.xml`,
+        ol:        `ssg-ol${major}-ds.xml`,
+        almalinux: `ssg-almalinux${major}-ds.xml`,
+        centos:    `ssg-cs${major}-ds.xml`,
+        fedora:    'ssg-fedora-ds.xml',
+        ubuntu:    `ssg-ubuntu${nodot}-ds.xml`,
+        debian:    `ssg-debian${major}-ds.xml`,
+    };
+    return map[hostOsId] || null;
+}
+
 function detectContent() {
     const scanSelect   = document.getElementById('ct-content-select');
     const tailorSelect = document.getElementById('ct-tailor-content-select');
@@ -977,6 +996,15 @@ function detectContent() {
 
             appendOption(scanSelect, '', 'Select content…');
             populateContentOptGroups(scanSelect, scanSys, scanUser);
+            const preferred = hostSdsFilename();
+            const allScan = [...scanSys, ...scanUser];
+            const match = preferred && allScan.find(f => f.filename === preferred);
+            if (match) {
+                scanSelect.value = match.path;
+                currentSdsPath   = match.path;
+                loadProfiles(match.path);
+                detectTailoringFiles();
+            }
         });
 }
 
@@ -1009,7 +1037,7 @@ function listSystemContent() {
     return cockpit.spawn(['ls', SSG_CONTENT_DIR], { err: 'message' })
         .then(output => output.trim().split('\n')
             .filter(f => f.endsWith('-ds.xml'))
-            .map(f => ({ path: SSG_CONTENT_DIR + f, name: sdsDisplayName(f) }))
+            .map(f => ({ path: SSG_CONTENT_DIR + f, name: sdsDisplayName(f), filename: f }))
         )
         .catch(() => []);
 }
