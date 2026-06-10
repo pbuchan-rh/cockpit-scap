@@ -2692,6 +2692,14 @@ html.pf-v6-theme-dark .ct-badge-error {
   font-size: 0.875rem;
 }
 
+.ct-settings-disk-row-sm {
+  margin-bottom: 6px;
+}
+
+.ct-settings-disk-row-sep {
+  margin-top: 16px;
+}
+
 .ct-settings-disk-label {
   min-width: 140px;
   font-weight: 500;

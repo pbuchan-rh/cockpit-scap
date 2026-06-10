@@ -3,7 +3,7 @@
   "require": {
     "cockpit": "344"
   },
-  "content-security-policy": "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+  "content-security-policy": "script-src 'self'; style-src 'self' 'unsafe-inline'",
   "tools": {
     "index": {
       "label": "SCAP Compliance",

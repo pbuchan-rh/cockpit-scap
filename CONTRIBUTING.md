@@ -73,6 +73,7 @@ Note that a bridge restart drops your Cockpit session and requires re-authentica
 ## Code conventions
 
 - **Vanilla JavaScript only** — no frameworks, no npm, no CDN imports
+- **Multi-file architecture** — the JS is split into per-tab files that share a single global scope (classic `<script defer>` tags, no ES modules). See File structure below.
 - **PatternFly 6** for all UI components — use existing PF6 classes; do not introduce new CSS frameworks
 - All custom CSS classes prefixed with `ct-`
 - `cockpit.spawn()` for subprocess execution, `cockpit.file()` for file I/O
@@ -86,18 +87,26 @@ Note that a bridge restart drops your Cockpit session and requires re-authentica
 ```
 cockpit-scap/
 ├── src/
-│   ├── index.html          # Module markup
-│   ├── index.js            # Host scan, tailoring, content tab logic
-│   ├── container-scan.js   # Container scan tab (self-contained, single entry point)
+│   ├── index.html          # Module markup; loads all JS files via <script defer>
+│   ├── index.js            # Constants, shared globals, DOMContentLoaded wiring,
+│   │                       #   shared utilities (makeTimestamp, formatDuration, etc.),
+│   │                       #   content/profile loading, activity log tab
+│   ├── settings.js         # Settings tab (retention, tab visibility, admin controls)
+│   ├── tailoring.js        # Policy Tailoring tab (editor, XML generation/parsing)
+│   ├── remediation.js      # Remediation panel and script generation
+│   ├── host-scan.js        # Host Scan tab, scan history, report viewer
+│   ├── container-scan.js   # Container Scan tab (self-contained)
 │   ├── style.css           # PatternFly overrides and custom styles
 │   ├── manifest.json       # Cockpit module manifest
-│   └── viewer.html         # CSP-compliant HTML report viewer
+│   └── viewer.html         # CSP-compliant HTML report viewer (IndexedDB-backed)
 ├── selinux/
 │   └── cockpit-scap.fc     # SELinux file context definitions
 ├── docs/
 │   └── screenshots/        # README screenshots
 └── Makefile                # Install/uninstall targets
 ```
+
+All JS files share the same browser global scope — functions and `let`/`const` declarations in one file are accessible from all others. Load order is enforced by the `<script defer>` tag order in `index.html`: `index.js` first, `container-scan.js` last.
 
 ## Submitting changes
 

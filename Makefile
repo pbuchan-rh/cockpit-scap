@@ -12,7 +12,7 @@ SELINUX_CTX   = cockpit_var_lib_t
 SELINUX_PATH  = /var/lib/cockpit-scap(/.*)?
 
 SRC_DIR       = src
-MODULE_FILES  = index.html index.js container-scan.js dashboard.js style.css manifest.json viewer.html
+MODULE_FILES  = index.html index.js settings.js tailoring.js remediation.js host-scan.js container-scan.js style.css manifest.json viewer.html viewer.js viewer.css
 
 DEV_HOST     ?= rhel10cis
 DEV_PATH      = ~/.local/share/cockpit/cockpit-scap
@@ -56,8 +56,9 @@ install:
 
 	@echo "--- Configuring SELinux file context"
 	semanage fcontext -a -t $(SELINUX_CTX) '$(SELINUX_PATH)' 2>/dev/null || \
-		semanage fcontext -m -t $(SELINUX_CTX) '$(SELINUX_PATH)'
-	restorecon -Rv $(DATA_DIR)
+		semanage fcontext -m -t $(SELINUX_CTX) '$(SELINUX_PATH)' 2>/dev/null || \
+		echo "WARNING: semanage not available; skipping SELinux context configuration"
+	restorecon -Rv $(DATA_DIR) 2>/dev/null || true
 
 	@echo ""
 	@echo ">>> cockpit-scap installed successfully."

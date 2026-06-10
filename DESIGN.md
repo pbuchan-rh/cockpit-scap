@@ -1,7 +1,7 @@
 # cockpit-scap — Design Document
 
-**Status:** v3.9.2  
-**Last updated:** 2026-06-09
+**Status:** v3.10  
+**Last updated:** 2026-06-10
 
 ---
 
@@ -309,7 +309,8 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 | **v3.6** ✅ | UX refinement | Gate 2 rule list, scan progress timer, settings disk usage, Clear All Data button |
 | **v3.7** ✅ | Action board + content | Action Board, severity weights, history score delta, Content Library → Settings, dry-run preview |
 | **v3.8** ✅ | Storage + export | ARF gzip (~2 MB compressed); report.html on-demand; scan ETA; full profile remediation; framework reference chips |
-| **v3.9** 🔲 | Compliance threshold + cleanup | Per-policy compliance threshold; binary donut color; all XCCDF result types; scan progress card redesign; dashboard cut; LGPL-2.1 license |
+| **v3.9** ✅ | Compliance threshold + cleanup | Per-policy compliance threshold; binary donut color; all XCCDF result types; scan progress card redesign; dashboard cut; LGPL-2.1 license |
+| **v3.10** ✅ | Code quality | JS file split (5 files); CSP `unsafe-inline` removed; ESLint config |
 
 **Explicitly out of scope (any version):**
 - Remote SSH scanning — different tool, different trust model
@@ -483,6 +484,46 @@ Failure banner: persistent, dismissable, shown when `last_status === 'error'` an
 - Email/webhook/push notifications
 - Scan-on-boot or event-driven triggers
 - Multiple concurrent running scans
+
+---
+
+## v3.10 Architecture Decisions
+
+### JS File Split — Classic Scripts, Not ES Modules
+
+**Decision:** Split the monolithic `index.js` (3000+ lines) into per-area files loaded as classic `<script defer>` tags. ES modules were explicitly rejected.
+
+**Why not ES modules:**
+- Cockpit's CSP headers do not allow `type="module"` scripts from non-Cockpit origins without additional manifest configuration
+- ES modules have a different scoping model — top-level declarations do NOT become globals, which would require threading explicit imports/exports through every cross-file reference
+- The codebase has ~50 cross-file symbol references; converting them all to explicit imports would be a larger, higher-risk change than the split itself
+- Classic scripts share one browser global scope, which is exactly what the codebase already relies on
+
+**How it works:**
+All five JS files (`index.js`, `settings.js`, `tailoring.js`, `remediation.js`, `host-scan.js`) are loaded via `<script defer>` in `index.html`. The `defer` attribute guarantees in-order execution after DOM parsing; tag order enforces the dependency chain (index.js first, feature files after). Top-level `let`/`const`/`function` declarations in any file are visible to all other files.
+
+**ESLint implications:**
+ESLint processes each file in isolation and cannot see cross-file symbol references. Config is tuned accordingly:
+- `no-undef: off` — cross-file globals are intentional, not bugs
+- `no-unused-vars: { vars: 'local' }` — top-level functions are global exports; only local variable scope is checked
+- `prefer-const: off` — mutable globals (e.g. `currentScanProc`, `tailorData`) are reassigned by other files; ESLint cannot see the reassignment and would incorrectly suggest `const`, which would cause `TypeError: Assignment to constant variable` at runtime
+
+**Removal surface:** Each file has a single `init*()` entry point called from `index.js DOMContentLoaded`. Removing a feature is: delete the file, remove one script tag from `index.html`, remove one `init*()` call from `index.js`.
+
+---
+
+### CSP Hardening — `unsafe-inline` Removed from `script-src`
+
+**Decision:** Extract `viewer.html`'s inline `<script>` to `viewer.js` and inline `<style>` to `viewer.css`. Remove `'unsafe-inline'` from `script-src` in `manifest.json`.
+
+**Why it matters:**
+`'unsafe-inline'` in `script-src` is the weakest CSP allowance — it negates most of the XSS protection CSP is designed to provide. A security compliance tool shipping with `unsafe-inline` is an obvious credibility problem.
+
+**Why it was there:**
+`viewer.html` is a Cockpit-served page (not an iframe) used to display `oscap` HTML reports fetched from IndexedDB. It had a small inline script to read from IndexedDB and write the report to the document. Inline scripts require `unsafe-inline` or a nonce; Cockpit's static manifest CSP doesn't support nonces.
+
+**The fix:**
+Move the inline script to `viewer.js` and the inline style to `viewer.css`. Both are `src=`-loaded, which satisfies `'self'` without any additional allowances. `style-src` retains `'unsafe-inline'` — PatternFly uses inline styles for some dynamic layout; removing it would require upstream PatternFly changes.
 
 ---
 

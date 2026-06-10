@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.9.2
+Version:        3.10.0
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring
 
@@ -44,7 +44,9 @@ the Cockpit browser console.
 %install
 # Module files → /usr/share/cockpit/cockpit-scap/
 install -d -m 755 %{buildroot}%{_datadir}/cockpit/%{name}
-install -m 644 src/index.html src/index.js src/container-scan.js src/style.css src/manifest.json src/viewer.html \
+install -m 644 src/index.html src/index.js src/settings.js src/tailoring.js src/remediation.js \
+    src/host-scan.js src/container-scan.js src/style.css src/manifest.json \
+    src/viewer.html src/viewer.js src/viewer.css \
     %{buildroot}%{_datadir}/cockpit/%{name}/
 
 # AppStream metadata
@@ -94,6 +96,16 @@ fi
 %dir /var/lib/%{name}/remediation-logs
 
 %changelog
+* Tue Jun 10 2026 Peter Buchan <pbuchan@redhat.com> - 3.10.0-1
+- Split index.js into settings.js, tailoring.js, remediation.js, host-scan.js
+  for maintainability; all files use classic script loading with shared global
+  scope — no ES module changes required
+- Remove unsafe-inline from CSP script-src: extract viewer.html inline script
+  to viewer.js and inline style to viewer.css
+- Add eslint.config.js with rules tuned for classic-script shared-global
+  architecture (no-undef off, prefer-const off, no-unused-vars local-only)
+- Remove two genuine unused local variables found by ESLint
+
 * Mon Jun 09 2026 Peter Buchan <pbuchan@redhat.com> - 3.9.2-1
 - Add Enable Host Scanning toggle: hides Host Scan tab system-wide when disabled
 - Add Enable In-Place Remediation toggle: disables Apply Now button system-wide
