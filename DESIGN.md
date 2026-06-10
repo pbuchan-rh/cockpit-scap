@@ -1,6 +1,6 @@
 # cockpit-scap — Design Document
 
-**Status:** v4.0  
+**Status:** v3.10  
 **Last updated:** 2026-06-10
 
 ---
@@ -310,7 +310,7 @@ No new polkit rules or sudoers entries required. Both image enumeration (`podman
 | **v3.7** ✅ | Action board + content | Action Board, severity weights, history score delta, Content Library → Settings, dry-run preview |
 | **v3.8** ✅ | Storage + export | ARF gzip (~2 MB compressed); report.html on-demand; scan ETA; full profile remediation; framework reference chips |
 | **v3.9** ✅ | Compliance threshold + cleanup | Per-policy compliance threshold; binary donut color; all XCCDF result types; scan progress card redesign; dashboard cut; LGPL-2.1 license |
-| **v4.0** ✅ | Code quality | JS file split (5 files); CSP `unsafe-inline` removed; ESLint config |
+| **v3.10** ✅ | Code quality | JS file split (5 files); CSP `unsafe-inline` removed; ESLint config |
 
 **Explicitly out of scope (any version):**
 - Remote SSH scanning — different tool, different trust model
@@ -487,7 +487,7 @@ Failure banner: persistent, dismissable, shown when `last_status === 'error'` an
 
 ---
 
-## v4.0 Architecture Decisions
+## v3.10 Architecture Decisions
 
 ### JS File Split — Classic Scripts, Not ES Modules
 

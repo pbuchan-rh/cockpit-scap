@@ -413,7 +413,7 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 ---
 
-## v4.0 Requirements (Code Quality & CSP Hardening)
+## v3.10 Requirements (Code Quality & CSP Hardening)
 
 ### JS File Split
 

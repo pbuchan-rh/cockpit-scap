@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        4.0.0
+Version:        3.10.0
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring
 
@@ -96,7 +96,7 @@ fi
 %dir /var/lib/%{name}/remediation-logs
 
 %changelog
-* Tue Jun 10 2026 Peter Buchan <pbuchan@redhat.com> - 4.0.0-1
+* Tue Jun 10 2026 Peter Buchan <pbuchan@redhat.com> - 3.10.0-1
 - Split index.js into settings.js, tailoring.js, remediation.js, host-scan.js
   for maintainability; all files use classic script loading with shared global
   scope — no ES module changes required
