@@ -764,11 +764,16 @@ function csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
             const genAnsible = genFix('ansible', csAnsiblePath)
                 .catch(err => { console.error('Container ansible remediation failed:', err.message || err); csAnsiblePath = null; });
 
+            const csRemDir = csResultsDir;
             Promise.all([genBash, genAnsible])
                 .finally(() => {
                     csRemediationGenerating = false;
                     updateCsRemGeneratingStatus();
                     csRefreshActionBoardAutomatable(manifest);
+                    if (csBashPath && csResultsDir === csRemDir)
+                        renderFailingSummary(csRemDir + 'results.xml',
+                            'cs-failing-summary-groups', 'cs-failing-summary-loading',
+                            csBashPath, 'cs-failing-search');
                     cockpit.spawn(['gzip', csResultsDir + 'results.arf'], { superuser: 'require' }).catch(() => {});
                     cockpit.spawn(
                         ['chmod', '755', csResultsDir],
@@ -1008,7 +1013,8 @@ function csShowResults(manifest) {
     document.getElementById('cs-results').classList.remove('hidden');
     renderFailingSummary(csResultsDir + 'results.xml',
                          'cs-failing-summary-groups', 'cs-failing-summary-loading',
-                         csBashPath || null, 'cs-failing-search');
+                         csRemediationGenerating ? null : csBashPath,
+                         'cs-failing-search');
     csLoadHistory();
 
     const csSev = Object.assign({ high: 0, medium: 0, low: 0 }, manifest.severity_counts || {});

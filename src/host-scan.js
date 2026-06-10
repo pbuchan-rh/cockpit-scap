@@ -170,6 +170,10 @@ function onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath) 
                     remediationGenerating = false;
                     updateApplyGate1Btn();
                     refreshActionBoardAutomatable();
+                    if (currentRemBashPath && currentResultsDir === remDir)
+                        renderFailingSummary(remDir + 'results.xml',
+                            'ct-failing-summary-groups', 'ct-failing-summary-loading',
+                            currentRemBashPath, 'ct-failing-search');
                 });
             pruneHistoryByType('host').catch(() => {});
             cockpit.spawn(['gzip', currentResultsDir + 'results.arf'], { superuser: 'require' })
@@ -797,7 +801,8 @@ function showResults(manifest) {
     document.getElementById('ct-results').classList.remove('hidden');
     renderFailingSummary(currentResultsDir + 'results.xml',
                          'ct-failing-summary-groups', 'ct-failing-summary-loading',
-                         currentRemBashPath || null, 'ct-failing-search');
+                         remediationGenerating ? null : currentRemBashPath,
+                         'ct-failing-search');
 
     /* Action Board — show severity counts immediately, load automatable count async */
     eagerRemRules = null;

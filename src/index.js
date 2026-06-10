@@ -152,7 +152,7 @@ const PY_EXTRACT_FAILING_RULES = [
     '        auto_rules = set(re.findall(r"# BEGIN fix \\([^)]+\\) for \'([^\']+)\'", open(sys.argv[2]).read()))',
     '        has_rem = True',
     '    except: pass',
-    'fails = []; errors = []; notchecked = []; notapplicable = []; seen = set()',
+    'fails = []; errors = []; notchecked = []; notapplicable = []; seen = set(); total_w = 0.0',
     'for rr in root.iter("{%s}rule-result" % NS):',
     '    r = rr.find("{%s}result" % NS)',
     '    if r is None: continue',
@@ -162,6 +162,7 @@ const PY_EXTRACT_FAILING_RULES = [
     '    msg_el = rr.find("{%s}message" % NS)',
     '    msg = (msg_el.text or "").strip() if msg_el is not None else ""',
     '    t, s, cce, desc, rat, w, fix, refs = rinfo.get(rid, (rid, rr.get("severity","unknown"), "", "", "", 1.0, "", []))',
+    '    if res not in ("notapplicable", "notselected"): total_w += w',
     '    if res == "fail":',
     '        rule_obj = {"id":rid,"title":t,"severity":s,"cce":cce,"desc":desc,"rat":rat,"weight":w,"fix":fix,"refs":refs}',
     '        if has_rem: rule_obj["automated"] = rid in auto_rules',
@@ -174,7 +175,7 @@ const PY_EXTRACT_FAILING_RULES = [
     '        notapplicable.append({"id":rid,"title":t,"severity":s,"cce":cce,"desc":desc})',
     'order = {"high":0,"medium":1,"low":2}',
     'fails.sort(key=lambda x:(order.get(x["severity"],3),x["title"].lower()))',
-    'print(json.dumps({"fails":fails,"errors":errors,"notchecked":notchecked,"notapplicable":notapplicable}))',
+    'print(json.dumps({"fails":fails,"errors":errors,"notchecked":notchecked,"notapplicable":notapplicable,"total_weight":total_w}))',
 ].join('\n');
 
 /* Python script: diff two results.xml files.
