@@ -25,8 +25,13 @@ inspiration/
 docs/*-mockup.html
 docs/*-mockup-*.html
 
-# Playwright test harness — dev-only, never committed
-tests/
+# Playwright — credentials and generated artifacts stay local
+tests/.env
+tests/screenshots/
+tests/tests/screenshots/
+tests/report/
+tests/test-results/
+test-results/
 node_modules/
 package.json
 package-lock.json
