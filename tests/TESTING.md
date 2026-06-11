@@ -1,22 +1,21 @@
 # cockpit-scap Playwright Test Harness
 
-> This directory is gitignored. Never commit credentials or test artifacts.
+> Never commit credentials or test artifacts — see `.gitignore`.
 
 ## Quick start
 
 ```bash
-# Run full suite (~5 min)
+# Run full suite (~30 min — requires live RHEL 10 + Cockpit host)
 npm test
 
 # Run a specific file
 npm run test:host
 npm run test:container
 npm run test:tailoring
-npm run test:dashboard
 npm run test:content
 
 # List all tests without running
-npx playwright test --config=tests/playwright.config.js --list
+npx playwright test --config=playwright.config.js --list
 ```
 
 ## Setup
@@ -25,10 +24,10 @@ Node/npm is required (Playwright only, not part of the module):
 
 ```bash
 npm install
-npx playwright install chromium
+npx playwright install chromium firefox
 ```
 
-Credentials live in `tests/.env` (gitignored):
+Credentials live in `tests/.env` (gitignored). Copy `.env.example` and fill in your values:
 
 ```
 COCKPIT_URL=https://your-host:9090
@@ -66,7 +65,7 @@ Tab button IDs (from `index.html`):
 | Container Scan | `tab-btn-container-scan` |
 | Policy Tailoring | `tab-btn-tailoring` |
 | Content Library | `tab-btn-content` |
-| Dashboard | `tab-btn-dashboard` |
+| Settings | `tab-btn-settings` |
 | Activity | `tab-btn-activity` |
 
 `navigateToTab(page, 'hostScan')` uses the `TABS` map in `helpers/cockpit.js`.
@@ -92,7 +91,7 @@ Tab button IDs (from `index.html`):
 | `container-scan.spec.js` | Tab load, UBI9 image, container scan + tailoring, history, remediation |
 | `tailoring.spec.js` | Tailoring tab, editor load, save, cross-version content, dropdown integration |
 | `content-library.spec.js` | Both content sections, validate button, admin gate |
-| `dashboard.spec.js` | Dashboard load, Quick Scan navigation, View Last Scan |
+| `settings.spec.js` | Settings tab, retention inputs, disk usage, tab visibility toggles |
 
 ## Key selector notes
 
