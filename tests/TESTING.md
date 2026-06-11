@@ -12,6 +12,7 @@ npm test
 npm run test:host
 npm run test:container
 npm run test:tailoring
+npm run test:settings
 npm run test:content
 
 # List all tests without running
@@ -98,7 +99,6 @@ Tab button IDs (from `index.html`):
 - **Profile select ready**: `await expect(frame.locator('#ct-profile-select')).toBeEnabled({ timeout: 45000 })` — `oscap info` is slow on large SDS files; don't use `toBeVisible()` on `<option>` elements (always "hidden" in closed selects)
 - **Tailoring checkboxes**: native `<input type="checkbox">` is CSS-hidden; use `{ force: true }` and click "Expand All" first
 - **Content detect**: `detectContent()` is async; use `expect.poll()` to wait for option counts
-- **Dashboard**: renders asynchronously after manifest scan; wait for `.db-score-block` not `.ct-result-score`
 - **Container scan init**: waits for `#cs-image-select` with 20s timeout (prereq checks take a few seconds)
 
 ## Skipped tests (conditional)
@@ -108,8 +108,6 @@ These tests skip gracefully if their prerequisite state isn't present:
 - `selective remediation builder opens` — skips if no results card visible
 - `failing rules summary` — skips if no results
 - `view scan from history` — skips if no history rows
-- `quick scan button` — skips if dashboard has no scan history
-- `view last scan` — skips if dashboard has no scan history
 - `validate button` — skips if no uploaded content present
 
 These will pass naturally as scan history accumulates.
@@ -122,9 +120,7 @@ All screenshots written to `tests/screenshots/` (gitignored). Named `NN-descript
 
 **Container scan blank**: admin elevation failed. Check that `a:has-text("Limited access")` is findable on the Cockpit overview after login. Add a `page.screenshot()` call in `loginToCockpit` after `waitForLoadState` to debug.
 
-**Profile select never enables**: `oscap info` is hanging. SSH to rhel10cis and run `oscap info <sds-path>` manually to check.
-
-**Dashboard test times out**: The `.db-score-block` selector depends on scan history. If the machine has no history, `.db-empty-body` triggers instead — both are handled by the `.or()` selector.
+**Profile select never enables**: `oscap info` is hanging. SSH to your test host and run `oscap info <sds-path>` manually to check.
 
 **"Clicking checkbox did not change its state"**: Rules tree is collapsed. Click "Expand All" button first.
 
