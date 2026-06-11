@@ -213,6 +213,12 @@ function uploadContent(file) {
         status.classList.remove('hidden');
         return;
     }
+    if (!file.name.endsWith('.xml') && !file.name.endsWith('.xml.gz')) {
+        status.className   = 'ct-content-upload-status ct-content-upload-err';
+        status.textContent = 'Only .xml and .xml.gz files are allowed.';
+        status.classList.remove('hidden');
+        return;
+    }
     const destPath = CONTENT_BASE + file.name;
     const sizeMB   = (file.size / 1024 / 1024).toFixed(1);
 

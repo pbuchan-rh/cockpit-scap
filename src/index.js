@@ -1237,7 +1237,7 @@ function downloadArtifact(filePath, filename, mimeType, btn) {
         })
         .catch(err => {
             console.error('Failed to download:', err);
-            alert('Download failed: ' + (err.message || String(err)));
+            showInfoModal('Download Failed', err.message || String(err));
         });
 }
 

@@ -21,6 +21,10 @@ pdf-export/
 *.pdf
 inspiration/
 
+# UI design mockups — local exploration only, never committed
+docs/*-mockup.html
+docs/*-mockup-*.html
+
 # Playwright test harness — dev-only, never committed
 tests/
 node_modules/

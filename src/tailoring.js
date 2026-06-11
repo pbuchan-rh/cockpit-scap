@@ -1199,12 +1199,12 @@ function handleTailoringUpload(file) {
         const doc = new DOMParser().parseFromString(xmlContent, 'application/xml');
 
         if (doc.getElementsByTagName('parsererror').length) {
-            alert('The uploaded file is not valid XML and cannot be imported.');
+            showInfoModal('Invalid File', 'The uploaded file is not valid XML and cannot be imported.');
             return;
         }
         const profileEl = doc.getElementsByTagNameNS(NS, 'Profile')[0];
         if (!profileEl) {
-            alert('The uploaded file does not appear to be a valid XCCDF tailoring file (no Profile element found).');
+            showInfoModal('Invalid File', 'The uploaded file does not appear to be a valid XCCDF tailoring file (no Profile element found).');
             return;
         }
 

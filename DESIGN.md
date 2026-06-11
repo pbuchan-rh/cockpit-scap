@@ -229,6 +229,8 @@ Admin-gated (`ct-requires-admin`) — disabled in limited Cockpit sessions. `osc
 - Admin never touches SELinux manually
 - Testing must be performed with SELinux in enforcing mode — permissive is not sufficient
 
+**No `.te` policy module — deliberate.** cockpit-scap does not ship its own SELinux type enforcement (`.te`) policy. Process transition rules (cockpit-bridge executing `oscap`, `python3`, `bash`) are covered by the `cockpit` package's own SELinux policy module (`cockpit.pp`), which ships with cockpit and grants the `cockpit_t` domain the necessary execute permissions for system tools. Our `.fc` file handles only the data directory labeling. This means cockpit-scap has an implicit dependency on cockpit's SELinux policy being present and current — if a site runs a stripped or patched cockpit without its policy module, process transitions may be denied. This is acceptable given that cockpit itself would also be broken in that scenario.
+
 ### Firewall
 
 - No new ports required

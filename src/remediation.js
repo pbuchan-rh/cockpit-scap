@@ -224,16 +224,32 @@ function buildRemPanelDOM(container, rules, updateCountFn, remPath) {
             if (rule.desc) {
                 const det = document.createElement('details');
                 det.className = 'ct-rem-rule-detail';
-                const rat = rule.rat
-                    ? '<p class="ct-rem-detail-rat"><strong>Rationale:</strong> ' + escHtmlRem(rule.rat) + '</p>'
-                    : '';
-                det.innerHTML =
-                    '<summary class="ct-rem-detail-toggle">Details</summary>' +
-                    '<div class="ct-rem-detail-body">' +
-                        '<p class="ct-rem-detail-desc">' + escHtmlRem(rule.desc) + '</p>' +
-                        rat +
-                    '</div>';
-                if (rule.fix) det.querySelector('.ct-rem-detail-body').appendChild(buildFixBlock(rule, remPath));
+
+                const sum = document.createElement('summary');
+                sum.className = 'ct-rem-detail-toggle';
+                sum.textContent = 'Details';
+                det.appendChild(sum);
+
+                const body = document.createElement('div');
+                body.className = 'ct-rem-detail-body';
+
+                const descP = document.createElement('p');
+                descP.className = 'ct-rem-detail-desc';
+                descP.textContent = rule.desc;
+                body.appendChild(descP);
+
+                if (rule.rat) {
+                    const ratP = document.createElement('p');
+                    ratP.className = 'ct-rem-detail-rat';
+                    const strong = document.createElement('strong');
+                    strong.textContent = 'Rationale: ';
+                    ratP.appendChild(strong);
+                    ratP.appendChild(document.createTextNode(rule.rat));
+                    body.appendChild(ratP);
+                }
+
+                det.appendChild(body);
+                if (rule.fix) body.appendChild(buildFixBlock(rule, remPath));
                 item.appendChild(det);
             }
 
