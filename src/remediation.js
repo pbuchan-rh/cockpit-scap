@@ -4,6 +4,7 @@
 
 let pendingApplyRules  = [];
 let pendingApplyTitles = [];
+let remediationApplying = false;
 
 /* ---- Drawer helpers ----------------------------------------- */
 
@@ -451,7 +452,20 @@ function onApplyGate1Proceed() {
 }
 
 function onApplyGate2Execute() {
+    if (remediationApplying) {
+        const areaEl   = document.getElementById('ct-apply-output-area');
+        const outputEl = document.getElementById('ct-apply-output');
+        const titleEl  = document.getElementById('ct-apply-output-title');
+        const errEl    = document.getElementById('ct-apply-status-err');
+        areaEl.classList.remove('hidden');
+        titleEl.textContent  = 'Remediation already in progress';
+        outputEl.textContent = 'Another remediation is currently running. Wait for it to complete before applying again.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
     document.getElementById('ct-apply-gate2').classList.add('hidden');
+    remediationApplying = true;
 
     const scriptContent = pendingApplyScript;
     const applyPath     = remediationDir + 'remediation-apply.sh';
@@ -521,6 +535,7 @@ function onApplyGate2Execute() {
                     outputEl.scrollTop = outputEl.scrollHeight;
                 })
                 .then(() => {
+                    remediationApplying = false;
                     titleEl.textContent = 'Remediation complete';
                     okEl.classList.remove('hidden');
                     persistLog(0);
@@ -530,6 +545,7 @@ function onApplyGate2Execute() {
                     cockpit.spawn(['rm', '-f', applyPath], { superuser: 'require' }).catch(() => {});
                 })
                 .catch(err => {
+                    remediationApplying = false;
                     const code = err.exit_status || '?';
                     titleEl.textContent = 'Remediation finished';
                     exitEl.textContent  = code;
@@ -542,6 +558,7 @@ function onApplyGate2Execute() {
                 })
         )
         .catch(err => {
+            remediationApplying = false;
             titleEl.textContent = 'Failed to write script';
             outputEl.textContent = err.message || String(err);
             errEl.classList.remove('hidden');

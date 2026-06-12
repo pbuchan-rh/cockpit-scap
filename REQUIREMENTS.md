@@ -429,6 +429,8 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 - **REQ-203:** ✅ An `eslint.config.js` MUST exist at the project root; `eslint src/**/*.js` MUST complete with 0 errors and 0 warnings
 
+- **REQ-204:** ✅ Apply Now MUST guard against concurrent execution — if a remediation apply is already in progress when gate 2 is confirmed (e.g. two concurrent Cockpit sessions), the second invocation MUST display a visible error message and return without writing or executing the script
+
 ---
 
 ## Out of Scope — v1

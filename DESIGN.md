@@ -369,6 +369,8 @@ A full audit log is persisted to `/var/lib/cockpit-scap/remediation-logs/<timest
 
 **Container Apply Now:** Permanently disabled with a tooltip explaining why — container remediations must be applied to image builds (Dockerfile/build pipeline), not running containers. Applying in-place to a running container defeats immutability and will be lost on the next container restart.
 
+**Concurrent session guard:** `remediationApplying` is a module-level flag set to `true` at gate 2 entry and cleared in all three exit paths (success, execution error, script write failure). If gate 2 fires while the flag is set — possible when two browser sessions are open for the same Cockpit instance — the second invocation shows an error message in the output area and returns without writing or executing the script. The cost of a wrong remediation (applying the wrong rule set because two sessions raced to write `remediation-apply.sh`) outweighs the low probability of the scenario.
+
 ---
 
 ### Settings Tab (v3.5)
