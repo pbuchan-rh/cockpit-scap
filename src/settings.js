@@ -199,6 +199,7 @@ function deleteUserContent(xmlPath, jsonPath) {
             appendActivityLog({ type: 'content_delete', tab: 'content', file: fileName });
             renderUserContentList();
             detectContent();
+            fetchDiskUsage();
             if (typeof csDetectContent === 'function') csDetectContent();
         })
         .catch(err => console.error('Failed to delete content file:', err.message || err));
@@ -268,6 +269,7 @@ function doWriteContent(file, destPath, sizeMB) {
                 appendActivityLog({ type: 'content_upload', tab: 'content', file: file.name });
                 renderUserContentList();
                 detectContent();
+                fetchDiskUsage();
                 if (typeof csDetectContent === 'function') csDetectContent();
             })
             .catch(err => {

@@ -441,6 +441,10 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 - **REQ-207:** ✅ Host and container scan execution MUST be mutually exclusive across all Cockpit sessions and both scan tabs — the `oscap`/`oscap-podman` invocation MUST be wrapped in `flock -n` against a shared `/var/lib/cockpit-scap/.scan.lock`; if the lock cannot be acquired, the scan MUST fail immediately with a visible "a scan is already running" error rather than running two scans concurrently
 - **REQ-208:** ✅ `pruneHistoryByType()` MUST log a `scan_prune` activity log entry (scan type + count removed) whenever it auto-deletes scan history to enforce the configured retention limit — retention pruning is a deletion of audit-relevant data and MUST NOT be silent, even though it is automatic rather than user-initiated
 
+### Data Management — Live Disk Usage
+
+- **REQ-209:** ✅ The Content Library disk-usage figure in Settings → Data Management MUST refresh immediately after a content upload or delete succeeds — `fetchDiskUsage()` MUST be called from both `doWriteContent()`'s and `deleteUserContent()`'s success paths, not only on Settings tab open, so the stat never goes stale until a manual page reload
+
 ---
 
 ## Out of Scope — v1
