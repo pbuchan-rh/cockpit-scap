@@ -33,7 +33,8 @@ function onScanClick() {
 }
 
 function runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath) {
-    const args = ['oscap', 'xccdf', 'eval'];
+    const args = ['flock', '-n', '-E', String(SCAN_LOCK_CONFLICT_CODE), SCAN_LOCK,
+        'oscap', 'xccdf', 'eval'];
     if (tailoringPath) {
         args.push('--tailoring-file', tailoringPath);
     }
@@ -89,6 +90,8 @@ function runOscap(profileId, profileTitle, resultsXmlPath, tailoringPath) {
             /* oscap exits 2 when the scan ran but some rules failed — this is normal */
             if (err.exit_status === 2) {
                 onScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath);
+            } else if (err.exit_status === SCAN_LOCK_CONFLICT_CODE) {
+                onScanError('A scan is already running — wait for it to finish before starting another.');
             } else if (scanCancelledByUser || err.problem === 'cancelled') {
                 scanCancelledByUser = false;
                 onScanCancelled();

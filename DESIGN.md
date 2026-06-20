@@ -533,6 +533,30 @@ Move the inline script to `viewer.js` and the inline style to `viewer.css`. Both
 
 ---
 
+## Multi-Session Safety (2026-06-19)
+
+Cockpit allows multiple simultaneous sessions against the same host (different admins, or one admin with two browser tabs). The module had two places where this could cause real damage; both fixed the same way — hand the race to `flock`, a tool the kernel already serializes correctly, instead of re-implementing locking in JS.
+
+### Activity log write race
+
+**The bug:** `appendActivityLog()` read the whole log file, appended the new line in memory, and wrote the file back (`cockpit.file().read()` → `.replace()`). Two sessions logging near-simultaneously could both read the file before either wrote it back — the second write silently overwrites the first, permanently losing that entry. Every logged action (scans, uploads, deletes, remediation applies) went through this path, so the blast radius was the entire audit trail, not one feature.
+
+**The fix:** Replaced the JS read-modify-write with a single `cockpit.spawn(['bash', '-c', ...])` call that holds an exclusive `flock` on `/var/lib/cockpit-scap/.activity.lock` for the duration of an atomic shell append-and-prune (`cat >> log`, then `tail -n` if over `ACTIVITY_MAX`). Concurrent writers now serialize instead of racing. `clearActivityLog()`'s tombstone write goes through the same lock so a clear can't land between another session's read and write either.
+
+**Why a lockfile and not a smarter JS retry/merge:** `flock` already does exactly this correctly at the OS level, requires no new dependency (used elsewhere via `cockpit.spawn`, same pattern as the Python result-parsing calls), and the lock auto-releases if the holding process dies — no risk of a stale lock surviving a crash. See REQ-206.
+
+### Concurrent scan execution
+
+**The bug:** `currentScanProc` (host-scan.js) and `csProc` (container-scan.js) are per-browser-session in-memory variables. A second Cockpit session — or the other scan tab — has no way to know a scan is already running, so two `oscap`/`oscap-podman` invocations could run against the same host/image at once.
+
+**The fix:** Both scan invocations are wrapped in `flock -n -E 99 /var/lib/cockpit-scap/.scan.lock --`. The lock is shared across host and container scans, so neither tab nor any session can start a second scan while one is running anywhere. `flock -n` fails fast (doesn't block waiting for the lock) and exits with the conflict code `99` if it can't acquire it, which the `.catch()` handler in both files checks for explicitly (`err.exit_status === SCAN_LOCK_CONFLICT_CODE`) to show "a scan is already running" instead of a generic error. The lock is held only as long as the wrapped process is alive, so it releases automatically on completion, error, or cancellation — no separate cleanup path needed. See REQ-207.
+
+### Deliberately not fixed: settings.json
+
+`saveSettings()` writes the whole settings object from in-memory form state rather than a fresh read-modify-write, so it's a "last writer wins" race, not data loss — a second admin's save can silently discard a first admin's concurrent change, but nothing gets corrupted or lost from the log/audit perspective. A correct fix needs a conflict-detection UI (warn the admin their settings changed underneath them), which is materially bigger scope than the other two fixes. Not addressed in this session; revisit only if it causes a real incident.
+
+---
+
 ## What This Module Is Not
 
 - Not a remote scanning tool (SSH scanning is explicitly out of scope)

@@ -629,7 +629,8 @@ function onCsScanClick() {
                 csScanError('Invalid image identifier');
                 return;
             }
-            const args = ['oscap-podman', imageArg, 'xccdf', 'eval'];
+            const args = ['flock', '-n', '-E', String(SCAN_LOCK_CONFLICT_CODE), SCAN_LOCK,
+                'oscap-podman', imageArg, 'xccdf', 'eval'];
             if (tailoringPath) args.push('--tailoring-file', tailoringPath);
             args.push(
                 '--progress',
@@ -682,6 +683,8 @@ function onCsScanClick() {
                     /* oscap exits 2 when scan ran but rules failed — normal */
                     if (err.exit_status === 2) {
                         csScanComplete(profileId, profileTitle, resultsXmlPath, tailoringPath);
+                    } else if (err.exit_status === SCAN_LOCK_CONFLICT_CODE) {
+                        csScanError('A scan is already running — wait for it to finish before starting another.');
                     } else if (csCancelled || err.problem === 'cancelled') {
                         csCancelled = false;
                         csProc = null;

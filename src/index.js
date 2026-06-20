@@ -33,8 +33,16 @@ let   inPlaceRemEnabled     = true;
 
 const PERSISTENCE_CACHE_PATH = '/var/lib/cockpit-scap/persistence-cache.json';
 const ACTIVITY_LOG   = '/var/lib/cockpit-scap/activity.log';
+const ACTIVITY_LOCK  = '/var/lib/cockpit-scap/.activity.lock';
 const ACTIVITY_MAX   = 1000;
 const ACTIVITY_TRIM  = 500;
+
+/* Shared across host + container scans so only one scan (any tab, any
+ * Cockpit session) can run against the system at a time. flock holds the
+ * lock only as long as the wrapped oscap/oscap-podman process is alive, so
+ * it releases automatically on completion, error, or cancellation. */
+const SCAN_LOCK                = '/var/lib/cockpit-scap/.scan.lock';
+const SCAN_LOCK_CONFLICT_CODE  = 99;
 
 /* Python script: parse results.xml server-side — avoids sending the
  * full file (15–18 MB) over WebSocket which exceeds Cockpit's limit. */
@@ -1258,18 +1266,27 @@ function sdsDisplayName(filename) {
 /* Host Scan tab + history → host-scan.js */
 /* Settings tab + content management → settings.js */
 
+/* Append is flock-guarded so concurrent Cockpit sessions can't race on the
+ * read-modify-write cycle and silently drop each other's entries; pruning
+ * to ACTIVITY_TRIM happens inside the same lock. */
+const ACTIVITY_APPEND_SCRIPT =
+    'log="$1"; lock="$2"; max="$3"; trim="$4"\n' +
+    'exec 9>"$lock"\n' +
+    'flock 9\n' +
+    'cat >> "$log"\n' +
+    'lines=$(wc -l < "$log" 2>/dev/null || echo 0)\n' +
+    'if [ "$lines" -gt "$max" ]; then\n' +
+    '    tail -n "$trim" "$log" > "$log.tmp" && mv "$log.tmp" "$log"\n' +
+    'fi\n';
+
 function appendActivityLog(entry) {
     const line = JSON.stringify({ ts: new Date().toISOString(), user: currentUser || '?', ...entry });
-    const f    = cockpit.file(ACTIVITY_LOG, { superuser: 'require' });
-    f.read()
-        .then(content => {
-            const lines   = (content || '').split('\n').filter(l => l.trim());
-            lines.push(line);
-            const trimmed = lines.length > ACTIVITY_MAX ? lines.slice(-ACTIVITY_TRIM) : lines;
-            return f.replace(trimmed.join('\n') + '\n');
-        })
-        .catch(() => { /* fire-and-forget — never surface log errors to user */ })
-        .finally(() => f.close());
+
+    cockpit.spawn(
+        ['bash', '-c', ACTIVITY_APPEND_SCRIPT, 'bash',
+            ACTIVITY_LOG, ACTIVITY_LOCK, String(ACTIVITY_MAX), String(ACTIVITY_TRIM)],
+        { superuser: 'require', input: line + '\n' }
+    ).catch(() => { /* fire-and-forget — never surface log errors to user */ });
 
     const journalMsg = buildJournalMessage(entry);
     if (journalMsg) {
@@ -1493,7 +1510,11 @@ function clearActivityLog() {
         ts: new Date().toISOString(), user: currentUser || '?',
         type: 'activity_clear', tab: 'activity'
     }) + '\n';
-    cockpit.file(ACTIVITY_LOG, { superuser: 'require' }).replace(tombstone)
+    cockpit.spawn(
+        ['bash', '-c', 'log="$1"; lock="$2"; exec 9>"$lock"; flock 9; cat > "$log"', 'bash',
+            ACTIVITY_LOG, ACTIVITY_LOCK],
+        { superuser: 'require', input: tombstone }
+    )
         .then(() => {
             cockpit.spawn(['logger', '-t', 'cockpit-scap',
                 'user: ' + (currentUser || '?') + ' — Activity log cleared'
