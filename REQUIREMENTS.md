@@ -439,6 +439,7 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 - **REQ-206:** ✅ Activity log writes (`appendActivityLog`, `clearActivityLog`) MUST be serialized via `flock` on `/var/lib/cockpit-scap/.activity.lock` so concurrent Cockpit sessions cannot race on the log file's read-modify-write cycle and silently drop each other's entries
 - **REQ-207:** ✅ Host and container scan execution MUST be mutually exclusive across all Cockpit sessions and both scan tabs — the `oscap`/`oscap-podman` invocation MUST be wrapped in `flock -n` against a shared `/var/lib/cockpit-scap/.scan.lock`; if the lock cannot be acquired, the scan MUST fail immediately with a visible "a scan is already running" error rather than running two scans concurrently
+- **REQ-208:** ✅ `pruneHistoryByType()` MUST log a `scan_prune` activity log entry (scan type + count removed) whenever it auto-deletes scan history to enforce the configured retention limit — retention pruning is a deletion of audit-relevant data and MUST NOT be silent, even though it is automatic rather than user-initiated
 
 ---
 

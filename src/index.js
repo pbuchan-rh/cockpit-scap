@@ -1268,12 +1268,14 @@ function sdsDisplayName(filename) {
 
 /* Append is flock-guarded so concurrent Cockpit sessions can't race on the
  * read-modify-write cycle and silently drop each other's entries; pruning
- * to ACTIVITY_TRIM happens inside the same lock. */
+ * to ACTIVITY_TRIM happens inside the same lock. The line is passed as an
+ * argv element, not piped via stdin — cockpit.spawn()'s `input` option does
+ * not close stdin, so a stdin-reading `cat` hangs forever holding the lock. */
 const ACTIVITY_APPEND_SCRIPT =
-    'log="$1"; lock="$2"; max="$3"; trim="$4"\n' +
+    'log="$1"; lock="$2"; max="$3"; trim="$4"; line="$5"\n' +
     'exec 9>"$lock"\n' +
     'flock 9\n' +
-    'cat >> "$log"\n' +
+    'printf "%s\\n" "$line" >> "$log"\n' +
     'lines=$(wc -l < "$log" 2>/dev/null || echo 0)\n' +
     'if [ "$lines" -gt "$max" ]; then\n' +
     '    tail -n "$trim" "$log" > "$log.tmp" && mv "$log.tmp" "$log"\n' +
@@ -1284,8 +1286,8 @@ function appendActivityLog(entry) {
 
     cockpit.spawn(
         ['bash', '-c', ACTIVITY_APPEND_SCRIPT, 'bash',
-            ACTIVITY_LOG, ACTIVITY_LOCK, String(ACTIVITY_MAX), String(ACTIVITY_TRIM)],
-        { superuser: 'require', input: line + '\n' }
+            ACTIVITY_LOG, ACTIVITY_LOCK, String(ACTIVITY_MAX), String(ACTIVITY_TRIM), line],
+        { superuser: 'require' }
     ).catch(() => { /* fire-and-forget — never surface log errors to user */ });
 
     const journalMsg = buildJournalMessage(entry);
@@ -1310,6 +1312,8 @@ function buildJournalMessage(e) {
             return 'Scan failed — profile: ' + (e.profile || '?') + ', error: ' + (e.message || '?');
         case 'scan_delete':
             return 'Scan record deleted — ' + (e.timestamp || '?');
+        case 'scan_prune':
+            return 'Scan history pruned to retention limit — ' + (e.tab || '?') + ', ' + (e.count || 0) + ' removed';
         case 'remediate_apply': {
             const ids = (e.rule_ids && e.rule_ids.length) ? ' [' + e.rule_ids.join(', ') + ']' : '';
             return 'Remediation applied — rules: ' + (e.rules_applied || 0) + ids + ', exit: ' + e.exit_code;
@@ -1347,6 +1351,7 @@ const ACTIVITY_TYPE_LABELS = {
     scan_cancel:         'Scan Cancelled',
     scan_error:          'Scan Failed',
     scan_delete:         'Scan Deleted',
+    scan_prune:          'Scan History Pruned',
     validate:            'Content Validated',
     content_upload:      'Content Uploaded',
     content_delete:      'Content Deleted',
@@ -1361,7 +1366,7 @@ const ACTIVITY_TYPE_LABELS = {
 
 
 const ACTIVITY_FILTER_MAP = {
-    scan:        ['scan_complete', 'scan_cancel', 'scan_error', 'scan_delete'],
+    scan:        ['scan_complete', 'scan_cancel', 'scan_error', 'scan_delete', 'scan_prune'],
     remediation: ['remediate_apply'],
     content:     ['validate', 'content_delete', 'content_upload'],
     tailoring:   ['tailor_upload', 'tailor_save', 'tailor_delete'],
@@ -1480,6 +1485,8 @@ function activityDetails(e) {
         if (e.image) parts.unshift(esc(e.image));
         return parts.filter(Boolean).join(' · ');
     }
+    if (e.type === 'scan_prune')
+        return esc(e.count + ' scan' + (e.count !== 1 ? 's' : '') + ' removed (retention limit)');
     if (e.type === 'scan_error')      return esc(e.message);
     if (e.type === 'settings_change')  return esc(e.detail || '');
     if (e.type === 'remediate_apply') {
@@ -1509,11 +1516,11 @@ function clearActivityLog() {
     const tombstone = JSON.stringify({
         ts: new Date().toISOString(), user: currentUser || '?',
         type: 'activity_clear', tab: 'activity'
-    }) + '\n';
+    });
     cockpit.spawn(
-        ['bash', '-c', 'log="$1"; lock="$2"; exec 9>"$lock"; flock 9; cat > "$log"', 'bash',
-            ACTIVITY_LOG, ACTIVITY_LOCK],
-        { superuser: 'require', input: tombstone }
+        ['bash', '-c', 'log="$1"; lock="$2"; line="$3"; exec 9>"$lock"; flock 9; printf "%s\\n" "$line" > "$log"', 'bash',
+            ACTIVITY_LOG, ACTIVITY_LOCK, tombstone],
+        { superuser: 'require' }
     )
         .then(() => {
             cockpit.spawn(['logger', '-t', 'cockpit-scap',

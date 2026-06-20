@@ -254,7 +254,9 @@ function pruneHistoryByType(scanType) {
                         cockpit.spawn(['rm', '-rf', RESULTS_BASE + dir], { superuser: 'require' })
                             .catch(e => console.error('Failed to prune', dir, e))
                     )
-                );
+                ).then(() => {
+                    appendActivityLog({ type: 'scan_prune', tab: scanType, count: toDelete.length });
+                });
             });
         })
         .catch(() => {});
