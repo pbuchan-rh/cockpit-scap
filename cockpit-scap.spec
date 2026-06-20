@@ -1,5 +1,5 @@
 Name:           cockpit-scap
-Version:        3.10.1
+Version:        3.10.2
 Release:        1%{?dist}
 Summary:        Cockpit module for SCAP compliance scanning and tailoring
 
@@ -96,6 +96,14 @@ fi
 %dir /var/lib/%{name}/remediation-logs
 
 %changelog
+* Sat Jun 20 2026 Peter Buchan <pbuchan@redhat.com> - 3.10.2-1
+- Fix blank Activity Log Details for content upload/delete, scan delete,
+  tailoring upload entries
+- Add flock-based locking around activity log writes and scan execution
+  (oscap/oscap-podman) to prevent multi-session races
+- Log scan_prune entries when retention pruning auto-deletes history
+- Fix flaky Playwright content-library validate-button test
+
 * Wed Jun 10 2026 Peter Buchan <pbuchan@redhat.com> - 3.10.1-1
 - EPEL prep: add <releases> to AppStream metainfo; fix metadata_license to CC0-1.0
 - Exclude docs/screenshots/ from release tarballs via .gitattributes export-ignore
