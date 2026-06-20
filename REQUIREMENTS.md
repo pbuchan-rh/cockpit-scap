@@ -431,6 +431,10 @@ Files staged via SCP retain the SCP user's ownership. The directory is root-owne
 
 - **REQ-204:** ✅ Apply Now MUST guard against concurrent execution — if a remediation apply is already in progress when gate 2 is confirmed (e.g. two concurrent Cockpit sessions), the second invocation MUST display a visible error message and return without writing or executing the script
 
+### Activity Log — Details Coverage
+
+- **REQ-205:** ✅ Every activity log entry `type` MUST have a corresponding case in `activityDetails()` (`index.js`) that renders a non-empty Details cell from the fields captured at the `appendActivityLog()` call site; a new entry type MUST NOT ship without a matching `activityDetails()` case
+
 ---
 
 ## Out of Scope — v1

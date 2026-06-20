@@ -1454,8 +1454,15 @@ function activityDetails(e) {
     }
     if (e.type === 'guide')         return esc(e.profile);
     if (e.type === 'validate')      return esc(e.file);
-    if (e.type === 'tailor_save' || e.type === 'tailor_load' || e.type === 'tailor_delete')
+    if (e.type === 'tailor_save' || e.type === 'tailor_load' || e.type === 'tailor_delete' || e.type === 'tailor_upload')
         return esc(e.profile || e.file);
+    if (e.type === 'content_upload' || e.type === 'content_delete')
+        return esc(e.file);
+    if (e.type === 'scan_delete') {
+        const parts = [esc(e.content), esc(e.profile)];
+        if (e.image) parts.unshift(esc(e.image));
+        return parts.filter(Boolean).join(' · ');
+    }
     if (e.type === 'scan_error')      return esc(e.message);
     if (e.type === 'settings_change')  return esc(e.detail || '');
     if (e.type === 'remediate_apply') {

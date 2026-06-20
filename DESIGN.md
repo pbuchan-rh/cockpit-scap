@@ -506,6 +506,8 @@ Failure banner: persistent, dismissable, shown when `last_status === 'error'` an
 **How it works:**
 All five JS files (`index.js`, `settings.js`, `tailoring.js`, `remediation.js`, `host-scan.js`) are loaded via `<script defer>` in `index.html`. The `defer` attribute guarantees in-order execution after DOM parsing; tag order enforces the dependency chain (index.js first, feature files after). Top-level `let`/`const`/`function` declarations in any file are visible to all other files.
 
+`container-scan.js` is not fully independent of this chain: it calls directly into `host-scan.js` for a handful of shared helpers (`generateScanId()`, `pruneHistoryByType()`, and report/history viewing functions) rather than duplicating them. This is consistent with how the rest of the split shares logic — it lives where it was first written, not copy-pasted per tab — but it means `host-scan.js` must load before `container-scan.js` in `index.html`, and `host-scan.js` cannot be removed without also removing the Container Scan tab's dependency on it.
+
 **ESLint implications:**
 ESLint processes each file in isolation and cannot see cross-file symbol references. Config is tuned accordingly:
 - `no-undef: off` — cross-file globals are intentional, not bugs
