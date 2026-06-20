@@ -27,13 +27,20 @@ test.describe('Content Library', () => {
     test('validate button runs for uploaded content', async ({ page }) => {
         const frame = await getModuleFrame(page);
         await navigateToTab(page, 'settings');
-        const validateBtn = frame.locator('#panel-settings button:has-text("Validate")').first();
-        if (!await validateBtn.isVisible().catch(() => false)) {
+        // The content list populates asynchronously, so wait for a row rather than
+        // taking an instant isVisible() snapshot — otherwise this skips on a slow load.
+        const row = frame.locator('#ct-user-content-list tbody tr').first();
+        const hasContent = await row.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false);
+        if (!hasContent) {
             test.skip('No uploaded content to validate');
             return;
         }
+        // Selected by position (first button in the row), not by text — the button's
+        // text changes on click ("Validate" -> "✓ Valid"/"✗ Invalid"), and a text-based
+        // locator would silently re-resolve to a different, unclicked row.
+        const validateBtn = row.locator('button').first();
         await validateBtn.click();
-        await expect(frame.locator('#panel-settings').locator('text=/valid|invalid/i')).toBeVisible({ timeout: 120000 });
+        await expect(validateBtn).toHaveText(/✓ Valid|✗ Invalid/, { timeout: 120000 });
         await page.screenshot({ path: 'tests/screenshots/28-validate-result.png' });
     });
 
