@@ -1,13 +1,21 @@
 {
-  "version": 1,
-  "require": {
-    "cockpit": "344"
-  },
-  "content-security-policy": "script-src 'self'; style-src 'self' 'unsafe-inline'",
-  "tools": {
-    "index": {
-      "label": "SCAP Compliance",
-      "order": 50
+    "requires": {
+        "cockpit": "286"
+    },
+
+    "conditions": [
+        { "path-exists": "/usr/bin/oscap" }
+    ],
+
+    "tools": {
+        "index": {
+            "label": "SCAP Security",
+            "order": 42,
+            "keywords": [
+                {
+                    "matches": ["scap", "oscap", "compliance", "security", "scan", "xccdf", "openscap"]
+                }
+            ]
+        }
     }
-  }
 }

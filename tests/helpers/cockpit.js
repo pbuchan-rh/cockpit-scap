@@ -4,17 +4,7 @@ const COCKPIT_URL  = process.env.COCKPIT_URL  || 'https://your-host:9090';
 const COCKPIT_USER = process.env.COCKPIT_USER || 'pbuchan';
 const COCKPIT_PASS = process.env.COCKPIT_PASS || '';
 
-const MODULE_PATH = '/cockpit/@localhost/cockpit-scap/index.html';
-
-const TABS = {
-    hostScan:       'tab-btn-scan',
-    containerScan:  'tab-btn-container-scan',
-    tailoring:      'tab-btn-tailoring',
-    content:        'tab-btn-content',
-    dashboard:      'tab-btn-dashboard',
-    settings:       'tab-btn-settings',
-    activity:       'tab-btn-activity',
-};
+const MODULE_PATH = '/cockpit/@localhost/scap/index.html';
 
 async function loginToCockpit(page) {
     await page.goto(COCKPIT_URL);
@@ -37,14 +27,8 @@ async function loginToCockpit(page) {
 
 async function getModuleFrame(page) {
     // Module loads directly on the page when navigated by URL — no iframe wrapper
-    await page.locator('.pf-v6-c-tabs').waitFor({ timeout: 30000 });
+    await page.locator('.pf-v6-c-card').first().waitFor({ timeout: 30000 });
     return page;
-}
-
-async function navigateToTab(page, tabKey) {
-    const tabId = TABS[tabKey] || tabKey;
-    await page.locator(`button#${tabId}`).click();
-    await page.locator(`button#${tabId}[aria-selected="true"]`).waitFor({ timeout: 5000 });
 }
 
 async function requestAdmin(page) {
@@ -86,4 +70,4 @@ async function canDoPrivilegedWrite(page) {
     return !visible;
 }
 
-module.exports = { loginToCockpit, getModuleFrame, navigateToTab, requestAdmin, canDoPrivilegedWrite, COCKPIT_URL, TABS };
+module.exports = { loginToCockpit, getModuleFrame, requestAdmin, canDoPrivilegedWrite, COCKPIT_URL };

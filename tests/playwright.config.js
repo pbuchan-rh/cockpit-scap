@@ -3,8 +3,6 @@ const { defineConfig, devices } = require('@playwright/test');
 require('dotenv').config({ path: __dirname + '/.env' });
 
 module.exports = defineConfig({
-    globalSetup:    __dirname + '/global-setup.js',
-    globalTeardown: __dirname + '/global-teardown.js',
     testDir: __dirname,
     testMatch: '**/*.spec.js',
     timeout: 600000,          // 10 min per test — PCI-DSS on hardened host can exceed 5 min

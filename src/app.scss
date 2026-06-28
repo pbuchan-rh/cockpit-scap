@@ -1,0 +1,134 @@
+@use "page.scss";
+
+.pf-v6-c-page__main-section {
+    gap: var(--pf-t--global--spacer--lg);
+    display: flex;
+    flex-direction: column;
+}
+
+// Card border fix: --subtle and --default resolve to the same washed-out
+// value in PF 6.5.x — use --100 for a border that's actually visible.
+.pf-v6-c-card {
+    --pf-v6-c-card--BorderColor: var(--pf-t--global--border--color--100);
+}
+
+.pf-v6-c-card .pf-v6-c-card__body {
+    padding-block-start: var(--pf-t--global--spacer--sm);
+    padding-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.pf-v6-c-description-list {
+    --pf-v6-c-description-list--RowGap: var(--pf-t--global--spacer--xs);
+}
+
+// Disabled secondary buttons stay blue at half opacity rather than going grey.
+.pf-v6-c-button.pf-m-secondary:disabled,
+.pf-v6-c-button.pf-m-secondary.pf-m-disabled,
+.pf-v6-c-button.pf-m-secondary.pf-m-aria-disabled {
+    color: var(--pf-t--global--color--brand--default);
+    background: transparent;
+    opacity: 0.5;
+}
+
+.pf-v6-c-button.pf-m-secondary:disabled::after,
+.pf-v6-c-button.pf-m-secondary.pf-m-disabled::after,
+.pf-v6-c-button.pf-m-secondary.pf-m-aria-disabled::after {
+    border-color: var(--pf-t--global--color--brand--default);
+}
+
+.pf-v6-c-button.pf-m-plain {
+    border-radius: var(--pf-t--global--border--radius--pill);
+    color: var(--pf-t--global--color--brand--default);
+}
+
+.pf-v6-c-button.pf-m-plain:hover {
+    background: var(--pf-t--global--background--color--secondary--default);
+}
+
+// Scan setup form
+.ct-scan-form {
+    max-inline-size: 40rem;
+}
+
+.ct-path-toggle {
+    margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.ct-tailoring-path-input {
+    margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.ct-field-error {
+    color: var(--pf-t--global--color--status--danger--default);
+    font-size: var(--pf-t--global--font--size--sm);
+    margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+// Scan output log — scrollable, monospace
+.ct-scan-output {
+    max-block-size: 22rem;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: var(--pf-t--global--font--size--sm);
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: var(--pf-t--global--background--color--secondary--default);
+    padding: var(--pf-t--global--spacer--sm);
+    border-radius: var(--pf-t--global--border--radius--sm);
+    margin: 0;
+}
+
+// Score display
+.ct-score-value {
+    font-size: 3rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.ct-score-green { color: var(--pf-t--global--color--status--success--default); }
+.ct-score-gold { color: var(--pf-t--global--color--status--warning--default); }
+.ct-score-red { color: var(--pf-t--global--color--status--danger--default); }
+.ct-score-grey { color: var(--pf-t--global--text--color--subtle); }
+
+// Failing rules list
+.ct-rules-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.ct-rules-controls {
+    margin-block-end: var(--pf-t--global--spacer--sm);
+    font-size: var(--pf-t--global--font--size--sm);
+}
+
+.ct-selected-count {
+    color: var(--pf-t--global--text--color--subtle);
+}
+
+.ct-rule-row {
+    padding-block: var(--pf-t--global--spacer--xs);
+    border-block-end: 1px solid var(--pf-t--global--border--color--100);
+
+    &:last-child {
+        border-block-end: none;
+    }
+}
+
+.ct-rule-id {
+    font-size: var(--pf-t--global--font--size--sm);
+    word-break: break-all;
+}
+
+// Severity filter labels — click to toggle
+.ct-sev-filter {
+    cursor: pointer;
+}
+
+.ct-sev-inactive {
+    opacity: 0.35;
+}
+
+.ct-fix-hint {
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+}

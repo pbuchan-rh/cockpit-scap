@@ -1,40 +1,32 @@
-# Claude Code working directory — user-specific, not project code
+# Claude Code — user-specific, not project code
 .claude/
 
-# Local SDS content staging (large binary files — not committed)
-content/
-
-# Session artifacts
-summary.txt
-
-# Internal planning and session docs — Gitea only, not for public GitHub
+# Internal planning and session docs — local only
 HANDOFF.md
 CLAUDE.md
-PROMPT_DASHBOARD.md
-ECOSYSTEM.md
-SCAP_TUI_DESIGN.md
-WORKBENCH_FEATURES.md
 
-# Local tools and exported docs — not project source
+# Build output
+dist/
+metafile.json
+runtime-npm-modules.txt
+
+# Generated spec file (built from packaging/*.spec.in)
+cockpit-scap.spec
+
+# Cockpit upstream shared files (fetched by make)
+pkg/
+test/common/
 tools/
-pdf-export/
-*.pdf
-inspiration/
 
-# UI design mockups — local exploration only, never committed
-docs/*-mockup.html
-docs/*-mockup-*.html
+# Node
+node_modules/
 
 # Playwright — credentials and generated artifacts stay local
 tests/.env
 tests/screenshots/
-tests/tests/screenshots/
 tests/report/
 tests/test-results/
 test-results/
-node_modules/
-package.json
-package-lock.json
 
 # Editor and OS files
 .vscode/
