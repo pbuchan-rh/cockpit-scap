@@ -89,8 +89,8 @@ export async function cleanupTmpdir(tmpdir) {
     }
 }
 
-export async function generateFix(tmpdir, ruleIds, template) {
-    const args = ['oscap', 'xccdf', 'generate', 'fix', '--template', template];
+export async function generateFix(tmpdir, ruleIds, fixType) {
+    const args = ['oscap', 'xccdf', 'generate', 'fix', '--fix-type', fixType];
     for (const id of ruleIds) args.push('--rule', id);
     args.push(`${tmpdir}/results.xml`);
     return cockpit.spawn(args, { superuser: 'require', err: 'message' });

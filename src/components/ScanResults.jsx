@@ -1,5 +1,6 @@
 import cockpit from 'cockpit';
 import React, { useMemo, useState } from 'react';
+import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Badge } from "@patternfly/react-core/dist/esm/components/Badge/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
@@ -52,6 +53,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
         () => new Set(failingRules.map(r => r.id))
     );
     const [busy, setBusy] = useState(null); // 'bash' | 'ansible'
+    const [fixError, setFixError] = useState(null);
 
     const visibleRules = useMemo(
         () => failingRules.filter(r => severityFilter.has(r.severity)),
@@ -72,16 +74,16 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
         downloadBlob(arfXmlGz, 'scan-arf.xml.gz', 'application/gzip');
     }
 
-    async function handleDownloadFix(template) {
-        const isBash = template === 'urn:xccdf:fix:script:sh';
-        const busyKey = isBash ? 'bash' : 'ansible';
-        const filename = isBash ? 'remediation.sh' : 'remediation.yml';
-        setBusy(busyKey);
+    async function handleDownloadFix(fixType) {
+        const filename = fixType === 'bash' ? 'remediation.sh' : 'remediation.yml';
+        setBusy(fixType);
+        setFixError(null);
         try {
-            const script = await generateFix(tmpdir, [...selectedRuleIds], template);
+            const script = await generateFix(tmpdir, [...selectedRuleIds], fixType);
             downloadBlob(script, filename, 'text/plain');
         } catch (ex) {
             console.error('Fix generation failed:', ex.message);
+            setFixError(ex.message || String(ex));
         } finally {
             setBusy(null);
         }
@@ -113,6 +115,18 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
 
     return (
         <>
+            {fixError && (
+                <Alert
+                    variant="danger"
+                    title={_("Fix generation failed")}
+                    isInline
+                    actionClose={
+                        <Button variant="plain" onClick={() => setFixError(null)}>×</Button>
+                    }
+                >
+                    {fixError}
+                </Alert>
+            )}
             <Card>
                 <CardHeader
                     actions={{
@@ -195,7 +209,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                                 variant="secondary" size="sm"
                                                 isLoading={busy === 'bash'}
                                                 isDisabled={!!busy || selectedRuleIds.size === 0}
-                                                onClick={() => handleDownloadFix('urn:xccdf:fix:script:sh')}
+                                                onClick={() => handleDownloadFix('bash')}
                                             >
                                                 {_("Download Bash Fix")}
                                             </Button>
@@ -205,7 +219,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                                 variant="secondary" size="sm"
                                                 isLoading={busy === 'ansible'}
                                                 isDisabled={!!busy || selectedRuleIds.size === 0}
-                                                onClick={() => handleDownloadFix('urn:xccdf:fix:script:ansible')}
+                                                onClick={() => handleDownloadFix('ansible')}
                                             >
                                                 {_("Download Ansible Fix")}
                                             </Button>
