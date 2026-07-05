@@ -9,9 +9,14 @@ export function parseResults(xmlText) {
     const scorePercent = scoreEl ? Math.round(parseFloat(scoreEl.textContent)) : null;
 
     const counts = {
-        pass: 0, fail: 0, error: 0,
-        notapplicable: 0, unknown: 0,
-        informational: 0, notchecked: 0, notselected: 0,
+        pass: 0,
+        fail: 0,
+        error: 0,
+        notapplicable: 0,
+        unknown: 0,
+        informational: 0,
+        notchecked: 0,
+        notselected: 0,
     };
     const failingRules = [];
 

@@ -1,46 +1,61 @@
 # cockpit-scap
 
-A native [Cockpit](https://cockpit-project.org/) module for RHEL 10 / CentOS Stream 10 / Fedora 43+ that brings OpenSCAP compliance scanning, container image scanning, profile tailoring, and selective remediation directly in the Cockpit browser console — no separate tools, no context switching.
+A native [Cockpit](https://cockpit-project.org/) module that runs an OpenSCAP compliance
+scan against the host directly from the Cockpit browser console — no separate tools, no
+context switching.
 
 > **Note:** This is an independent community project and is not an official Red Hat product or affiliated with Red Hat, Inc.
 
-## Features
+> **Branch note:** This describes the `rewrite` branch (v4.0) — a ground-up rewrite as a
+> stateless single-page React app. It has not been merged to `main`, packaged as an RPM, or
+> published to COPR yet. The currently published release (v3.10.2, via COPR/GitHub) is the
+> older, much larger multi-tab module and does not match this description.
 
-- **Host scanning** — auto-detects installed SSG data streams across RHEL 6–10; compliance score, severity breakdown, regression detection, and scan ETA during the run
-- **Container image scanning** — scan images from the root Podman store via `oscap-podman`; per-image history, severity action bar, and remediation scripts for build pipelines
-- **Failing rules** — collapsible HIGH/MEDIUM/LOW groups with CCE identifiers, inline description and rationale, and Automated/Manual annotation; search by title or CCE
-- **Selective remediation** — pick individual failing rules and download a filtered bash, Ansible, or Puppet script; **Apply Now** remediates directly on the host with two-gate confirmation and live output; **Quick Fix** pre-selects automatable critical/high rules
-- **Full profile remediation** — generate a remediation script for an entire profile without running a scan first; available on Host Scan, Container Scan, and Tailoring tabs
-- **Saved policies** — store a tailoring file + compliance threshold as a named policy; threshold drives score color coding in results and history; framework reference chips (NIST, PCI-DSS, DISA, CIS) derived from profile
-- **Policy tailoring** — XCCDF rule tree editor with variable adjustment and search; upload, download, edit, and delete saved tailoring files
-- **Scan history** — every result stored with score delta vs previous same-profile scan; reload any historical result or open it in the remediation drawer; configurable retention
-- **Activity log** — structured audit trail of all privileged actions (scans, remediation, tailoring, content operations); filter by type; each entry records the authenticated user; integrates with the systemd journal
-- **Export** — HTML report, XCCDF results XML, and ARF bundle per scan; compliance guide for any profile; history as CSV
-- **Settings** — tab visibility, in-place remediation control, scan retention, Clear All Data, Content Library (system + uploaded SDS files)
+## What it does
 
-## Screenshots
+- **Run a scan** — detects installed SSG data streams under `/usr/share/xml/scap/ssg/content/`,
+  pre-selects one based on `/etc/os-release`, and lists profiles for the selected content
+  (`oscap info`). A manual content path and an optional tailoring file are also available.
+- **Live output** — `oscap xccdf eval` output streams into the page as the scan runs, with a
+  Cancel button.
+- **Results** — compliance score and pass/fail/error counts, parsed client-side from
+  `results.xml` (no server-side parsing). Failing rules are listed with severity, filterable
+  by clicking the severity badges.
+- **Fix scripts** — select any subset of failing rules and download a Bash or Ansible fix
+  script scoped to just those rules (`oscap xccdf generate fix`). Downloads are generated on
+  demand; nothing is applied to the host automatically.
+- **Full report / raw results** — View Report opens the full `oscap` HTML report in a new
+  tab; Results XML and ARF are available as gzip downloads.
+- **New Scan** returns to the setup screen and clears all in-memory state.
 
-**Host Scan**
-![Host Scan](docs/screenshots/host-scan-tab.png)
+There is no container scanning, no remediation-apply, no activity log, no content library
+management, no settings tab, and no scan history — see [CLAUDE.md](CLAUDE.md)'s Parking Lot
+section for what was deliberately cut and why.
 
-**Scan Results**
-![Scan Results](docs/screenshots/host-scan-results.png)
+## Architecture
 
-**Selective Remediation**
-![Selective Remediation](docs/screenshots/remediation-builder-selections.png)
+Single page, three states that replace each other in place: **Setup → Running → Results**.
+No server-side helper process, no files written outside a per-scan temp directory, nothing
+persisted between page loads. React 18 + PatternFly v6, built with esbuild — same stack as
+`cockpit-bootc` / `cockpit-podman`.
 
-**Policy Tailoring**
-![Policy Tailoring](docs/screenshots/policy-editor1.png)
-
-**Activity Log**
-![Activity Log](docs/screenshots/activity-tab.png)
-
-[View all screenshots](docs/screenshots/)
+```
+src/
+├── app.jsx                     # phase state machine + scan lifecycle handlers
+├── components/
+│   ├── ScanSetup.jsx           # content/profile/tailoring form + Run Scan
+│   ├── ScanProgress.jsx        # live output + Cancel
+│   └── ScanResults.jsx         # score, severity filter, rule list, downloads
+└── lib/
+    ├── oscap.js                # all cockpit.spawn() calls to oscap/mktemp/gzip/rm
+    └── results.js               # parseResults(xmlText) — DOMParser over results.xml
+```
 
 ## Requirements
 
 ### Cockpit
-Cockpit 344 or later on RHEL 10 / CentOS Stream 10. The module uses no Cockpit internals beyond the published
+
+Cockpit 286 or later (per `src/manifest.json`). No Cockpit internals beyond the published
 `cockpit.js` API.
 
 ### Packages
@@ -51,89 +66,53 @@ dnf install openscap-scanner scap-security-guide openscap-utils
 
 | Package | Purpose |
 |---|---|
-| `openscap-scanner` | Host and container scanning (`oscap`, `oscap-podman`) |
-| `scap-security-guide` | SSG data stream files for RHEL 6–10 |
-| `openscap-utils` | Remediation script generation (`oscap xccdf generate fix`) |
+| `openscap-scanner` | Host scanning (`oscap`) |
+| `scap-security-guide` | SSG data stream files |
+| `openscap-utils` | Fix script generation (`oscap xccdf generate fix`) |
 
-The module detects missing packages at startup and displays installation instructions rather than failing silently.
+The module's `manifest.json` only activates the tool when `/usr/bin/oscap` exists.
 
 ## Installation
 
-**RPM via Fedora COPR (recommended):**
+No RPM or COPR package exists yet for this rewrite. To build and install from source:
 
 ```bash
-sudo dnf copr enable pbuchan-rh/cockpit-scap
-sudo dnf install cockpit-scap
-```
-
-**From source (Makefile):**
-
-```bash
-git clone https://github.com/pbuchan-rh/cockpit-scap.git
+git clone -b rewrite https://github.com/pbuchan-rh/cockpit-scap.git
 cd cockpit-scap
+npm install
 sudo make install
 ```
 
-After installation, reload Cockpit and navigate to **SCAP Compliance** in the sidebar.
-
-## Tips
-
-- **Remediate from history** — clicking **Remediate** in the Scan History table loads the historical result and opens the remediation drawer directly; no need to re-run the scan
-- **Tailoring files** — files saved in the Policy Tailoring tab appear automatically in the Scan tab's Tailoring File selector
-- **Update vs Save as New** — when editing an existing tailoring file, **Update** overwrites it in place; **Save as New** creates a timestamped copy
+After installation, reload Cockpit and navigate to **SCAP Security** in the sidebar.
 
 ## Storage
 
-All runtime data is written to `/var/lib/cockpit-scap/`:
-
-```
-/var/lib/cockpit-scap/
-├── results/
-│   └── <TIMESTAMP>/          # One directory per scan
-│       ├── manifest.json     # Scan metadata (profile, SDS, score, timing, compliance threshold)
-│       ├── results.arf.gz    # Compressed ARF bundle (~2 MB)
-│       ├── results.xml       # oscap XML results (~15 MB; used for report gen + remediation)
-│       ├── remediation.sh    # Bash remediation script
-│       └── remediation.yml   # Ansible remediation playbook
-├── tailoring/
-│   ├── <name>-<timestamp>.xml   # XCCDF tailoring file
-│   └── <name>-<timestamp>.json  # Sidecar metadata (profile, threshold, notes)
-├── content/
-│   └── ssg-rhel<N>-ds.xml    # User-staged SDS files (root:root ownership required)
-└── remediation-logs/
-    └── <TIMESTAMP>-<profile>.log  # Apply Now audit log (user, rules applied, exit code)
-```
-
-HTML reports are generated on demand when **View Report** or **Download Report** is clicked — they are not stored on disk. Each scan uses approximately 18 MB on disk. Retention defaults to 5 results per scan type (~180 MB total at default) and is configurable via the Settings tab.
-
-Scan history is pruned automatically after each scan.
-
-## SELinux
-
-The module is tested and confirmed working with SELinux in enforcing mode. All file I/O is scoped to `/var/lib/cockpit-scap/` — the SELinux file context definition is shipped with the module and applied automatically at install time via `semanage fcontext` and `restorecon`. No manual SELinux configuration required.
+None. All `oscap` output is written to a per-scan temp directory
+(`mktemp -d /tmp/cockpit-scap-XXXXXX`, root-owned) and read back into browser memory; the
+directory is removed on cancel, on error, and when starting a new scan. Nothing is written
+to `/var/lib/`, and no SELinux policy is shipped or needed — everything stays under `/tmp`.
 
 ## Privilege model
 
-Cockpit's native `{ superuser: "require" }` mechanism is used, scoped to scan execution, file writes, and remediation apply only. Browsing content, selecting profiles, viewing history, and generating compliance guides require no elevation. No polkit action file, sudoers entry, or setuid binary is required.
-
-Privileged actions (Run Scan, Apply Now, upload, delete) are visually disabled with a tooltip in limited Cockpit sessions — no error popup after the fact. Elevation is requested once via the standard Cockpit prompt and applies for the session.
+Cockpit's native `{ superuser: "require" }` mechanism is used, scoped to the operations that
+actually need root: creating/removing the temp directory, running the scan, reading the
+result files, and generating fix scripts. Detecting content and listing profiles need no
+elevation. The setup form is always visible; **Run Scan** is disabled until admin access is
+confirmed (`cockpit.permission({ admin: true })`), with an inline alert explaining why.
 
 ## Troubleshooting
 
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for known issues on CIS-hardened hosts (masked service, `use_pty`, sudoers entries wiped after remediation).
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for known issues on CIS-hardened hosts (masked
+service, `use_pty`, sudoers entries wiped after remediation). Note: that document predates
+this rewrite — its section on `umask 027` breaking file readability was specific to the old
+`/var/lib/cockpit-scap/` storage and no longer applies now that there's no persistent
+storage; the service-masking and sudoers (`use_pty`) sections are general CIS-hardening
+effects and still apply.
 
 ## Development status
 
-**Current release:** v3.10.2 — available via COPR
+**This branch (`rewrite` / v4.0) has not been deployed to a real host as a packaged RPM.**
+See [HANDOFF.md](HANDOFF.md) for the current state of that work.
 
-Built with vanilla JavaScript, PatternFly 6, and the Cockpit JS API. No npm, no build toolchain,
-no external CDN dependencies. Suitable for deployment on air-gapped systems.
-
-### Roadmap
-
-| Version | Theme |
-|---|---|
-| **v1** | Local SCAP scanning + full profile tailoring — closes the SCAP Workbench gap on RHEL 10 |
-| **v2** | Multi-version SDS content management — RHEL 6–9 SDS staging, CPE OS detection |
-| **v3** | Container image scanning — `oscap-podman`, root Podman store, per-image history |
-| **v3.x** *(current)* | Selective remediation, saved policies, compliance thresholds, full audit trail, CIS L2 hardening compatibility, container scan parity |
+**Last published release:** v3.10.2 (older architecture, via COPR) — see git tag `v3.10.2`
+and the `main` branch for that code.

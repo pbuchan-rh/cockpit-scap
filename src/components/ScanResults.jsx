@@ -103,9 +103,12 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
         });
     }
 
-    const scoreColor = scorePercent === null ? 'grey'
-        : scorePercent >= 80 ? 'green'
-            : scorePercent >= 60 ? 'gold'
+    const scoreColor = scorePercent === null
+        ? 'grey'
+        : scorePercent >= 80
+            ? 'green'
+            : scorePercent >= 60
+                ? 'gold'
                 : 'red';
 
     return (
@@ -223,20 +226,19 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                         <FlexItem>
                                             <Flex spaceItems={{ default: 'spaceItemsXs' }}>
                                                 {['critical', 'high', 'medium', 'low', 'unknown']
-                                                    .filter(s => allSeverities.includes(s))
-                                                    .map(sev => (
-                                                        <FlexItem key={sev}>
-                                                            <Label
+                                                        .filter(s => allSeverities.includes(s))
+                                                        .map(sev => (
+                                                            <FlexItem key={sev}>
+                                                                <Label
                                                                 color={SEVERITY_COLOR[sev] ?? 'grey'}
                                                                 isCompact
                                                                 onClick={() => toggleSeverity(sev)}
                                                                 className={`ct-sev-filter ${severityFilter.has(sev) ? '' : 'ct-sev-inactive'}`}
-                                                            >
-                                                                {sev}
-                                                            </Label>
-                                                        </FlexItem>
-                                                    ))
-                                                }
+                                                                >
+                                                                    {sev}
+                                                                </Label>
+                                                            </FlexItem>
+                                                        ))}
                                             </Flex>
                                         </FlexItem>
                                     )}
@@ -249,13 +251,17 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                 : (
                                     <div className="ct-rules-list">
                                         <div className="ct-rules-controls">
-                                            <Button variant="link" isInline
-                                                onClick={() => setSelectedRuleIds(new Set(visibleRules.map(r => r.id)))}>
+                                            <Button
+                                                variant="link" isInline
+                                                onClick={() => setSelectedRuleIds(new Set(visibleRules.map(r => r.id)))}
+                                            >
                                                 {_("Select All")}
                                             </Button>
                                             {' · '}
-                                            <Button variant="link" isInline
-                                                onClick={() => setSelectedRuleIds(new Set())}>
+                                            <Button
+                                                variant="link" isInline
+                                                onClick={() => setSelectedRuleIds(new Set())}
+                                            >
                                                 {_("Deselect All")}
                                             </Button>
                                             <span className="ct-selected-count">
@@ -269,8 +275,10 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                                     isChecked={selectedRuleIds.has(rule.id)}
                                                     onChange={() => toggleRule(rule.id)}
                                                     label={
-                                                        <Flex alignItems={{ default: 'alignItemsCenter' }}
-                                                            spaceItems={{ default: 'spaceItemsSm' }}>
+                                                        <Flex
+                                                            alignItems={{ default: 'alignItemsCenter' }}
+                                                            spaceItems={{ default: 'spaceItemsSm' }}
+                                                        >
                                                             <FlexItem>
                                                                 <Label
                                                                     color={SEVERITY_COLOR[rule.severity] ?? 'grey'}
@@ -290,8 +298,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                             </div>
                                         ))}
                                     </div>
-                                )
-                            }
+                                )}
                         </CardBody>
                         <CardFooter>
                             <span className="ct-fix-hint">
@@ -299,8 +306,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                             </span>
                         </CardFooter>
                     </Card>
-                )
-            }
+                )}
         </>
     );
 };

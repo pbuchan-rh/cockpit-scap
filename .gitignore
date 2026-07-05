@@ -34,3 +34,13 @@ test-results/
 *.swp
 *~
 .DS_Store
+
+# Downloaded SCAP content (SSG data streams for local testing) — large, fetched not authored
+content/
+
+# Third-party reference PDFs — copyrighted vendor docs, kept locally only
+Red_Hat_Enterprise_Linux-*.pdf
+
+# scap-tui design doc — separate project sharing this problem domain; repo-location
+# question (own repo vs subdirectory here) is still open, so it isn't committed yet
+SCAP_TUI_DESIGN.md

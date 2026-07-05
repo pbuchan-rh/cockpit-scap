@@ -12,8 +12,8 @@
   "scripts": {
     "watch": "ESBUILD_WATCH='true' ./build.js",
     "build": "./build.js",
-    "eslint": "eslint src/",
-    "eslint:fix": "eslint --fix src/",
+    "eslint": "eslint --ext .js --ext .jsx --ext .ts --ext .tsx src/",
+    "eslint:fix": "eslint --fix --ext .js --ext .jsx --ext .ts --ext .tsx src/",
     "stylelint": "stylelint src/*.{css,scss}",
     "stylelint:fix": "stylelint --fix src/*.{css,scss}",
     "test": "playwright test --config=tests/playwright.config.js",

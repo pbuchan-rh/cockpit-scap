@@ -8,7 +8,9 @@ export async function detectContent() {
             ['find', SSG_CONTENT_DIR, '-name', '*-ds.xml', '-type', 'f'],
             { err: 'ignore' }
         );
-        return output.trim().split('\n').filter(Boolean).sort();
+        return output.trim().split('\n')
+                .filter(Boolean)
+                .sort();
     } catch {
         return [];
     }

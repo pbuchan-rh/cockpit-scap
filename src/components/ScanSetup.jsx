@@ -15,7 +15,8 @@ const _ = cockpit.gettext;
 
 function sdsDisplayName(path) {
     const name = path.split('/').pop() ?? path;
-    return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '').replace(/-/g, ' ');
+    return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '')
+            .replace(/-/g, ' ');
 }
 
 function autoSelectContent(contentList, id, versionId) {
@@ -25,7 +26,8 @@ function autoSelectContent(contentList, id, versionId) {
         if (major && (base.includes(`${id}${major}`) || base.includes(`${id}-${major}`))) return path;
     }
     for (const path of contentList) {
-        if (path.split('/').pop().includes(id)) return path;
+        if (path.split('/').pop()
+                .includes(id)) return path;
     }
     return contentList[0] ?? '';
 }
@@ -45,17 +47,17 @@ export const ScanSetup = ({ adminAllowed, onScan }) => {
     useEffect(() => {
         let cancelled = false;
         Promise.all([detectContent(), getOsRelease()])
-            .then(([list, { id, versionId }]) => {
-                if (cancelled) return;
-                setContentList(list);
-                const selected = autoSelectContent(list, id, versionId);
-                setContent(selected);
-                setLoadingContent(false);
-            })
-            .catch(() => {
-                if (!cancelled) setLoadingContent(false);
-            });
-        return () => { cancelled = true; };
+                .then(([list, { id, versionId }]) => {
+                    if (cancelled) return;
+                    setContentList(list);
+                    const selected = autoSelectContent(list, id, versionId);
+                    setContent(selected);
+                    setLoadingContent(false);
+                })
+                .catch(() => {
+                    if (!cancelled) setLoadingContent(false);
+                });
+        return () => { cancelled = true };
     }, []);
 
     useEffect(() => {
@@ -66,18 +68,18 @@ export const ScanSetup = ({ adminAllowed, onScan }) => {
         setProfiles([]);
         setProfile('');
         getProfiles(content)
-            .then(list => {
-                if (cancelled) return;
-                setProfiles(list);
-                setProfile(list[0]?.id ?? '');
-                setLoadingProfiles(false);
-            })
-            .catch(ex => {
-                if (cancelled) return;
-                setProfileError(ex.message);
-                setLoadingProfiles(false);
-            });
-        return () => { cancelled = true; };
+                .then(list => {
+                    if (cancelled) return;
+                    setProfiles(list);
+                    setProfile(list[0]?.id ?? '');
+                    setLoadingProfiles(false);
+                })
+                .catch(ex => {
+                    if (cancelled) return;
+                    setProfileError(ex.message);
+                    setLoadingProfiles(false);
+                });
+        return () => { cancelled = true };
     }, [content]);
 
     const canScan = adminAllowed && content && profile && !loadingProfiles;
@@ -110,22 +112,23 @@ export const ScanSetup = ({ adminAllowed, onScan }) => {
                                     value={content}
                                     onChange={(_e, v) => setContent(v)}
                                     placeholder="/usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml"
-                                  />
+                                />
                                 : <FormSelect
                                     id="ct-scap-content"
                                     value={content}
                                     onChange={(_e, v) => setContent(v)}
-                                  >
+                                >
                                     {contentList.length === 0 && (
                                         <FormSelectOption value="" label={_("No content found in /usr/share/xml/scap/ssg/content/")} isDisabled />
                                     )}
                                     {contentList.map(path => (
                                         <FormSelectOption key={path} value={path} label={sdsDisplayName(path)} />
                                     ))}
-                                  </FormSelect>
-                        }
-                        <Button variant="link" isInline className="ct-path-toggle"
-                            onClick={() => setManualPath(m => !m)}>
+                                </FormSelect>}
+                        <Button
+                            variant="link" isInline className="ct-path-toggle"
+                            onClick={() => setManualPath(m => !m)}
+                        >
                             {manualPath ? _("Use auto-detected content") : _("Enter path manually")}
                         </Button>
                     </FormGroup>
@@ -138,7 +141,7 @@ export const ScanSetup = ({ adminAllowed, onScan }) => {
                                 value={profile}
                                 onChange={(_e, v) => setProfile(v)}
                                 isDisabled={!content || profiles.length === 0}
-                              >
+                            >
                                 {profiles.length === 0 && (
                                     <FormSelectOption
                                         value=""
@@ -149,8 +152,7 @@ export const ScanSetup = ({ adminAllowed, onScan }) => {
                                 {profiles.map(p => (
                                     <FormSelectOption key={p.id} value={p.id} label={p.title || p.id} />
                                 ))}
-                              </FormSelect>
-                        }
+                            </FormSelect>}
                         {profileError && <p className="ct-field-error">{profileError}</p>}
                     </FormGroup>
 
