@@ -24,6 +24,7 @@ node_modules/
 # Playwright — credentials and generated artifacts stay local
 tests/.env
 tests/screenshots/
+tests/adhoc/screenshots/
 tests/report/
 tests/test-results/
 test-results/

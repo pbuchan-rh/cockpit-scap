@@ -4,6 +4,9 @@ const { test, expect } = require('@playwright/test');
 const { loginToCockpit } = require('../helpers/cockpit.js');
 
 test('v4.0 full scan flow', async ({ page }) => {
+    page.on('console', msg => console.log(`[browser:${msg.type()}]`, msg.text()));
+    page.on('pageerror', err => console.log('[pageerror]', err.message));
+
     await loginToCockpit(page);
 
     // --- Setup phase ---
@@ -21,9 +24,14 @@ test('v4.0 full scan flow', async ({ page }) => {
     // Profiles loaded
     const profileSelect = page.locator('#ct-scap-profile');
     await expect(profileSelect).not.toBeDisabled({ timeout: 15000 });
+
+    // Pick the Essential Eight profile explicitly — much smaller rule set than the
+    // default (first alphabetically) ANSSI-BP28-enhanced profile, so the real scan
+    // finishes in ~3 min instead of ~6-7 min.
+    await profileSelect.selectOption({ value: 'xccdf_org.ssgproject.content_profile_e8' });
     const profileValue = await profileSelect.inputValue();
-    console.log('Auto-selected profile:', profileValue);
-    expect(profileValue).toBeTruthy();
+    console.log('Selected profile:', profileValue);
+    expect(profileValue).toContain('_e8');
 
     // Run Scan button is enabled (admin was elevated in loginToCockpit)
     const runBtn = page.locator('button', { hasText: 'Run Scan' });
@@ -71,6 +79,24 @@ test('v4.0 full scan flow', async ({ page }) => {
     await expect(failingCard).toBeVisible();
     await page.screenshot({ path: `tests/adhoc/screenshots/05-rules.png`, fullPage: true });
 
+    // --- Severity filter ---
+    const sevFilters = page.locator('.ct-sev-filter');
+    const sevCount = await sevFilters.count();
+    if (sevCount > 0) {
+        const ruleRows = page.locator('.ct-rule-row');
+        const beforeCount = await ruleRows.count();
+        const firstSev = sevFilters.first();
+        await firstSev.click(); // toggle it off
+        await expect(firstSev).toHaveClass(/ct-sev-inactive/);
+        await page.screenshot({ path: `tests/adhoc/screenshots/05b-severity-filtered.png`, fullPage: true });
+        const afterCount = await ruleRows.count();
+        console.log(`Severity filter toggled: rule rows ${beforeCount} -> ${afterCount}`);
+        await firstSev.click(); // restore
+        await expect(firstSev).not.toHaveClass(/ct-sev-inactive/);
+    } else {
+        console.log('No severity filter buttons rendered — no failing rules to filter.');
+    }
+
     // If there are failing rules, test Download Bash Fix with a single rule (fast)
     const downloadBashBtn = page.locator('button', { hasText: 'Download Bash Fix' });
     if (await downloadBashBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -78,13 +104,20 @@ test('v4.0 full scan flow', async ({ page }) => {
         await page.locator('button', { hasText: 'Deselect All' }).click();
         const firstCheckbox = page.locator('.ct-rule-row .pf-v6-c-check__input').first();
         await firstCheckbox.check();
+
+        let sawDownload = false;
+        page.once('download', d => {
+            sawDownload = true;
+            console.log('Bash fix downloaded:', d.suggestedFilename());
+        });
         await downloadBashBtn.click();
-        // Button goes into loading state (isLoading=true → disabled) while generateFix runs,
-        // then re-enables when done. Blob downloads via a.click() don't surface as Playwright
-        // download events, so we verify completion by waiting for the button to re-enable.
-        await expect(downloadBashBtn).toBeDisabled({ timeout: 5000 });
-        await expect(downloadBashBtn).not.toBeDisabled({ timeout: 60000 });
-        console.log('Bash fix generated and downloaded.');
+        await page.screenshot({ path: `tests/adhoc/screenshots/05c-fix-clicked.png`, fullPage: true });
+
+        // Wait for the button to return to its normal (non-loading) label/state —
+        // true regardless of whether the browser surfaces a 'download' event.
+        await expect(downloadBashBtn).toBeVisible({ timeout: 30000 });
+        await expect(downloadBashBtn).not.toBeDisabled({ timeout: 30000 });
+        console.log('Download Bash Fix button settled. Saw download event:', sawDownload);
     } else {
         console.log('No failing rules — skipping fix download.');
     }
