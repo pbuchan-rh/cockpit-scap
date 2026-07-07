@@ -19,7 +19,8 @@ const _ = cockpit.gettext;
 function sdsDisplayName(path) {
     if (!path) return '—';
     const name = path.split('/').pop() ?? path;
-    return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '').replace(/-/g, ' ');
+    return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '')
+            .replace(/-/g, ' ');
 }
 
 function formatCreated(ts) {

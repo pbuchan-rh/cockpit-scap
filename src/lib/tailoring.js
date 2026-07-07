@@ -72,7 +72,8 @@ export function generateTailoringXml(baseProfileId, newProfileId, newProfileTitl
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
-    const ts = new Date().toISOString().slice(0, 19);
+    const ts = new Date().toISOString()
+            .slice(0, 19);
     const lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<Tailoring xmlns="http://checklists.nist.gov/xccdf/1.2" id="xccdf_cockpit-scap_tailoring_default">',
@@ -170,7 +171,8 @@ export async function listTailoringFiles() {
     } catch {
         return [];
     }
-    const files = output.trim().split('\n').filter(f => f && f.endsWith('.json'));
+    const files = output.trim().split('\n')
+            .filter(f => f && f.endsWith('.json'));
     const sidecars = await Promise.all(files.map(async f => {
         try {
             const content = await cockpit.file(`${dir}/${f}`, { superuser: 'try' }).read();

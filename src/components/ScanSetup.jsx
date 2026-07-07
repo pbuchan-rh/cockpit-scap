@@ -85,7 +85,7 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey }) => {
 
     useEffect(() => {
         let cancelled = false;
-        listTailoringFiles().then(list => { if (!cancelled) setTailoringFiles(list) });
+        listTailoringFiles().then(list => { if (!cancelled) setTailoringFiles(list); });
         return () => { cancelled = true };
     }, [tailoringRefreshKey]);
 

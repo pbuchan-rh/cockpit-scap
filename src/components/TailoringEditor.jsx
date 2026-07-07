@@ -32,7 +32,8 @@ const SEVERITY_COLOR = {
 
 function sdsDisplayName(path) {
     const name = path.split('/').pop() ?? path;
-    return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '').replace(/-/g, ' ');
+    return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '')
+            .replace(/-/g, ' ');
 }
 
 function flattenRules(data) {
@@ -140,7 +141,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit }) => {
 
     useEffect(() => {
         let cancelled = false;
-        detectContent().then(list => { if (!cancelled) setContentList(list) });
+        detectContent().then(list => { if (!cancelled) setContentList(list); });
         return () => { cancelled = true };
     }, []);
 

@@ -132,3 +132,110 @@
     font-size: var(--pf-t--global--font--size--sm);
     color: var(--pf-t--global--text--color--subtle);
 }
+
+.ct-btn-danger-link {
+    color: var(--pf-t--global--color--status--danger--default);
+}
+
+// Tabs
+.ct-tab-body {
+    padding-block-start: var(--pf-t--global--spacer--md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--pf-t--global--spacer--lg);
+}
+
+.ct-tailoring-tab {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pf-t--global--spacer--lg);
+}
+
+// Tailoring editor
+.ct-tailor-form {
+    max-inline-size: 40rem;
+    margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.ct-tailor-name-group {
+    max-inline-size: 30rem;
+    margin-block: var(--pf-t--global--spacer--md);
+}
+
+.ct-tailor-loading {
+    padding-block: var(--pf-t--global--spacer--lg);
+    display: flex;
+    justify-content: center;
+}
+
+.ct-tailor-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pf-t--global--spacer--sm);
+    margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.ct-tailor-summary-hint {
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+    margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+// Rule tree — plain nested <details>/<summary>, proven to handle
+// hundreds-of-rules SSG profiles without perf problems (old main reference).
+.ct-tailor-tree {
+    max-block-size: 32rem;
+    overflow-y: auto;
+    border: 1px solid var(--pf-t--global--border--color--100);
+    border-radius: var(--pf-t--global--border--radius--sm);
+    padding: var(--pf-t--global--spacer--sm);
+}
+
+.ct-tailor-group {
+    margin-inline-start: var(--pf-t--global--spacer--md);
+}
+
+.ct-tailor-tree > .ct-tailor-group {
+    margin-inline-start: 0;
+}
+
+.ct-tailor-group-summary {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--pf-t--global--spacer--sm);
+    padding-block: var(--pf-t--global--spacer--xs);
+    font-weight: bold;
+}
+
+.ct-tailor-group-count {
+    font-weight: normal;
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+}
+
+.ct-tailor-rule {
+    padding-block: var(--pf-t--global--spacer--xs);
+    margin-inline-start: var(--pf-t--global--spacer--md);
+    border-block-end: 1px solid var(--pf-t--global--border--color--100);
+}
+
+.ct-tailor-rule-title {
+    font-size: var(--pf-t--global--font--size--sm);
+}
+
+.ct-tailor-values-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    gap: var(--pf-t--global--spacer--md);
+    padding-block-start: var(--pf-t--global--spacer--sm);
+}
+
+.ct-tailor-value-modified .pf-v6-c-form__label-text {
+    font-weight: bold;
+}
+
+.ct-tailor-save-actions {
+    margin-block-start: var(--pf-t--global--spacer--md);
+}
