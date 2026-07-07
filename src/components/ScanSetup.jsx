@@ -1,8 +1,7 @@
 import cockpit from 'cockpit';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
-import { Checkbox } from "@patternfly/react-core/dist/esm/components/Checkbox/index.js";
 import { Form, FormGroup } from "@patternfly/react-core/dist/esm/components/Form/index.js";
 import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
@@ -10,6 +9,7 @@ import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 
 import { detectContent, getOsRelease, getProfiles } from '../lib/oscap.js';
+import { listTailoringFiles } from '../lib/tailoring.js';
 
 const _ = cockpit.gettext;
 
@@ -32,14 +32,14 @@ function autoSelectContent(contentList, id, versionId) {
     return contentList[0] ?? '';
 }
 
-export const ScanSetup = ({ adminAllowed, onScan }) => {
+export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey }) => {
     const [contentList, setContentList] = useState([]);
     const [content, setContent] = useState('');
     const [manualPath, setManualPath] = useState(false);
     const [profiles, setProfiles] = useState([]);
     const [profile, setProfile] = useState('');
-    const [tailoringEnabled, setTailoringEnabled] = useState(false);
-    const [tailoringPath, setTailoringPath] = useState('');
+    const [tailoringFiles, setTailoringFiles] = useState([]);
+    const [tailoringSelection, setTailoringSelection] = useState('');
     const [loadingContent, setLoadingContent] = useState(true);
     const [loadingProfiles, setLoadingProfiles] = useState(false);
     const [profileError, setProfileError] = useState(null);
@@ -67,6 +67,7 @@ export const ScanSetup = ({ adminAllowed, onScan }) => {
         setProfileError(null);
         setProfiles([]);
         setProfile('');
+        setTailoringSelection('');
         getProfiles(content)
                 .then(list => {
                     if (cancelled) return;
@@ -82,15 +83,27 @@ export const ScanSetup = ({ adminAllowed, onScan }) => {
         return () => { cancelled = true };
     }, [content]);
 
-    const canScan = adminAllowed && content && profile && !loadingProfiles;
+    useEffect(() => {
+        let cancelled = false;
+        listTailoringFiles().then(list => { if (!cancelled) setTailoringFiles(list) });
+        return () => { cancelled = true };
+    }, [tailoringRefreshKey]);
+
+    const tailoringForContent = useMemo(
+        () => tailoringFiles.filter(sc => sc.sds_path === content),
+        [tailoringFiles, content]
+    );
+    const selectedTailoring = tailoringForContent.find(sc => sc.path === tailoringSelection) ?? null;
+
+    const canScan = adminAllowed && content && (selectedTailoring || profile) && !loadingProfiles;
 
     function handleSubmit(e) {
         e.preventDefault();
         if (!canScan) return;
         onScan({
             content,
-            profile,
-            tailoring: tailoringEnabled ? tailoringPath : null,
+            profile: selectedTailoring ? selectedTailoring.profile_id : profile,
+            tailoring: selectedTailoring ? selectedTailoring.path : null,
         });
     }
 
@@ -138,9 +151,9 @@ export const ScanSetup = ({ adminAllowed, onScan }) => {
                             ? <Spinner size="sm" aria-label={_("Loading profiles")} />
                             : <FormSelect
                                 id="ct-scap-profile"
-                                value={profile}
+                                value={selectedTailoring ? selectedTailoring.base_profile_id : profile}
                                 onChange={(_e, v) => setProfile(v)}
-                                isDisabled={!content || profiles.length === 0}
+                                isDisabled={!content || profiles.length === 0 || !!selectedTailoring}
                             >
                                 {profiles.length === 0 && (
                                     <FormSelectOption
@@ -156,22 +169,17 @@ export const ScanSetup = ({ adminAllowed, onScan }) => {
                         {profileError && <p className="ct-field-error">{profileError}</p>}
                     </FormGroup>
 
-                    <FormGroup fieldId="ct-scap-tailoring-check">
-                        <Checkbox
-                            id="ct-scap-tailoring-check"
-                            label={_("Use tailoring file")}
-                            isChecked={tailoringEnabled}
-                            onChange={(_e, v) => setTailoringEnabled(v)}
-                        />
-                        {tailoringEnabled && (
-                            <TextInput
-                                id="ct-scap-tailoring-path"
-                                value={tailoringPath}
-                                onChange={(_e, v) => setTailoringPath(v)}
-                                placeholder="/path/to/tailoring.xml"
-                                className="ct-tailoring-path-input"
-                            />
-                        )}
+                    <FormGroup label={_("Tailoring policy")} fieldId="ct-scap-tailoring-select">
+                        <FormSelect
+                            id="ct-scap-tailoring-select"
+                            value={tailoringSelection}
+                            onChange={(_e, v) => setTailoringSelection(v)}
+                        >
+                            <FormSelectOption value="" label={_("(No tailoring — use full profile)")} />
+                            {tailoringForContent.map(sc => (
+                                <FormSelectOption key={sc.path} value={sc.path} label={sc.name} />
+                            ))}
+                        </FormSelect>
                     </FormGroup>
                 </Form>
             </CardBody>

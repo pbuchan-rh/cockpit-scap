@@ -3,16 +3,20 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Page, PageSection } from "@patternfly/react-core/dist/esm/components/Page/index.js";
+import { Tab, Tabs, TabTitleText } from "@patternfly/react-core/dist/esm/components/Tabs/index.js";
 
 import { makeTmpdir, startScan, readResults, cleanupTmpdir } from './lib/oscap.js';
 import { parseResults } from './lib/results.js';
 import { ScanSetup } from './components/ScanSetup.jsx';
 import { ScanProgress } from './components/ScanProgress.jsx';
 import { ScanResults } from './components/ScanResults.jsx';
+import { TailoringEditor } from './components/TailoringEditor.jsx';
+import { TailoringList } from './components/TailoringList.jsx';
 
 const _ = cockpit.gettext;
 
 export const App = () => {
+    const [activeTab, setActiveTab] = useState('scan');
     const [phase, setPhase] = useState('setup'); // 'setup' | 'running' | 'results'
     const [adminAllowed, setAdminAllowed] = useState(true);
     const [error, setError] = useState(null);
@@ -20,6 +24,8 @@ export const App = () => {
     const [scanProc, setScanProc] = useState(null);
     const [tmpdir, setTmpdir] = useState(null);
     const [scanResult, setScanResult] = useState(null);
+    const [tailoringRefreshKey, setTailoringRefreshKey] = useState(0);
+    const [editingSidecar, setEditingSidecar] = useState(null);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -93,6 +99,11 @@ export const App = () => {
         setPhase('setup');
     }, [tmpdir]);
 
+    const handleTailoringSaved = useCallback(() => {
+        setTailoringRefreshKey(k => k + 1);
+        setEditingSidecar(null);
+    }, []);
+
     return (
         <Page className="pf-m-no-sidebar">
             <PageSection>
@@ -109,23 +120,39 @@ export const App = () => {
                     </Alert>
                 )}
 
-                {!adminAllowed && phase === 'setup' && (
+                {!adminAllowed && phase === 'setup' && activeTab === 'scan' && (
                     <Alert variant="info" title={_("Administrative access required")} isInline>
                         {_('Running a scan requires root. Unlock "Administrative access" above to continue.')}
                     </Alert>
                 )}
 
-                {phase === 'setup' && (
-                    <ScanSetup adminAllowed={adminAllowed} onScan={handleScan} />
-                )}
+                <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)}>
+                    <Tab eventKey="scan" title={<TabTitleText>{_("Scan")}</TabTitleText>}>
+                        <div className="ct-tab-body">
+                            {phase === 'setup' && (
+                                <ScanSetup adminAllowed={adminAllowed} onScan={handleScan} tailoringRefreshKey={tailoringRefreshKey} />
+                            )}
 
-                {phase === 'running' && (
-                    <ScanProgress output={output} onCancel={handleCancel} />
-                )}
+                            {phase === 'running' && (
+                                <ScanProgress output={output} onCancel={handleCancel} />
+                            )}
 
-                {phase === 'results' && (
-                    <ScanResults result={scanResult} tmpdir={tmpdir} onNewScan={handleNewScan} />
-                )}
+                            {phase === 'results' && (
+                                <ScanResults result={scanResult} tmpdir={tmpdir} onNewScan={handleNewScan} />
+                            )}
+                        </div>
+                    </Tab>
+                    <Tab eventKey="tailoring" title={<TabTitleText>{_("Tailoring")}</TabTitleText>}>
+                        <div className="ct-tab-body ct-tailoring-tab">
+                            <TailoringList refreshKey={tailoringRefreshKey} onEdit={setEditingSidecar} />
+                            <TailoringEditor
+                                editingSidecar={editingSidecar}
+                                onSaved={handleTailoringSaved}
+                                onCancelEdit={() => setEditingSidecar(null)}
+                            />
+                        </div>
+                    </Tab>
+                </Tabs>
             </PageSection>
         </Page>
     );
