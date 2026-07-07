@@ -40,7 +40,7 @@ function downloadXml(xmlText, filename) {
     URL.revokeObjectURL(url);
 }
 
-export const TailoringList = ({ refreshKey, onEdit }) => {
+export const TailoringList = ({ refreshKey, onEdit, onChanged }) => {
     const [sidecars, setSidecars] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -116,6 +116,7 @@ export const TailoringList = ({ refreshKey, onEdit }) => {
                 });
                 const list = await listTailoringFiles();
                 setSidecars(list);
+                onChanged?.();
             } catch (ex) {
                 setUploadError(ex.message || String(ex));
             } finally {
@@ -132,6 +133,7 @@ export const TailoringList = ({ refreshKey, onEdit }) => {
             await deleteTailoringFile(deleteTarget);
             setSidecars(prev => prev.filter(sc => sc.path !== deleteTarget.path));
             setDeleteTarget(null);
+            onChanged?.();
         } catch (ex) {
             setError(ex.message || String(ex));
         } finally {

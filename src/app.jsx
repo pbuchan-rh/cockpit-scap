@@ -104,6 +104,10 @@ export const App = () => {
         setEditingSidecar(null);
     }, []);
 
+    const handleTailoringListChanged = useCallback(() => {
+        setTailoringRefreshKey(k => k + 1);
+    }, []);
+
     return (
         <Page className="pf-m-no-sidebar">
             <PageSection>
@@ -144,7 +148,7 @@ export const App = () => {
                     </Tab>
                     <Tab eventKey="tailoring" title={<TabTitleText>{_("Tailoring")}</TabTitleText>}>
                         <div className="ct-tab-body ct-tailoring-tab">
-                            <TailoringList refreshKey={tailoringRefreshKey} onEdit={setEditingSidecar} />
+                            <TailoringList refreshKey={tailoringRefreshKey} onEdit={setEditingSidecar} onChanged={handleTailoringListChanged} />
                             <TailoringEditor
                                 editingSidecar={editingSidecar}
                                 onSaved={handleTailoringSaved}

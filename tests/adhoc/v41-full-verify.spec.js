@@ -107,9 +107,11 @@ test('V4.1 tailoring: full save/update/save-as-new/delete/upload/scan-integratio
     await page.evaluate(() => {
         document.querySelectorAll('details.ct-tailor-group').forEach(d => { d.open = true });
     });
-    const reloadedCheckbox = page.locator(`#${cbId2}`);
+    // Rule IDs contain dots (xccdf_org.ssgproject...) which CSS parses as class
+    // selectors when interpolated into a raw #id locator — use [id="..."] instead.
+    const reloadedCheckbox = page.locator(`[id="${cbId2}"]`);
     const persistedState = await reloadedCheckbox.isChecked();
-    console.log('PERSISTENCE CHECK: rule', cbId2, 'expected', await secondCheckbox.isChecked ? 'toggled' : '?', '- reloaded state is', persistedState, persistedState !== before2 ? '(PERSISTED CORRECTLY)' : '(MISMATCH — did not persist!)');
+    console.log('PERSISTENCE CHECK: rule', cbId2, 'expected', await secondCheckbox.isChecked() ? 'toggled' : '?', '- reloaded state is', persistedState, persistedState !== before2 ? '(PERSISTED CORRECTLY)' : '(MISMATCH — did not persist!)');
     await page.screenshot({ path: 'tests/adhoc/screenshots/v41f-05-persistence-check.png', fullPage: true });
 
     // ---- Step 3: Save-as-new from this edited copy ----
