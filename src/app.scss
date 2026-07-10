@@ -67,6 +67,12 @@
     min-inline-size: 0;
     padding-inline-start: var(--pf-t--global--spacer--lg);
     border-inline-start: 1px solid var(--pf-t--global--border--color--100);
+
+    // Some SSG profile descriptions embed long unbroken URLs (e.g. ANSSI-BP-028)
+    // that overflow the narrow column around the two-col/one-col breakpoint
+    // without this — min-inline-size: 0 alone only stops grid blowout, it
+    // doesn't make long tokens wrap.
+    overflow-wrap: anywhere;
 }
 
 .ct-profile-desc-heading {
