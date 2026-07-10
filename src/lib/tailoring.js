@@ -18,10 +18,12 @@ export const PY_EXTRACT_PROFILE = [
     'for _, el in ET.iterparse(sds, events=("end",)):',
     '    if el.tag == tag("Benchmark"): bench = el; break',
     'if bench is None: print("{}"); sys.exit(1)',
-    'sel_map, val_map, ptitle = {}, {}, pid',
+    'sel_map, val_map, ptitle, pdesc = {}, {}, pid, ""',
     'for p in bench.findall(tag("Profile")):',
     '    if p.get("id") != pid: continue',
     '    t = p.find(tag("title")); ptitle = text(t)',
+    '    pd_el = p.find(tag("description"))',
+    '    pdesc = " ".join("".join(pd_el.itertext()).split()) if pd_el is not None else ""',
     '    for s in p.findall(tag("select")): sel_map[s.get("idref", "")] = s.get("selected", "true").lower() == "true"',
     '    for sv in p.findall(tag("set-value")): val_map[sv.get("idref", "")] = text(sv)',
     '    break',
@@ -31,7 +33,9 @@ export const PY_EXTRACT_PROFILE = [
     '    d = el.get("selected", "true").lower() == "true"',
     '    d_el = el.find(tag("description"))',
     '    desc = " ".join("".join(d_el.itertext()).split()) if d_el is not None else ""',
-    '    return {"id": rid, "title": text(t), "severity": el.get("severity", "unknown"), "selected": is_sel(rid, d), "description": desc}',
+    '    r_el = el.find(tag("rationale"))',
+    '    rat = " ".join("".join(r_el.itertext()).split()) if r_el is not None else ""',
+    '    return {"id": rid, "title": text(t), "severity": el.get("severity", "unknown"), "selected": is_sel(rid, d), "description": desc, "rationale": rat}',
     'def proc_group(el):',
     '    t = el.find(tag("title"))',
     '    r = {"id": el.get("id", ""), "title": text(t), "groups": [], "rules": []}',
@@ -52,7 +56,7 @@ export const PY_EXTRACT_PROFILE = [
     '        if s == "": dv = vv',
     '        else: opts.append({"selector": s, "value": vv})',
     '    vs.append({"id": vid, "title": text(vt), "type": vel.get("type", "string"), "current": val_map.get(vid, dv), "default": dv, "options": opts})',
-    'print(json.dumps({"profile": {"id": pid, "title": ptitle}, "groups": gs, "rules": rs, "values": vs}))',
+    'print(json.dumps({"profile": {"id": pid, "title": ptitle, "description": pdesc}, "groups": gs, "rules": rs, "values": vs}))',
 ].join('\n');
 
 export async function extractProfile(profileId, sdsPath) {
@@ -61,6 +65,18 @@ export async function extractProfile(profileId, sdsPath) {
         { err: 'message' }
     );
     return JSON.parse(output);
+}
+
+/* Flatten extractProfile()'s arbitrarily-nested group/rule tree into a flat
+ * rule list, e.g. for building an id -> rule lookup map. */
+export function flattenProfileRules(data) {
+    const out = [];
+    function walk(groups, rules) {
+        (rules || []).forEach(r => out.push(r));
+        (groups || []).forEach(g => walk(g.groups, g.rules));
+    }
+    if (data) walk(data.groups, data.rules);
+    return out;
 }
 
 /* Emit standard XCCDF <Tailoring>/<Profile extends="..."> with <select idref=.../>
