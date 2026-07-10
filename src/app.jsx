@@ -7,6 +7,7 @@ import { Tab, Tabs, TabTitleText } from "@patternfly/react-core/dist/esm/compone
 
 import { makeTmpdir, startScan, readResults, cleanupTmpdir } from './lib/oscap.js';
 import { parseResults } from './lib/results.js';
+import { extractProfile, flattenProfileRules } from './lib/tailoring.js';
 import { ScanSetup } from './components/ScanSetup.jsx';
 import { ScanProgress } from './components/ScanProgress.jsx';
 import { ScanResults } from './components/ScanResults.jsx';
@@ -69,9 +70,23 @@ export const App = () => {
             setScanProc(null);
             console.debug('Scan finished, hasFindings:', hasFindings);
 
-            const files = await readResults(dir);
+            const [files, ruleMeta] = await Promise.all([
+                readResults(dir),
+                extractProfile(config.baseProfileId, config.content)
+                        .then(data => {
+                            const map = {};
+                            flattenProfileRules(data).forEach(r => {
+                                map[r.id] = { title: r.title, description: r.description, rationale: r.rationale };
+                            });
+                            return map;
+                        })
+                        .catch(ex => {
+                            console.error('Failed to load rule metadata for scan results:', ex.message || ex);
+                            return {};
+                        }),
+            ]);
             const parsed = parseResults(files.resultsXml);
-            setScanResult({ ...parsed, ...files });
+            setScanResult({ ...parsed, ...files, ruleMeta });
             setPhase('results');
         } catch (ex) {
             setError(ex.message || String(ex));

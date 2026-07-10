@@ -11,6 +11,7 @@ import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 
 import { generateFix } from '../lib/oscap.js';
+import { RuleDetailsBlock } from './RuleDetails.jsx';
 
 const _ = cockpit.gettext;
 
@@ -38,8 +39,54 @@ function ruleShortId(fullId) {
     return fullId.replace(/^xccdf_[^_]+_rule_/, '');
 }
 
+const FailingRuleRow = ({ rule, meta, isSelected, onToggle }) => {
+    const [expanded, setExpanded] = useState(false);
+    const hasDetails = !!(meta?.description || meta?.rationale);
+
+    return (
+        <div className="ct-rule-row">
+            <Checkbox
+                id={`ct-rule-${rule.id}`}
+                isChecked={isSelected}
+                onChange={() => onToggle(rule.id)}
+                label={
+                    <Flex
+                        alignItems={{ default: 'alignItemsCenter' }}
+                        spaceItems={{ default: 'spaceItemsSm' }}
+                    >
+                        <FlexItem>
+                            <Label color={SEVERITY_COLOR[rule.severity] ?? 'grey'} isCompact>
+                                {rule.severity}
+                            </Label>
+                        </FlexItem>
+                        <FlexItem className="ct-rule-title">
+                            {meta?.title || ruleShortId(rule.id)}
+                        </FlexItem>
+                        <FlexItem>
+                            <code className="ct-rule-id">
+                                {ruleShortId(rule.id)}
+                            </code>
+                        </FlexItem>
+                        {hasDetails && (
+                            <FlexItem>
+                                <Button
+                                    variant="link" isInline size="sm"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpanded(x => !x) }}
+                                >
+                                    {expanded ? _("Hide details") : _("Details")}
+                                </Button>
+                            </FlexItem>
+                        )}
+                    </Flex>
+                }
+            />
+            {expanded && <RuleDetailsBlock description={meta?.description} rationale={meta?.rationale} />}
+        </div>
+    );
+};
+
 export const ScanResults = ({ result, tmpdir, onNewScan }) => {
-    const { scorePercent, pass, fail, error: errorCount, failingRules, reportHtml, resultsXmlGz, arfXmlGz } = result;
+    const { scorePercent, pass, fail, error: errorCount, failingRules, reportHtml, resultsXmlGz, arfXmlGz, ruleMeta } = result;
 
     const allSeverities = useMemo(
         () => [...new Set(failingRules.map(r => r.severity))],
@@ -283,33 +330,13 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                             </span>
                                         </div>
                                         {visibleRules.map(rule => (
-                                            <div key={rule.id} className="ct-rule-row">
-                                                <Checkbox
-                                                    id={`ct-rule-${rule.id}`}
-                                                    isChecked={selectedRuleIds.has(rule.id)}
-                                                    onChange={() => toggleRule(rule.id)}
-                                                    label={
-                                                        <Flex
-                                                            alignItems={{ default: 'alignItemsCenter' }}
-                                                            spaceItems={{ default: 'spaceItemsSm' }}
-                                                        >
-                                                            <FlexItem>
-                                                                <Label
-                                                                    color={SEVERITY_COLOR[rule.severity] ?? 'grey'}
-                                                                    isCompact
-                                                                >
-                                                                    {rule.severity}
-                                                                </Label>
-                                                            </FlexItem>
-                                                            <FlexItem>
-                                                                <code className="ct-rule-id">
-                                                                    {ruleShortId(rule.id)}
-                                                                </code>
-                                                            </FlexItem>
-                                                        </Flex>
-                                                    }
-                                                />
-                                            </div>
+                                            <FailingRuleRow
+                                                key={rule.id}
+                                                rule={rule}
+                                                meta={ruleMeta?.[rule.id]}
+                                                isSelected={selectedRuleIds.has(rule.id)}
+                                                onToggle={toggleRule}
+                                            />
                                         ))}
                                     </div>
                                 )}
