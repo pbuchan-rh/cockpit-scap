@@ -10,6 +10,7 @@ import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js
 
 import { detectContent, getOsRelease, getProfiles } from '../lib/oscap.js';
 import { listTailoringFiles } from '../lib/tailoring.js';
+import { ProfileDescriptionPanel } from './ProfileDescriptionPanel.jsx';
 
 const _ = cockpit.gettext;
 
@@ -104,6 +105,7 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey }) => {
             content,
             profile: selectedTailoring ? selectedTailoring.profile_id : profile,
             tailoring: selectedTailoring ? selectedTailoring.path : null,
+            baseProfileId: selectedTailoring ? selectedTailoring.base_profile_id : profile,
         });
     }
 
@@ -115,73 +117,81 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey }) => {
                 </CardTitle>
             </CardHeader>
             <CardBody>
-                <Form onSubmit={handleSubmit} className="ct-scan-form">
-                    <FormGroup label={_("Content file")} fieldId="ct-scap-content">
-                        {loadingContent
-                            ? <Spinner size="sm" aria-label={_("Loading content")} />
-                            : manualPath
-                                ? <TextInput
-                                    id="ct-scap-content"
-                                    value={content}
-                                    onChange={(_e, v) => setContent(v)}
-                                    placeholder="/usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml"
-                                />
-                                : <FormSelect
-                                    id="ct-scap-content"
-                                    value={content}
-                                    onChange={(_e, v) => setContent(v)}
+                <div className="ct-two-col-form">
+                    <div className="ct-form-col">
+                        <Form onSubmit={handleSubmit} className="ct-scan-form">
+                            <FormGroup label={_("Content file")} fieldId="ct-scap-content">
+                                {loadingContent
+                                    ? <Spinner size="sm" aria-label={_("Loading content")} />
+                                    : manualPath
+                                        ? <TextInput
+                                            id="ct-scap-content"
+                                            value={content}
+                                            onChange={(_e, v) => setContent(v)}
+                                            placeholder="/usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml"
+                                        />
+                                        : <FormSelect
+                                            id="ct-scap-content"
+                                            value={content}
+                                            onChange={(_e, v) => setContent(v)}
+                                        >
+                                            {contentList.length === 0 && (
+                                                <FormSelectOption value="" label={_("No content found in /usr/share/xml/scap/ssg/content/")} isDisabled />
+                                            )}
+                                            {contentList.map(path => (
+                                                <FormSelectOption key={path} value={path} label={sdsDisplayName(path)} />
+                                            ))}
+                                        </FormSelect>}
+                                <Button
+                                    variant="link" isInline className="ct-path-toggle"
+                                    onClick={() => setManualPath(m => !m)}
                                 >
-                                    {contentList.length === 0 && (
-                                        <FormSelectOption value="" label={_("No content found in /usr/share/xml/scap/ssg/content/")} isDisabled />
-                                    )}
-                                    {contentList.map(path => (
-                                        <FormSelectOption key={path} value={path} label={sdsDisplayName(path)} />
+                                    {manualPath ? _("Use auto-detected content") : _("Enter path manually")}
+                                </Button>
+                            </FormGroup>
+
+                            <FormGroup label={_("Profile")} fieldId="ct-scap-profile">
+                                {loadingProfiles
+                                    ? <Spinner size="sm" aria-label={_("Loading profiles")} />
+                                    : <FormSelect
+                                        id="ct-scap-profile"
+                                        value={selectedTailoring ? selectedTailoring.base_profile_id : profile}
+                                        onChange={(_e, v) => setProfile(v)}
+                                        isDisabled={!content || profiles.length === 0 || !!selectedTailoring}
+                                    >
+                                        {profiles.length === 0 && (
+                                            <FormSelectOption
+                                                value=""
+                                                label={profileError ? _("Failed to load profiles") : _("No profiles found")}
+                                                isDisabled
+                                            />
+                                        )}
+                                        {profiles.map(p => (
+                                            <FormSelectOption key={p.id} value={p.id} label={p.title || p.id} />
+                                        ))}
+                                    </FormSelect>}
+                                {profileError && <p className="ct-field-error">{profileError}</p>}
+                            </FormGroup>
+
+                            <FormGroup label={_("Tailoring policy")} fieldId="ct-scap-tailoring-select">
+                                <FormSelect
+                                    id="ct-scap-tailoring-select"
+                                    value={tailoringSelection}
+                                    onChange={(_e, v) => setTailoringSelection(v)}
+                                >
+                                    <FormSelectOption value="" label={_("(No tailoring — use full profile)")} />
+                                    {tailoringForContent.map(sc => (
+                                        <FormSelectOption key={sc.path} value={sc.path} label={sc.name} />
                                     ))}
-                                </FormSelect>}
-                        <Button
-                            variant="link" isInline className="ct-path-toggle"
-                            onClick={() => setManualPath(m => !m)}
-                        >
-                            {manualPath ? _("Use auto-detected content") : _("Enter path manually")}
-                        </Button>
-                    </FormGroup>
-
-                    <FormGroup label={_("Profile")} fieldId="ct-scap-profile">
-                        {loadingProfiles
-                            ? <Spinner size="sm" aria-label={_("Loading profiles")} />
-                            : <FormSelect
-                                id="ct-scap-profile"
-                                value={selectedTailoring ? selectedTailoring.base_profile_id : profile}
-                                onChange={(_e, v) => setProfile(v)}
-                                isDisabled={!content || profiles.length === 0 || !!selectedTailoring}
-                            >
-                                {profiles.length === 0 && (
-                                    <FormSelectOption
-                                        value=""
-                                        label={profileError ? _("Failed to load profiles") : _("No profiles found")}
-                                        isDisabled
-                                    />
-                                )}
-                                {profiles.map(p => (
-                                    <FormSelectOption key={p.id} value={p.id} label={p.title || p.id} />
-                                ))}
-                            </FormSelect>}
-                        {profileError && <p className="ct-field-error">{profileError}</p>}
-                    </FormGroup>
-
-                    <FormGroup label={_("Tailoring policy")} fieldId="ct-scap-tailoring-select">
-                        <FormSelect
-                            id="ct-scap-tailoring-select"
-                            value={tailoringSelection}
-                            onChange={(_e, v) => setTailoringSelection(v)}
-                        >
-                            <FormSelectOption value="" label={_("(No tailoring — use full profile)")} />
-                            {tailoringForContent.map(sc => (
-                                <FormSelectOption key={sc.path} value={sc.path} label={sc.name} />
-                            ))}
-                        </FormSelect>
-                    </FormGroup>
-                </Form>
+                                </FormSelect>
+                            </FormGroup>
+                        </Form>
+                    </div>
+                    <ProfileDescriptionPanel
+                        profileId={selectedTailoring ? selectedTailoring.base_profile_id : profile}
+                        sdsPath={content}
+                    />
+                </div>
             </CardBody>
             <CardFooter>
                 <Button
