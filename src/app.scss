@@ -45,6 +45,44 @@
     background: var(--pf-t--global--background--color--secondary--default);
 }
 
+// Two-column profile-picker layout: form fields on the left, base-profile
+// description on the right. Shared by ScanSetup and TailoringEditor.
+.ct-two-col-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--pf-t--global--spacer--lg);
+}
+
+@media (width <= 900px) {
+    .ct-two-col-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ct-form-col {
+    min-inline-size: 0;
+}
+
+.ct-profile-desc-col {
+    min-inline-size: 0;
+    padding-inline-start: var(--pf-t--global--spacer--lg);
+    border-inline-start: 1px solid var(--pf-t--global--border--color--100);
+}
+
+.ct-profile-desc-heading {
+    font-weight: var(--pf-t--global--font--weight--body--bold);
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.ct-profile-desc-placeholder {
+    color: var(--pf-t--global--text--color--subtle);
+    font-style: italic;
+}
+
 // Scan setup form
 .ct-scan-form {
     max-inline-size: 40rem;
@@ -114,9 +152,33 @@
     }
 }
 
+.ct-rule-title {
+    font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
 .ct-rule-id {
     font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
     word-break: break-all;
+}
+
+// Description/rationale block, shown on click-to-expand for both a failing
+// scan result row and a tailoring-tree rule row.
+.ct-rule-details {
+    margin-inline-start: var(--pf-t--global--spacer--lg);
+    margin-block-start: var(--pf-t--global--spacer--xs);
+    padding-inline-start: var(--pf-t--global--spacer--sm);
+    border-inline-start: 1px solid var(--pf-t--global--border--color--100);
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+}
+
+.ct-rule-details p {
+    margin-block-end: var(--pf-t--global--spacer--xs);
+
+    &:last-child {
+        margin-block-end: 0;
+    }
 }
 
 // Severity filter labels — click to toggle
@@ -182,8 +244,7 @@
     margin-block-end: var(--pf-t--global--spacer--sm);
 }
 
-// Rule tree — plain nested <details>/<summary>, proven to handle
-// hundreds-of-rules SSG profiles without perf problems (old main reference).
+// Rule tree — PatternFly TreeView, scrollable within a bordered frame.
 .ct-tailor-tree {
     max-block-size: 32rem;
     overflow-y: auto;
@@ -192,37 +253,22 @@
     padding: var(--pf-t--global--spacer--sm);
 }
 
-.ct-tailor-group {
-    margin-inline-start: var(--pf-t--global--spacer--md);
-}
-
-.ct-tailor-tree > .ct-tailor-group {
-    margin-inline-start: 0;
-}
-
-.ct-tailor-group-summary {
-    cursor: pointer;
+.ct-tailor-rule-content {
     display: flex;
-    align-items: center;
-    gap: var(--pf-t--global--spacer--sm);
-    padding-block: var(--pf-t--global--spacer--xs);
-    font-weight: bold;
-}
-
-.ct-tailor-group-count {
-    font-weight: normal;
-    font-size: var(--pf-t--global--font--size--sm);
-    color: var(--pf-t--global--text--color--subtle);
-}
-
-.ct-tailor-rule {
-    padding-block: var(--pf-t--global--spacer--xs);
-    margin-inline-start: var(--pf-t--global--spacer--md);
-    border-block-end: 1px solid var(--pf-t--global--border--color--100);
+    flex-direction: column;
+    gap: var(--pf-t--global--spacer--xs);
+    inline-size: 100%;
 }
 
 .ct-tailor-rule-title {
     font-size: var(--pf-t--global--font--size--sm);
+}
+
+// .ct-rule-details itself is shared with ScanResults' failing-rule rows;
+// only the left margin needs overriding here since the TreeView node
+// already indents this content.
+.ct-tailor-rule-content .ct-rule-details {
+    margin-inline-start: 0;
 }
 
 .ct-tailor-values-grid {
@@ -238,4 +284,54 @@
 
 .ct-tailor-save-actions {
     margin-block-start: var(--pf-t--global--spacer--md);
+}
+
+// Change-summary panel — diff-style list of rule/value deltas from the
+// base profile, with a clipboard-copy export action.
+.ct-tailor-summary {
+    margin-block-start: var(--pf-t--global--spacer--md);
+    padding: var(--pf-t--global--spacer--md);
+    border: 1px solid var(--pf-t--global--border--color--100);
+    border-radius: var(--pf-t--global--border--radius--sm);
+}
+
+.ct-tailor-summary-section {
+    margin-block-start: var(--pf-t--global--spacer--sm);
+}
+
+.ct-tailor-summary-section-title {
+    font-weight: var(--pf-t--global--font--weight--body--bold);
+    font-size: var(--pf-t--global--font--size--sm);
+    margin-block-end: var(--pf-t--global--spacer--xs);
+}
+
+.ct-tailor-sum-row {
+    display: flex;
+    align-items: center;
+    gap: var(--pf-t--global--spacer--sm);
+    padding-block: var(--pf-t--global--spacer--xs);
+    font-size: var(--pf-t--global--font--size--sm);
+    border-block-end: 1px solid var(--pf-t--global--border--color--100);
+
+    &:last-child {
+        border-block-end: none;
+    }
+}
+
+.ct-tailor-sum-enabled {
+    color: var(--pf-t--global--color--status--success--default);
+    font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.ct-tailor-sum-disabled {
+    color: var(--pf-t--global--color--status--danger--default);
+    font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.ct-tailor-sum-title {
+    flex: 1;
+}
+
+.ct-tailor-sum-val-change {
+    color: var(--pf-t--global--text--color--subtle);
 }
