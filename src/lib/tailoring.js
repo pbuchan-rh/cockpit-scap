@@ -1,5 +1,7 @@
 import cockpit from 'cockpit';
 
+import { ensureUserDir, getUser, makeTimestamp } from './homedir.js';
+
 const TAILORING_SUBDIR = 'SCAP/tailoring';
 
 /* Parse an SDS file, extract a profile's rule tree and values.
@@ -132,36 +134,15 @@ export function parseTailoringXml(xmlContent) {
     return { ruleChanges, valueChanges };
 }
 
-function makeTimestamp() {
-    return new Date().toISOString()
-            .replace(/\.\d{3}Z$/, '')
-            .replace(/:/g, '-');
-}
-
 function safeSlug(title) {
     return title.toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-|-$/g, '');
 }
 
-let cachedUser = null;
-async function getUser() {
-    if (!cachedUser) cachedUser = await cockpit.user();
-    return cachedUser;
-}
-
 export async function getTailoringDir() {
     const user = await getUser();
     return `${user.home}/${TAILORING_SUBDIR}`;
-}
-
-/* Root (Cockpit's superuser bridge) writes as root, then chown to the owning
- * user — per-user-private homedir data, tighter than old main's /var/lib
- * world-readable 644: chmod 700 on the directory, 600 on files. */
-async function ensureTailoringDir(dir, username) {
-    await cockpit.spawn(['mkdir', '-p', dir], { superuser: 'require', err: 'message' });
-    await cockpit.spawn(['chown', `${username}:${username}`, dir], { superuser: 'require', err: 'message' });
-    await cockpit.spawn(['chmod', '700', dir], { superuser: 'require', err: 'message' });
 }
 
 /* Write XML + JSON sidecar, chown/chmod, then read the XML back and compare
@@ -231,7 +212,7 @@ export async function saveNewTailoring({ baseProfileId, baseProfileTitle, newPro
         rules_modified: Object.keys(ruleChanges).length,
     };
 
-    await ensureTailoringDir(dir, user.name);
+    await ensureUserDir(dir, user.name);
     await writeTailoringFiles(xmlPath, jsonPath, xml, sidecar, user.name);
     return sidecar;
 }
@@ -278,7 +259,7 @@ export async function saveUploadedTailoring({ xmlContent, sdsPath, profileId, ba
         rules_modified: Object.keys(ruleChanges).length,
     };
 
-    await ensureTailoringDir(dir, user.name);
+    await ensureUserDir(dir, user.name);
     await writeTailoringFiles(xmlPath, jsonPath, xmlContent, sidecar, user.name);
     return sidecar;
 }

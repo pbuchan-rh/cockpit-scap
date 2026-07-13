@@ -105,6 +105,7 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey }) => {
             content,
             profile: selectedTailoring ? selectedTailoring.profile_id : profile,
             tailoring: selectedTailoring ? selectedTailoring.path : null,
+            tailoringName: selectedTailoring ? selectedTailoring.name : null,
             baseProfileId: selectedTailoring ? selectedTailoring.base_profile_id : profile,
         });
     }

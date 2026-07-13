@@ -8,9 +8,11 @@ import { Tab, Tabs, TabTitleText } from "@patternfly/react-core/dist/esm/compone
 import { makeTmpdir, startScan, readResults, cleanupTmpdir } from './lib/oscap.js';
 import { parseResults } from './lib/results.js';
 import { extractProfile, flattenProfileRules } from './lib/tailoring.js';
+import { saveScan, readSavedScanFiles } from './lib/scanHistory.js';
 import { ScanSetup } from './components/ScanSetup.jsx';
 import { ScanProgress } from './components/ScanProgress.jsx';
 import { ScanResults } from './components/ScanResults.jsx';
+import { ScanHistory } from './components/ScanHistory.jsx';
 import { TailoringEditor } from './components/TailoringEditor.jsx';
 import { TailoringList } from './components/TailoringList.jsx';
 
@@ -27,6 +29,8 @@ export const App = () => {
     const [scanResult, setScanResult] = useState(null);
     const [tailoringRefreshKey, setTailoringRefreshKey] = useState(0);
     const [editingSidecar, setEditingSidecar] = useState(null);
+    const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+    const [historySaveError, setHistorySaveError] = useState(null);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -70,22 +74,38 @@ export const App = () => {
             setScanProc(null);
             console.debug('Scan finished, hasFindings:', hasFindings);
 
-            const [files, ruleMeta] = await Promise.all([
+            const [files, extracted] = await Promise.all([
                 readResults(dir),
                 extractProfile(config.baseProfileId, config.content)
-                        .then(data => {
-                            const map = {};
-                            flattenProfileRules(data).forEach(r => {
-                                map[r.id] = { title: r.title, description: r.description, rationale: r.rationale, cce: r.cce, automated: r.hasFix };
-                            });
-                            return map;
-                        })
                         .catch(ex => {
                             console.error('Failed to load rule metadata for scan results:', ex.message || ex);
-                            return {};
+                            return null;
                         }),
             ]);
+            const ruleMeta = {};
+            if (extracted) {
+                flattenProfileRules(extracted).forEach(r => {
+                    ruleMeta[r.id] = { title: r.title, description: r.description, rationale: r.rationale, cce: r.cce, automated: r.hasFix };
+                });
+            }
             const parsed = parseResults(files.resultsXml);
+
+            try {
+                await saveScan({
+                    profileId: config.profile,
+                    profileTitle: config.tailoringName || extracted?.profile?.title || config.profile,
+                    sdsPath: config.content,
+                    tailoringFile: config.tailoringName || null,
+                    parsed,
+                    files,
+                });
+                setHistorySaveError(null);
+            } catch (ex) {
+                console.error('Failed to save scan to history:', ex.message || ex);
+                setHistorySaveError(ex.message || String(ex));
+            }
+            setHistoryRefreshKey(k => k + 1);
+
             setScanResult({ ...parsed, ...files, ruleMeta });
             setPhase('results');
         } catch (ex) {
@@ -114,6 +134,15 @@ export const App = () => {
         setPhase('setup');
     }, [tmpdir]);
 
+    const handleViewSavedScan = useCallback(async (manifest) => {
+        const files = await readSavedScanFiles(manifest);
+        const parsed = parseResults(files.resultsXml);
+        setError(null);
+        setScanResult({ ...parsed, ...files, ruleMeta: {} });
+        setTmpdir(null);
+        setPhase('results');
+    }, []);
+
     const handleTailoringSaved = useCallback(() => {
         setTailoringRefreshKey(k => k + 1);
         setEditingSidecar(null);
@@ -139,6 +168,19 @@ export const App = () => {
                     </Alert>
                 )}
 
+                {historySaveError && (
+                    <Alert
+                        variant="warning"
+                        title={_("Scan completed, but couldn't be saved to history")}
+                        isInline
+                        actionClose={
+                            <Button variant="plain" onClick={() => setHistorySaveError(null)}>×</Button>
+                        }
+                    >
+                        {historySaveError}
+                    </Alert>
+                )}
+
                 {!adminAllowed && phase === 'setup' && activeTab === 'scan' && (
                     <Alert variant="info" title={_("Administrative access required")} isInline>
                         {_('Running a scan requires root. Unlock "Administrative access" above to continue.')}
@@ -159,6 +201,8 @@ export const App = () => {
                             {phase === 'results' && (
                                 <ScanResults result={scanResult} tmpdir={tmpdir} onNewScan={handleNewScan} />
                             )}
+
+                            <ScanHistory refreshKey={historyRefreshKey} onView={handleViewSavedScan} />
                         </div>
                     </Tab>
                     <Tab eventKey="tailoring" title={<TabTitleText>{_("Tailoring")}</TabTitleText>}>

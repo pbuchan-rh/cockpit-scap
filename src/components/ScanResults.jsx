@@ -54,7 +54,10 @@ const FailingRuleRow = ({ rule, meta, tmpdir, isSelected, onToggle }) => {
     const [fixBusy, setFixBusy] = useState(null); // 'bash' | 'ansible' download-in-flight
 
     const hasDetails = !!(meta?.description || meta?.rationale);
-    const hasFix = !!meta?.automated;
+    // Fix generation shells out to oscap against tmpdir's results.xml — not
+    // available for a saved-scan view (readSavedScanFiles() only returns
+    // saved output, no live results.xml oscap can regenerate a fix from).
+    const hasFix = !!meta?.automated && !!tmpdir;
 
     async function handleToggleFix(e) {
         e.preventDefault();
@@ -355,7 +358,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                 </FlexItem>
                                 <FlexItem>
                                     <Button variant="primary" size="sm" onClick={onNewScan}>
-                                        {_("New Scan")}
+                                        {tmpdir ? _("New Scan") : _("Close")}
                                     </Button>
                                 </FlexItem>
                             </Flex>
@@ -407,32 +410,34 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                 : (
                     <Card>
                         <CardHeader
-                            actions={{
-                                actions: (
-                                    <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-                                        <FlexItem>
-                                            <Button
-                                                variant="secondary" size="sm"
-                                                isLoading={busy === 'bash'}
-                                                isDisabled={!!busy || selectedRuleIds.size === 0}
-                                                onClick={() => handleDownloadFix('bash')}
-                                            >
-                                                {_("Download Bash Fix")}
-                                            </Button>
-                                        </FlexItem>
-                                        <FlexItem>
-                                            <Button
-                                                variant="secondary" size="sm"
-                                                isLoading={busy === 'ansible'}
-                                                isDisabled={!!busy || selectedRuleIds.size === 0}
-                                                onClick={() => handleDownloadFix('ansible')}
-                                            >
-                                                {_("Download Ansible Fix")}
-                                            </Button>
-                                        </FlexItem>
-                                    </Flex>
-                                ),
-                            }}
+                            actions={tmpdir
+                                ? {
+                                    actions: (
+                                        <Flex spaceItems={{ default: 'spaceItemsSm' }}>
+                                            <FlexItem>
+                                                <Button
+                                                    variant="secondary" size="sm"
+                                                    isLoading={busy === 'bash'}
+                                                    isDisabled={!!busy || selectedRuleIds.size === 0}
+                                                    onClick={() => handleDownloadFix('bash')}
+                                                >
+                                                    {_("Download Bash Fix")}
+                                                </Button>
+                                            </FlexItem>
+                                            <FlexItem>
+                                                <Button
+                                                    variant="secondary" size="sm"
+                                                    isLoading={busy === 'ansible'}
+                                                    isDisabled={!!busy || selectedRuleIds.size === 0}
+                                                    onClick={() => handleDownloadFix('ansible')}
+                                                >
+                                                    {_("Download Ansible Fix")}
+                                                </Button>
+                                            </FlexItem>
+                                        </Flex>
+                                    ),
+                                }
+                                : undefined}
                         >
                             <CardTitle>
                                 <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
@@ -470,24 +475,26 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                 ? <p>{_("No rules match the current severity filter.")}</p>
                                 : (
                                     <div className="ct-rules-list">
-                                        <div className="ct-rules-controls">
-                                            <Button
-                                                variant="link" isInline
-                                                onClick={() => setSelectedRuleIds(new Set(visibleRules.map(r => r.id)))}
-                                            >
-                                                {_("Select All")}
-                                            </Button>
-                                            {' · '}
-                                            <Button
-                                                variant="link" isInline
-                                                onClick={() => setSelectedRuleIds(new Set())}
-                                            >
-                                                {_("Deselect All")}
-                                            </Button>
-                                            <span className="ct-selected-count">
-                                                {cockpit.format(_(" ($0 selected)"), selectedRuleIds.size)}
-                                            </span>
-                                        </div>
+                                        {tmpdir && (
+                                            <div className="ct-rules-controls">
+                                                <Button
+                                                    variant="link" isInline
+                                                    onClick={() => setSelectedRuleIds(new Set(visibleRules.map(r => r.id)))}
+                                                >
+                                                    {_("Select All")}
+                                                </Button>
+                                                {' · '}
+                                                <Button
+                                                    variant="link" isInline
+                                                    onClick={() => setSelectedRuleIds(new Set())}
+                                                >
+                                                    {_("Deselect All")}
+                                                </Button>
+                                                <span className="ct-selected-count">
+                                                    {cockpit.format(_(" ($0 selected)"), selectedRuleIds.size)}
+                                                </span>
+                                            </div>
+                                        )}
                                         {groups.map(g => (
                                             <ExpandableSection
                                                 key={g.key}
@@ -516,11 +523,13 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                     </div>
                                 )}
                         </CardBody>
-                        <CardFooter>
-                            <span className="ct-fix-hint">
-                                {_("Select rules above to include in the fix scripts.")}
-                            </span>
-                        </CardFooter>
+                        {tmpdir && (
+                            <CardFooter>
+                                <span className="ct-fix-hint">
+                                    {_("Select rules above to include in the fix scripts.")}
+                                </span>
+                            </CardFooter>
+                        )}
                     </Card>
                 )}
         </>
