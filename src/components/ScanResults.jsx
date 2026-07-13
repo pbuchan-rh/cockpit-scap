@@ -248,9 +248,28 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
     }
 
     function handleViewReport() {
+        // Open synchronously (before any async work) so the browser doesn't
+        // treat this as an unsolicited popup. A blob: URL isn't used here —
+        // it inherits a stripped-down CSP (no unsafe-inline) that blocks the
+        // report's inline <style>/<script>, so hand the report off via
+        // IndexedDB to a same-origin viewer.html instead, which gets
+        // Cockpit's real page CSP.
+        const popup = window.open('about:blank', '_blank');
+        const viewerUrl = new URL('viewer.html', window.location.href).href;
         const blob = new Blob([reportHtml], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+
+        const req = indexedDB.open('cockpit-scap', 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('reports');
+        req.onerror = () => { if (popup) popup.close(); };
+        req.onsuccess = () => {
+            const db = req.result;
+            const tx = db.transaction('reports', 'readwrite');
+            tx.objectStore('reports').put(blob, 'current');
+            tx.oncomplete = () => {
+                db.close();
+                if (popup) popup.location = viewerUrl;
+            };
+        };
     }
 
     function handleDownloadResultsXml() {

@@ -3,6 +3,8 @@
         "cockpit": "286"
     },
 
+    "content-security-policy": "style-src 'self' 'unsafe-inline'",
+
     "conditions": [
         { "path-exists": "/usr/bin/oscap" }
     ],

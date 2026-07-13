@@ -116,12 +116,13 @@ const context = await esbuild.context({
                 build.onEnd((output, _outputFiles) => {
                     if (output?.errors.length === 0) {
                         fs.copyFileSync('./src/manifest.json', './dist/manifest.json');
+                        fs.copyFileSync('./src/viewer.js', './dist/viewer.js');
                         // Cache-bust script/link tags with a fresh value every build —
                         // a static ?v=N left unbumped means browsers can silently keep
                         // serving a stale bundle after a redeploy until a hard refresh.
-                        const html = fs.readFileSync('./src/index.html', 'utf8')
-                                .replace(/\?v=\d+/g, `?v=${Date.now()}`);
-                        fs.writeFileSync('./dist/index.html', html);
+                        const cacheBust = html => html.replace(/\?v=\d+/g, `?v=${Date.now()}`);
+                        fs.writeFileSync('./dist/index.html', cacheBust(fs.readFileSync('./src/index.html', 'utf8')));
+                        fs.writeFileSync('./dist/viewer.html', cacheBust(fs.readFileSync('./src/viewer.html', 'utf8')));
                     }
                 });
             }
