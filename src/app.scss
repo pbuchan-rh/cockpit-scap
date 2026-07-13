@@ -216,6 +216,41 @@
     }
 }
 
+// Inline per-rule remediation preview, shown on click-to-expand next to
+// a failing rule's "Fix" toggle.
+.ct-rule-rem {
+    margin-inline-start: var(--pf-t--global--spacer--lg);
+    margin-block-start: var(--pf-t--global--spacer--xs);
+    padding-inline-start: var(--pf-t--global--spacer--sm);
+    border-inline-start: 1px solid var(--pf-t--global--border--color--100);
+}
+
+.ct-rule-rem-loading {
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+}
+
+.ct-rule-rem-pre {
+    font-family: var(--pf-t--global--font--family--mono);
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+    background: var(--pf-t--global--background--color--secondary--default);
+    border: 1px solid var(--pf-t--global--border--color--100);
+    border-radius: var(--pf-t--global--border--radius--tiny);
+    padding: var(--pf-t--global--spacer--sm);
+    margin-block-end: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-block-size: 220px;
+    overflow-y: auto;
+}
+
+.ct-rule-rem-dl-row {
+    display: flex;
+    gap: var(--pf-t--global--spacer--sm);
+    margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
 // Severity filter labels — click to toggle
 .ct-sev-filter {
     cursor: pointer;

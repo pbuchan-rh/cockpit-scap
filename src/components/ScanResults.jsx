@@ -45,9 +45,53 @@ function ruleShortId(fullId) {
     return fullId.replace(/^xccdf_[^_]+_rule_/, '');
 }
 
-const FailingRuleRow = ({ rule, meta, isSelected, onToggle }) => {
+const FailingRuleRow = ({ rule, meta, tmpdir, isSelected, onToggle }) => {
     const [expanded, setExpanded] = useState(false);
+    const [fixExpanded, setFixExpanded] = useState(false);
+    const [fixText, setFixText] = useState(null);
+    const [fixLoading, setFixLoading] = useState(false);
+    const [fixLoadError, setFixLoadError] = useState(null);
+    const [fixBusy, setFixBusy] = useState(null); // 'bash' | 'ansible' download-in-flight
+
     const hasDetails = !!(meta?.description || meta?.rationale);
+    const hasFix = !!meta?.automated;
+
+    async function handleToggleFix(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const next = !fixExpanded;
+        setFixExpanded(next);
+        if (next && fixText === null && !fixLoading) {
+            setFixLoading(true);
+            setFixLoadError(null);
+            try {
+                const script = await generateFix(tmpdir, [rule.id], 'bash');
+                setFixText(script);
+            } catch (ex) {
+                setFixLoadError(ex.message || String(ex));
+            } finally {
+                setFixLoading(false);
+            }
+        }
+    }
+
+    async function handleDownloadRuleFix(e, fixType) {
+        e.preventDefault();
+        e.stopPropagation();
+        setFixBusy(fixType);
+        setFixLoadError(null);
+        try {
+            const script = fixType === 'bash' && fixText !== null ? fixText : await generateFix(tmpdir, [rule.id], fixType);
+            const ext = fixType === 'bash' ? '.sh' : '.yml';
+            const mimeType = fixType === 'bash' ? 'text/x-shellscript' : 'text/yaml';
+            const idSuffix = meta?.cce || ruleShortId(rule.id);
+            downloadBlob(script, `fix-${idSuffix}${ext}`, mimeType);
+        } catch (ex) {
+            setFixLoadError(ex.message || String(ex));
+        } finally {
+            setFixBusy(null);
+        }
+    }
 
     return (
         <div className="ct-rule-row">
@@ -97,10 +141,48 @@ const FailingRuleRow = ({ rule, meta, isSelected, onToggle }) => {
                                 </Button>
                             </FlexItem>
                         )}
+                        {hasFix && (
+                            <FlexItem>
+                                <Button variant="link" isInline size="sm" onClick={handleToggleFix}>
+                                    {fixExpanded ? _("Hide fix") : _("Fix")}
+                                </Button>
+                            </FlexItem>
+                        )}
                     </Flex>
                 }
             />
             {expanded && <RuleDetailsBlock description={meta?.description} rationale={meta?.rationale} />}
+            {fixExpanded && (
+                <div className="ct-rule-rem">
+                    {fixLoading && <p className="ct-rule-rem-loading">{_("Generating remediation preview…")}</p>}
+                    {fixLoadError && (
+                        <Alert variant="danger" isInline title={_("Fix generation failed")}>
+                            {fixLoadError}
+                        </Alert>
+                    )}
+                    {!fixLoading && fixText !== null && (
+                        <>
+                            <pre className="ct-rule-rem-pre">{fixText}</pre>
+                            <div className="ct-rule-rem-dl-row">
+                                <Button
+                                    variant="link" isInline size="sm"
+                                    isLoading={fixBusy === 'bash'} isDisabled={!!fixBusy}
+                                    onClick={(e) => handleDownloadRuleFix(e, 'bash')}
+                                >
+                                    {_("Download .sh")}
+                                </Button>
+                                <Button
+                                    variant="link" isInline size="sm"
+                                    isLoading={fixBusy === 'ansible'} isDisabled={!!fixBusy}
+                                    onClick={(e) => handleDownloadRuleFix(e, 'ansible')}
+                                >
+                                    {_("Download .yml")}
+                                </Button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
@@ -405,6 +487,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                                         key={rule.id}
                                                         rule={rule}
                                                         meta={ruleMeta?.[rule.id]}
+                                                        tmpdir={tmpdir}
                                                         isSelected={selectedRuleIds.has(rule.id)}
                                                         onToggle={toggleRule}
                                                     />
