@@ -76,7 +76,7 @@ export const App = () => {
                         .then(data => {
                             const map = {};
                             flattenProfileRules(data).forEach(r => {
-                                map[r.id] = { title: r.title, description: r.description, rationale: r.rationale };
+                                map[r.id] = { title: r.title, description: r.description, rationale: r.rationale, cce: r.cce, automated: r.hasFix };
                             });
                             return map;
                         })

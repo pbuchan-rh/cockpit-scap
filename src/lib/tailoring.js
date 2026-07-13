@@ -6,8 +6,10 @@ const TAILORING_SUBDIR = 'SCAP/tailoring';
  * Uses iterparse with early break to avoid loading the ~35MB OVAL section.
  * Args: sys.argv[1]=profileId  sys.argv[2]=sdsPath
  * Output: JSON {profile, groups, rules, values}
- * Ported verbatim from the old main branch (src/index.js:77-122) — pure
- * stdlib Python, framework-agnostic, needs no changes for the rewrite. */
+ * Based on the old main branch (src/index.js:77-122) — pure stdlib Python,
+ * framework-agnostic. Rules also carry cce/hasFix (ident/fix extraction
+ * ported from old main's PY_EXTRACT_FAILING_RULES, src/index.js:127-181)
+ * so ScanResults can render the CCE tag and Automated/Manual badge. */
 export const PY_EXTRACT_PROFILE = [
     'import xml.etree.ElementTree as ET, json, sys',
     'NS = "http://checklists.nist.gov/xccdf/1.2"',
@@ -35,7 +37,10 @@ export const PY_EXTRACT_PROFILE = [
     '    desc = " ".join("".join(d_el.itertext()).split()) if d_el is not None else ""',
     '    r_el = el.find(tag("rationale"))',
     '    rat = " ".join("".join(r_el.itertext()).split()) if r_el is not None else ""',
-    '    return {"id": rid, "title": text(t), "severity": el.get("severity", "unknown"), "selected": is_sel(rid, d), "description": desc, "rationale": rat}',
+    '    ci = next((i for i in el.findall(tag("ident")) if "cce" in (i.get("system","")).lower()), None)',
+    '    cce = ci.text.strip() if ci is not None and ci.text else ""',
+    '    has_fix = el.find(tag("fix")) is not None',
+    '    return {"id": rid, "title": text(t), "severity": el.get("severity", "unknown"), "selected": is_sel(rid, d), "description": desc, "rationale": rat, "cce": cce, "hasFix": has_fix}',
     'def proc_group(el):',
     '    t = el.find(tag("title"))',
     '    r = {"id": el.get("id", ""), "title": text(t), "groups": [], "rules": []}',
