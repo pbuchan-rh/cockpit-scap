@@ -12,6 +12,12 @@
     --pf-v6-c-card--BorderColor: var(--pf-t--global--border--color--100);
 }
 
+// PF6 CardTitle has no divider by default; old main's design separated the
+// title from the card body with a bottom border. Restore that here.
+.pf-v6-c-card__title {
+    border-bottom: 1px solid var(--pf-t--global--border--color--100);
+}
+
 .pf-v6-c-card .pf-v6-c-card__body {
     padding-block-start: var(--pf-t--global--spacer--sm);
     padding-block-end: var(--pf-t--global--spacer--sm);
