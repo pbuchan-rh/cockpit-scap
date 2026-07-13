@@ -150,30 +150,36 @@ export const ScanHistory = ({ refreshKey, onView }) => {
                                             </Td>
                                             <Td dataLabel={_("Tailoring")}>{sc.tailoring_file || '—'}</Td>
                                             <Td isActionCell className="ct-actions-cell">
-                                                <Button
-                                                    variant="link" isInline
-                                                    isLoading={busyDir === sc.dir}
-                                                    isDisabled={!!busyDir}
-                                                    onClick={() => handleView(sc)}
-                                                >
-                                                    {_("View report")}
-                                                </Button>
-                                                {' '}
-                                                <Button
-                                                    variant="link" isInline
-                                                    isDisabled={!!busyDir}
-                                                    onClick={() => handleDownload(sc)}
-                                                >
-                                                    {_("Download")}
-                                                </Button>
-                                                {' '}
-                                                <Button
-                                                    variant="link" isInline className="ct-btn-danger-link"
-                                                    isDisabled={!!busyDir}
-                                                    onClick={() => setDeleteTarget(sc)}
-                                                >
-                                                    {_("Delete")}
-                                                </Button>
+                                                <Flex spaceItems={{ default: 'spaceItemsSm' }} flexWrap={{ default: 'nowrap' }}>
+                                                    <FlexItem flex={{ default: 'flexNone' }}>
+                                                        <Button
+                                                            variant="link" isInline
+                                                            isLoading={busyDir === sc.dir}
+                                                            isDisabled={!!busyDir}
+                                                            onClick={() => handleView(sc)}
+                                                        >
+                                                            {_("View report")}
+                                                        </Button>
+                                                    </FlexItem>
+                                                    <FlexItem flex={{ default: 'flexNone' }}>
+                                                        <Button
+                                                            variant="link" isInline
+                                                            isDisabled={!!busyDir}
+                                                            onClick={() => handleDownload(sc)}
+                                                        >
+                                                            {_("Download")}
+                                                        </Button>
+                                                    </FlexItem>
+                                                    <FlexItem flex={{ default: 'flexNone' }}>
+                                                        <Button
+                                                            variant="link" isInline className="ct-btn-danger-link"
+                                                            isDisabled={!!busyDir}
+                                                            onClick={() => setDeleteTarget(sc)}
+                                                        >
+                                                            {_("Delete")}
+                                                        </Button>
+                                                    </FlexItem>
+                                                </Flex>
                                             </Td>
                                         </Tr>
                                     ))}

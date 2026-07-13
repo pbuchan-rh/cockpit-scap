@@ -269,6 +269,23 @@
     color: var(--pf-t--global--color--status--danger--default);
 }
 
+.ct-btn-danger-link:hover:not(:disabled) {
+    color: var(--pf-t--global--color--status--danger--default);
+    text-decoration: underline;
+}
+
+// PatternFly 6's default tokens set the link-button underline to show at
+// rest, not just on hover (--text-decoration--link--line--default equals
+// the hover value). Force it to hover-only so link buttons read as actions,
+// not as always-underlined text.
+.pf-v6-c-button.pf-m-link {
+    text-decoration: none;
+}
+
+.pf-v6-c-button.pf-m-link:hover:not(:disabled) {
+    text-decoration: underline;
+}
+
 // isActionCell sets the column's intrinsic width to 1%, sized for a single
 // kebab-menu item. With multiple inline link Buttons separated only by a
 // text-node space, table auto-layout allows a line break between them and

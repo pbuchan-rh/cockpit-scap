@@ -222,13 +222,19 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged }) => {
                                             <Td dataLabel={_("Rules Modified")}>{sc.rules_modified ?? '—'}</Td>
                                             <Td dataLabel={_("Created")}>{formatCreated(sc.created)}</Td>
                                             <Td isActionCell className="ct-actions-cell">
-                                                <Button variant="link" isInline onClick={() => onEdit(sc)}>{_("Edit")}</Button>
-                                                {' '}
-                                                <Button variant="link" isInline onClick={() => handleDownload(sc)}>{_("Download")}</Button>
-                                                {' '}
-                                                <Button variant="link" isInline className="ct-btn-danger-link" onClick={() => setDeleteTarget(sc)}>
-                                                    {_("Delete")}
-                                                </Button>
+                                                <Flex spaceItems={{ default: 'spaceItemsSm' }} flexWrap={{ default: 'nowrap' }}>
+                                                    <FlexItem flex={{ default: 'flexNone' }}>
+                                                        <Button variant="link" isInline onClick={() => onEdit(sc)}>{_("Edit")}</Button>
+                                                    </FlexItem>
+                                                    <FlexItem flex={{ default: 'flexNone' }}>
+                                                        <Button variant="link" isInline onClick={() => handleDownload(sc)}>{_("Download")}</Button>
+                                                    </FlexItem>
+                                                    <FlexItem flex={{ default: 'flexNone' }}>
+                                                        <Button variant="link" isInline className="ct-btn-danger-link" onClick={() => setDeleteTarget(sc)}>
+                                                            {_("Delete")}
+                                                        </Button>
+                                                    </FlexItem>
+                                                </Flex>
                                             </Td>
                                         </Tr>
                                     ))}
