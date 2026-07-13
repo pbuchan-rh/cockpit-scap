@@ -15,10 +15,9 @@ export async function getUser() {
     return cachedUser;
 }
 
-/* Root (Cockpit's superuser bridge) creates the dir, then chown to the
- * owning user — per-user-private homedir data, chmod 700. */
-export async function ensureUserDir(dir, username) {
-    await cockpit.spawn(['mkdir', '-p', dir], { superuser: 'require', err: 'message' });
-    await cockpit.spawn(['chown', `${username}:${username}`, dir], { superuser: 'require', err: 'message' });
-    await cockpit.spawn(['chmod', '700', dir], { superuser: 'require', err: 'message' });
+/* Runs as the invoking user (no superuser) — the user already owns their
+ * own homedir, so no root/chown is needed. Per-user-private data, chmod 700. */
+export async function ensureUserDir(dir) {
+    await cockpit.spawn(['mkdir', '-p', dir], { err: 'message' });
+    await cockpit.spawn(['chmod', '700', dir], { err: 'message' });
 }

@@ -145,16 +145,15 @@ export async function getTailoringDir() {
     return `${user.home}/${TAILORING_SUBDIR}`;
 }
 
-/* Write XML + JSON sidecar, chown/chmod, then read the XML back and compare
+/* Write XML + JSON sidecar, chmod, then read the XML back and compare
  * to what was written — catches a known hardened-system failure mode where
  * cockpit-bridge under sudo without a pty silently no-ops the write. */
-async function writeTailoringFiles(xmlPath, jsonPath, xmlContent, sidecar, username) {
+async function writeTailoringFiles(xmlPath, jsonPath, xmlContent, sidecar) {
     await Promise.all([
-        cockpit.file(xmlPath, { superuser: 'require' }).replace(xmlContent),
-        cockpit.file(jsonPath, { superuser: 'require' }).replace(JSON.stringify(sidecar, null, 2)),
+        cockpit.file(xmlPath).replace(xmlContent),
+        cockpit.file(jsonPath).replace(JSON.stringify(sidecar, null, 2)),
     ]);
-    await cockpit.spawn(['chown', `${username}:${username}`, xmlPath, jsonPath], { superuser: 'require', err: 'message' });
-    await cockpit.spawn(['chmod', '600', xmlPath, jsonPath], { superuser: 'require', err: 'message' });
+    await cockpit.spawn(['chmod', '600', xmlPath, jsonPath], { err: 'message' });
 
     const written = await cockpit.file(xmlPath, { superuser: 'try' }).read();
     if (written !== xmlContent) {
@@ -191,7 +190,6 @@ export async function readTailoringXml(path) {
 }
 
 export async function saveNewTailoring({ baseProfileId, baseProfileTitle, newProfileTitle, sdsPath, ruleChanges, valueChanges }) {
-    const user = await getUser();
     const dir = await getTailoringDir();
     const safeName = safeSlug(newProfileTitle);
     const newProfileId = 'xccdf_cockpit-scap_profile_' + safeName;
@@ -212,13 +210,12 @@ export async function saveNewTailoring({ baseProfileId, baseProfileTitle, newPro
         rules_modified: Object.keys(ruleChanges).length,
     };
 
-    await ensureUserDir(dir, user.name);
-    await writeTailoringFiles(xmlPath, jsonPath, xml, sidecar, user.name);
+    await ensureUserDir(dir);
+    await writeTailoringFiles(xmlPath, jsonPath, xml, sidecar);
     return sidecar;
 }
 
 export async function updateTailoringFile(sidecar, { newProfileTitle, ruleChanges, valueChanges }) {
-    const user = await getUser();
     const dir = await getTailoringDir();
     if (!sidecar.path.startsWith(dir + '/')) {
         throw new Error('Refusing to update a tailoring file outside ' + dir);
@@ -234,12 +231,11 @@ export async function updateTailoringFile(sidecar, { newProfileTitle, ruleChange
         rules_modified: Object.keys(ruleChanges).length,
     };
 
-    await writeTailoringFiles(sidecar.path, jsonPath, xml, updatedSidecar, user.name);
+    await writeTailoringFiles(sidecar.path, jsonPath, xml, updatedSidecar);
     return updatedSidecar;
 }
 
 export async function saveUploadedTailoring({ xmlContent, sdsPath, profileId, baseProfileId, baseProfileTitle, name }) {
-    const user = await getUser();
     const dir = await getTailoringDir();
     const ts = makeTimestamp();
     const safeName = safeSlug(name);
@@ -259,8 +255,8 @@ export async function saveUploadedTailoring({ xmlContent, sdsPath, profileId, ba
         rules_modified: Object.keys(ruleChanges).length,
     };
 
-    await ensureUserDir(dir, user.name);
-    await writeTailoringFiles(xmlPath, jsonPath, xmlContent, sidecar, user.name);
+    await ensureUserDir(dir);
+    await writeTailoringFiles(xmlPath, jsonPath, xmlContent, sidecar);
     return sidecar;
 }
 
@@ -270,5 +266,5 @@ export async function deleteTailoringFile(sidecar) {
         throw new Error('Refusing to delete a tailoring file outside ' + dir);
     }
     const jsonPath = sidecar.path.replace(/\.xml$/, '.json');
-    await cockpit.spawn(['rm', '-f', sidecar.path, jsonPath], { superuser: 'require', err: 'message' });
+    await cockpit.spawn(['rm', '-f', sidecar.path, jsonPath], { err: 'message' });
 }
