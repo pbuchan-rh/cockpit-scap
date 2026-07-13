@@ -191,6 +191,12 @@
     word-break: break-all;
 }
 
+// CCE identifier tag, shown next to the rule title when present.
+.ct-rule-cce {
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+}
+
 // Description/rationale block, shown on click-to-expand for both a failing
 // scan result row and a tailoring-tree rule row.
 .ct-rule-details {

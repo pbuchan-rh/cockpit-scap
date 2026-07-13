@@ -68,11 +68,25 @@ const FailingRuleRow = ({ rule, meta, isSelected, onToggle }) => {
                         <FlexItem className="ct-rule-title">
                             {meta?.title || ruleShortId(rule.id)}
                         </FlexItem>
+                        {meta?.cce && (
+                            <FlexItem>
+                                <code className="ct-rule-cce">
+                                    {meta.cce}
+                                </code>
+                            </FlexItem>
+                        )}
                         <FlexItem>
                             <code className="ct-rule-id">
                                 {ruleShortId(rule.id)}
                             </code>
                         </FlexItem>
+                        {meta && (
+                            <FlexItem>
+                                <Label color={meta.automated ? 'blue' : 'grey'} isCompact variant="outline">
+                                    {meta.automated ? _("Automated") : _("Manual")}
+                                </Label>
+                            </FlexItem>
+                        )}
                         {hasDetails && (
                             <FlexItem>
                                 <Button
