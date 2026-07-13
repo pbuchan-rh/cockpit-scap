@@ -207,12 +207,12 @@ export const App = () => {
                     </Tab>
                     <Tab eventKey="tailoring" title={<TabTitleText>{_("Tailoring")}</TabTitleText>}>
                         <div className="ct-tab-body ct-tailoring-tab">
-                            <TailoringList refreshKey={tailoringRefreshKey} onEdit={setEditingSidecar} onChanged={handleTailoringListChanged} />
                             <TailoringEditor
                                 editingSidecar={editingSidecar}
                                 onSaved={handleTailoringSaved}
                                 onCancelEdit={() => setEditingSidecar(null)}
                             />
+                            <TailoringList refreshKey={tailoringRefreshKey} onEdit={setEditingSidecar} onChanged={handleTailoringListChanged} />
                         </div>
                     </Tab>
                 </Tabs>
