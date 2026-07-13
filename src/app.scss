@@ -269,6 +269,18 @@
     color: var(--pf-t--global--color--status--danger--default);
 }
 
+// isActionCell sets the column's intrinsic width to 1%, sized for a single
+// kebab-menu item. With multiple inline link Buttons separated only by a
+// text-node space, table auto-layout allows a line break between them and
+// each wraps onto its own line. nowrap forces the column to size for the
+// whole button group on one line.
+// Scoped under .pf-v6-c-table (not a bare .ct-actions-cell) to out-specify
+// PatternFly's own `.pf-v6-c-table tr:where(...) > :where(th, td)` cell rule,
+// which sets white-space via a CSS var at class+type specificity.
+.pf-v6-c-table .ct-actions-cell {
+    white-space: nowrap;
+}
+
 // Tabs
 .ct-tab-body {
     padding-block-start: var(--pf-t--global--spacer--md);

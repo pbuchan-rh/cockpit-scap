@@ -149,7 +149,7 @@ export const ScanHistory = ({ refreshKey, onView }) => {
                                                 </Flex>
                                             </Td>
                                             <Td dataLabel={_("Tailoring")}>{sc.tailoring_file || '—'}</Td>
-                                            <Td isActionCell>
+                                            <Td isActionCell className="ct-actions-cell">
                                                 <Button
                                                     variant="link" isInline
                                                     isLoading={busyDir === sc.dir}

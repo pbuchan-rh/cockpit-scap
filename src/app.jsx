@@ -188,7 +188,7 @@ export const App = () => {
                 )}
 
                 <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)}>
-                    <Tab eventKey="scan" title={<TabTitleText>{_("Scan")}</TabTitleText>}>
+                    <Tab eventKey="scan" title={<TabTitleText>{_("Host Scan")}</TabTitleText>}>
                         <div className="ct-tab-body">
                             {phase === 'setup' && (
                                 <ScanSetup adminAllowed={adminAllowed} onScan={handleScan} tailoringRefreshKey={tailoringRefreshKey} />
@@ -205,7 +205,7 @@ export const App = () => {
                             <ScanHistory refreshKey={historyRefreshKey} onView={handleViewSavedScan} />
                         </div>
                     </Tab>
-                    <Tab eventKey="tailoring" title={<TabTitleText>{_("Tailoring")}</TabTitleText>}>
+                    <Tab eventKey="tailoring" title={<TabTitleText>{_("Policy Tailoring")}</TabTitleText>}>
                         <div className="ct-tab-body ct-tailoring-tab">
                             <TailoringEditor
                                 editingSidecar={editingSidecar}

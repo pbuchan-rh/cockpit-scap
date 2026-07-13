@@ -221,7 +221,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged }) => {
                                             <Td dataLabel={_("Base Profile")}>{sc.base_profile_title || sc.base_profile_id}</Td>
                                             <Td dataLabel={_("Rules Modified")}>{sc.rules_modified ?? '—'}</Td>
                                             <Td dataLabel={_("Created")}>{formatCreated(sc.created)}</Td>
-                                            <Td isActionCell>
+                                            <Td isActionCell className="ct-actions-cell">
                                                 <Button variant="link" isInline onClick={() => onEdit(sc)}>{_("Edit")}</Button>
                                                 {' '}
                                                 <Button variant="link" isInline onClick={() => handleDownload(sc)}>{_("Download")}</Button>
