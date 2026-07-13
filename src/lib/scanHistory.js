@@ -9,6 +9,20 @@ export async function getScanHistoryDir() {
     return `${user.home}/${SCAN_HISTORY_SUBDIR}`;
 }
 
+/* ~/SCAP/scans is already user-owned (see homedir.js's ensureUserDir), so
+ * no superuser is needed here. Falls back to '0' both when the directory
+ * doesn't exist yet (fresh install, no scans run) and on any other `du`
+ * failure — either way there's nothing to report. */
+export async function getScanHistoryDiskUsage() {
+    const dir = await getScanHistoryDir();
+    try {
+        const output = await cockpit.spawn(['du', '-sh', dir], { err: 'message' });
+        return output.split(/\s+/)[0];
+    } catch {
+        return '0';
+    }
+}
+
 /* Binary sibling of cockpit.file().replace() — cockpit.file() is text-only,
  * and report.html / the gzipped XML blobs are Uint8Array. dd (not tee)
  * avoids echoing the payload back to stdout.

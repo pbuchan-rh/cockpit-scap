@@ -7,8 +7,8 @@ import { Tab, Tabs, TabTitleText } from "@patternfly/react-core/dist/esm/compone
 
 import { makeTmpdir, startScan, readResults, cleanupTmpdir } from './lib/oscap.js';
 import { parseResults } from './lib/results.js';
-import { extractProfile, flattenProfileRules } from './lib/tailoring.js';
-import { saveScan, readSavedScanFiles } from './lib/scanHistory.js';
+import { extractProfile, flattenProfileRules, getTailoringDiskUsage } from './lib/tailoring.js';
+import { saveScan, readSavedScanFiles, getScanHistoryDiskUsage } from './lib/scanHistory.js';
 import { ScanSetup } from './components/ScanSetup.jsx';
 import { ScanProgress } from './components/ScanProgress.jsx';
 import { ScanResults } from './components/ScanResults.jsx';
@@ -31,6 +31,8 @@ export const App = () => {
     const [editingSidecar, setEditingSidecar] = useState(null);
     const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
     const [historySaveError, setHistorySaveError] = useState(null);
+    const [scanDiskUsage, setScanDiskUsage] = useState(null);
+    const [tailoringDiskUsage, setTailoringDiskUsage] = useState(null);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -40,6 +42,19 @@ export const App = () => {
         permission.addEventListener('changed', update);
         return () => permission.removeEventListener('changed', update);
     }, []);
+
+    // Re-fetched (not polled) whenever the respective refreshKey bumps —
+    // i.e. after a scan/tailoring save or delete — so each total stays
+    // accurate without a continuous background poll.
+    useEffect(() => {
+        getScanHistoryDiskUsage().then(setScanDiskUsage)
+                .catch(() => {});
+    }, [historyRefreshKey]);
+
+    useEffect(() => {
+        getTailoringDiskUsage().then(setTailoringDiskUsage)
+                .catch(() => {});
+    }, [tailoringRefreshKey]);
 
     const handleScan = useCallback(async (config) => {
         setError(null);
@@ -152,6 +167,10 @@ export const App = () => {
         setTailoringRefreshKey(k => k + 1);
     }, []);
 
+    const handleHistoryChanged = useCallback(() => {
+        setHistoryRefreshKey(k => k + 1);
+    }, []);
+
     return (
         <Page className="pf-m-no-sidebar">
             <PageSection>
@@ -202,7 +221,12 @@ export const App = () => {
                                 <ScanResults result={scanResult} tmpdir={tmpdir} onNewScan={handleNewScan} />
                             )}
 
-                            <ScanHistory refreshKey={historyRefreshKey} onView={handleViewSavedScan} />
+                            <ScanHistory
+                                refreshKey={historyRefreshKey}
+                                onView={handleViewSavedScan}
+                                onChanged={handleHistoryChanged}
+                                diskUsage={scanDiskUsage}
+                            />
                         </div>
                     </Tab>
                     <Tab eventKey="tailoring" title={<TabTitleText>{_("Policy Tailoring")}</TabTitleText>}>
@@ -212,7 +236,12 @@ export const App = () => {
                                 onSaved={handleTailoringSaved}
                                 onCancelEdit={() => setEditingSidecar(null)}
                             />
-                            <TailoringList refreshKey={tailoringRefreshKey} onEdit={setEditingSidecar} onChanged={handleTailoringListChanged} />
+                            <TailoringList
+                                refreshKey={tailoringRefreshKey}
+                                onEdit={setEditingSidecar}
+                                onChanged={handleTailoringListChanged}
+                                diskUsage={tailoringDiskUsage}
+                            />
                         </div>
                     </Tab>
                 </Tabs>

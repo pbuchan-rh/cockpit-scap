@@ -145,6 +145,20 @@ export async function getTailoringDir() {
     return `${user.home}/${TAILORING_SUBDIR}`;
 }
 
+/* ~/SCAP/tailoring is already user-owned (see homedir.js's ensureUserDir),
+ * so no superuser is needed here. Falls back to '0' both when the directory
+ * doesn't exist yet (fresh install, no tailoring policies saved) and on any
+ * other `du` failure — either way there's nothing to report. */
+export async function getTailoringDiskUsage() {
+    const dir = await getTailoringDir();
+    try {
+        const output = await cockpit.spawn(['du', '-sh', dir], { err: 'message' });
+        return output.split(/\s+/)[0];
+    } catch {
+        return '0';
+    }
+}
+
 /* Write XML + JSON sidecar, chmod, then read the XML back and compare
  * to what was written — catches a known hardened-system failure mode where
  * cockpit-bridge under sudo without a pty silently no-ops the write. */

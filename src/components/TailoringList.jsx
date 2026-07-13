@@ -40,7 +40,9 @@ function downloadXml(xmlText, filename) {
     URL.revokeObjectURL(url);
 }
 
-export const TailoringList = ({ refreshKey, onEdit, onChanged }) => {
+// diskUsage is the du -sh total for ~/SCAP/tailoring, fetched by app.jsx —
+// re-fetched there whenever onChanged() bumps refreshKey (upload/delete).
+export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage }) => {
     const [sidecars, setSidecars] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -241,6 +243,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged }) => {
                                 </Tbody>
                             </Table>
                         )}
+                <p className="ct-disk-usage-total">{cockpit.format(_("Total disk used by tailoring policies: $0"), diskUsage ?? "—")}</p>
             </CardBody>
 
             {deleteTarget && (

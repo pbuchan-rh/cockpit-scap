@@ -34,8 +34,10 @@ function downloadBlob(data, filename, mimeType) {
 
 // props: refreshKey (bump to reload), onView(manifest) => Promise, called
 // when the user clicks "View report" — the caller (app.jsx) is responsible
-// for feeding the saved scan's files into ScanResults.
-export const ScanHistory = ({ refreshKey, onView }) => {
+// for feeding the saved scan's files into ScanResults. onChanged() is
+// called after a successful delete so app.jsx can refresh the disk usage
+// total. diskUsage is the du -sh total for ~/SCAP/scans, fetched by app.jsx.
+export const ScanHistory = ({ refreshKey, onView, onChanged, diskUsage }) => {
     const [scans, setScans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -84,6 +86,7 @@ export const ScanHistory = ({ refreshKey, onView }) => {
             await deleteScan(deleteTarget);
             setScans(prev => prev.filter(sc => sc.dir !== deleteTarget.dir));
             setDeleteTarget(null);
+            onChanged?.();
         } catch (ex) {
             setError(ex.message || String(ex));
         } finally {
@@ -186,6 +189,7 @@ export const ScanHistory = ({ refreshKey, onView }) => {
                                 </Tbody>
                             </Table>
                         )}
+                <p className="ct-disk-usage-total">{cockpit.format(_("Total disk used by scan history: $0"), diskUsage ?? "—")}</p>
             </CardBody>
 
             {deleteTarget && (
