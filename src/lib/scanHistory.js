@@ -20,20 +20,19 @@ export async function getScanHistoryDir() {
  * proc.input() sends it as a real binary channel frame and then sends the
  * "done" control message to close stdin. */
 async function writeBinaryFile(path, data) {
-    const proc = cockpit.spawn(['dd', 'status=none', `of=${path}`], { superuser: 'require', binary: true, err: 'message' });
+    const proc = cockpit.spawn(['dd', 'status=none', `of=${path}`], { binary: true, err: 'message' });
     proc.input(data);
     await proc;
 }
 
-/* Write manifest.json, chown/chmod, then read it back and compare — same
+/* Write manifest.json, chmod, then read it back and compare — same
  * hardened-system write-verification guard as lib/tailoring.js's
  * writeTailoringFiles(), applied here since it was never done for scan
  * manifests in old main. */
-async function writeManifest(path, manifest, username) {
+async function writeManifest(path, manifest) {
     const content = JSON.stringify(manifest, null, 2);
-    await cockpit.file(path, { superuser: 'require' }).replace(content);
-    await cockpit.spawn(['chown', `${username}:${username}`, path], { superuser: 'require', err: 'message' });
-    await cockpit.spawn(['chmod', '600', path], { superuser: 'require', err: 'message' });
+    await cockpit.file(path).replace(content);
+    await cockpit.spawn(['chmod', '600', path], { err: 'message' });
 
     const written = await cockpit.file(path, { superuser: 'try' }).read();
     if (written !== content) {
@@ -50,13 +49,12 @@ async function writeManifest(path, manifest, username) {
  * already gzipped for the XML/ARF. `parsed` is parseResults()'s return
  * shape (lib/results.js): { scorePercent, pass, fail, ... }. */
 export async function saveScan({ profileId, profileTitle, sdsPath, tailoringFile, parsed, files }) {
-    const user = await getUser();
     const rootDir = await getScanHistoryDir();
-    await ensureUserDir(rootDir, user.name);
+    await ensureUserDir(rootDir);
 
     const ts = makeTimestamp();
     const dir = `${rootDir}/${ts}`;
-    await cockpit.spawn(['mkdir', '-p', dir], { superuser: 'require', err: 'message' });
+    await cockpit.spawn(['mkdir', '-p', dir], { err: 'message' });
 
     const reportPath = `${dir}/report.html`;
     const resultsGzPath = `${dir}/results.xml.gz`;
@@ -69,14 +67,10 @@ export async function saveScan({ profileId, profileTitle, sdsPath, tailoringFile
         writeBinaryFile(arfGzPath, files.arfXmlGz),
     ]);
 
-    await cockpit.spawn(
-        ['chown', `${user.name}:${user.name}`, dir, reportPath, resultsGzPath, arfGzPath],
-        { superuser: 'require', err: 'message' }
-    );
-    await cockpit.spawn(['chmod', '700', dir], { superuser: 'require', err: 'message' });
+    await cockpit.spawn(['chmod', '700', dir], { err: 'message' });
     await cockpit.spawn(
         ['chmod', '600', reportPath, resultsGzPath, arfGzPath],
-        { superuser: 'require', err: 'message' }
+        { err: 'message' }
     );
 
     const manifest = {
@@ -88,7 +82,7 @@ export async function saveScan({ profileId, profileTitle, sdsPath, tailoringFile
         score: parsed.scorePercent,
         counts: { pass: parsed.pass, fail: parsed.fail },
     };
-    await writeManifest(manifestPath, manifest, user.name);
+    await writeManifest(manifestPath, manifest);
     return { ...manifest, dir };
 }
 
@@ -149,5 +143,5 @@ export async function deleteScan(manifest) {
     if (!manifest.dir || !manifest.dir.startsWith(rootDir + '/')) {
         throw new Error('Refusing to delete a scan directory outside ' + rootDir);
     }
-    await cockpit.spawn(['rm', '-rf', manifest.dir], { superuser: 'require', err: 'message' });
+    await cockpit.spawn(['rm', '-rf', manifest.dir], { err: 'message' });
 }
