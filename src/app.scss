@@ -145,6 +145,29 @@
     font-size: var(--pf-t--global--font--size--sm);
 }
 
+// Severity-grouped collapsible sections (one ExpandableSection per
+// severity, plus a trailing one for error-result rules).
+.ct-failing-group {
+    margin-block-end: var(--pf-t--global--spacer--sm);
+
+    &:last-child {
+        margin-block-end: 0;
+    }
+}
+
+.ct-failing-group-critical .pf-v6-c-expandable-section__toggle .pf-v6-c-button__text,
+.ct-failing-group-high .pf-v6-c-expandable-section__toggle .pf-v6-c-button__text {
+    color: var(--pf-t--global--color--status--danger--default);
+}
+
+.ct-failing-group-medium .pf-v6-c-expandable-section__toggle .pf-v6-c-button__text {
+    color: var(--pf-t--global--color--status--warning--default);
+}
+
+.ct-failing-group-error .pf-v6-c-expandable-section__toggle .pf-v6-c-button__text {
+    color: var(--pf-t--global--color--status--warning--default);
+}
+
 .ct-selected-count {
     color: var(--pf-t--global--text--color--subtle);
 }

@@ -6,6 +6,7 @@ import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.
 import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Checkbox } from "@patternfly/react-core/dist/esm/components/Checkbox/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
+import { ExpandableSection } from "@patternfly/react-core/dist/esm/components/ExpandableSection/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
@@ -22,6 +23,11 @@ const SEVERITY_COLOR = {
     low: 'blue',
     unknown: 'grey',
 };
+
+// Order failing rules are grouped in — most severe first. Rules with
+// result === 'error' are broken out into their own trailing group since
+// their severity attribute isn't a meaningful "how bad is this" signal.
+const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'unknown'];
 
 function downloadBlob(data, filename, mimeType) {
     const blob = new Blob([data], { type: mimeType });
@@ -106,6 +112,44 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
         () => failingRules.filter(r => severityFilter.has(r.severity)),
         [failingRules, severityFilter]
     );
+
+    // Group by severity (HIGH/MEDIUM/LOW/…), with error-result rules broken
+    // out into their own trailing group — mirrors old main's collapsible
+    // <details> sections. Computed from visibleRules so the severity chips
+    // still work: unchecking a chip drops that whole group.
+    const groups = useMemo(() => {
+        const errorRules = visibleRules.filter(r => r.result === 'error');
+        const bySeverity = SEVERITY_ORDER
+                .map(sev => ({
+                    key: sev,
+                    label: sev.toUpperCase(),
+                    rules: visibleRules.filter(r => r.result !== 'error' && r.severity === sev),
+                }))
+                .filter(g => g.rules.length > 0);
+        if (errorRules.length > 0) {
+            bySeverity.push({ key: 'error', label: _("ERRORS"), rules: errorRules, isError: true });
+        }
+        return bySeverity;
+    }, [visibleRules]);
+
+    // Which group is open by default: the first non-empty severity bucket
+    // (falling back to the error group), computed once from the full
+    // unfiltered rule set so toggling severity chips later doesn't reset it.
+    const [expandedGroups, setExpandedGroups] = useState(() => {
+        for (const sev of SEVERITY_ORDER) {
+            if (failingRules.some(r => r.result !== 'error' && r.severity === sev))
+                return new Set([sev]);
+        }
+        return failingRules.some(r => r.result === 'error') ? new Set(['error']) : new Set();
+    });
+
+    function toggleGroup(key) {
+        setExpandedGroups(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+        });
+    }
 
     function handleViewReport() {
         const blob = new Blob([reportHtml], { type: 'text/html' });
@@ -329,14 +373,29 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                                 {cockpit.format(_(" ($0 selected)"), selectedRuleIds.size)}
                                             </span>
                                         </div>
-                                        {visibleRules.map(rule => (
-                                            <FailingRuleRow
-                                                key={rule.id}
-                                                rule={rule}
-                                                meta={ruleMeta?.[rule.id]}
-                                                isSelected={selectedRuleIds.has(rule.id)}
-                                                onToggle={toggleRule}
-                                            />
+                                        {groups.map(g => (
+                                            <ExpandableSection
+                                                key={g.key}
+                                                toggleText={
+                                                    g.isError
+                                                        ? cockpit.format(_("$0 — $1 rule"), g.label, g.rules.length) +
+                                                          (g.rules.length === 1 ? '' : 's')
+                                                        : cockpit.format(_("$0 — $1 failing"), g.label, g.rules.length)
+                                                }
+                                                isExpanded={expandedGroups.has(g.key)}
+                                                onToggle={() => toggleGroup(g.key)}
+                                                className={`ct-failing-group ct-failing-group-${g.key}`}
+                                            >
+                                                {g.rules.map(rule => (
+                                                    <FailingRuleRow
+                                                        key={rule.id}
+                                                        rule={rule}
+                                                        meta={ruleMeta?.[rule.id]}
+                                                        isSelected={selectedRuleIds.has(rule.id)}
+                                                        onToggle={toggleRule}
+                                                    />
+                                                ))}
+                                            </ExpandableSection>
                                         ))}
                                     </div>
                                 )}
