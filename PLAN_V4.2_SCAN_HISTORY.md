@@ -158,21 +158,63 @@ Proposed additions:
 - New "History" tab/section in `app.jsx`'s navigation, alongside Scan and
   Tailoring.
 
-## Open questions to resolve during the build session (not blocking this plan)
+## Decisions from plan review, 2026-07-13
 
-- Exact list-view placement: own top-level tab (like Tailoring) vs. folded
-  into the existing Scan tab as a sub-section below the setup form. Leaning
-  toward its own tab for consistency with Tailoring, but not decided.
-- Whether "View report" opens the saved `report.html` in a new browser tab
-  directly, or re-uses `ScanResults.jsx`'s existing in-app results view
-  fed from the saved files instead of live `tmpdir` state — the latter is
-  more consistent (same severity-grouped/CCE/fix-preview UI V4.1.2 just
-  built) but needs `ScanResults.jsx` decoupled from assuming a live
-  `tmpdir`/`scanProc`. Worth a build-session spike.
-- Whether `saveScan()` should be allowed to fail loudly (a toast/alert) or
-  stay silent-best-effort — leaning silent per above, but worth confirming
-  since silently losing a scan an admin expected to be saved is its own
-  bad surprise.
+- **List-view placement, settled: not a separate tab.** Matches old `main`'s
+  actual layout (confirmed in `index.html`: `ct-history-card` sits directly
+  below the `ct-results` card, both on the same Host-scan view, before the
+  container-scan section starts). V4.2 follows the same shape: the History
+  table lives on the existing **Scan tab**, stacked below Scan
+  Setup/Results — always visible, not gated behind running a scan first
+  (old `main` showed it with an empty-state when there was no history yet).
+  `app.jsx`'s Scan tab gets a third `ScanHistory` table card; no new
+  top-level nav entry.
+- **"View report", settled: reuse the `ScanResults.jsx` UI**, fed from a
+  saved scan's files instead of live `tmpdir` state. Needs that component
+  decoupled from assuming a live `tmpdir`/`scanProc` (accept saved-file
+  content as an alternate data source) — scope this explicitly in the build
+  session.
+- **Save-failure UX, settled: surface an alert, not silent.** Peter's call:
+  "silently logging and then nothing happens sounds incomplete" — an admin
+  who just ran a scan reasonably expects it to show up in History; failing
+  that without any visible signal is a worse surprise than a visible error.
+  Reverses this plan's earlier silent-best-effort lean. `saveScan()`'s
+  caller in `app.jsx` shows a PatternFly `Alert`/banner on failure (doesn't
+  block the just-completed results from displaying, but doesn't hide the
+  failure either).
+
+## Related bug found during plan review, 2026-07-13 — NOT in V4.2 scope, separate fix needed
+
+**Peter reports the existing "View Report" button (`ScanResults.jsx:250`,
+`handleViewReport()`) already opens the oscap-generated `report.html` with
+all formatting stripped** — same "totally unstyled" symptom as the
+2026-07-13 zero-PatternFly-styling incident, but this is a **different
+mechanism** and needs its own root-cause, not assumed to be the same stale-CSS
+bug (that bug was about cockpit-scap's own `index.css`; this is oscap's
+report, opened via `window.open(URL.createObjectURL(blob), '_blank')` —
+a completely separate browsing context that shouldn't touch cockpit-scap's
+CSS at all).
+
+Investigation started same session: confirmed via the installed
+`xccdf-report-impl.xsl`/`xccdf-resources.xsl` on `rhel10cis` that oscap's
+report template embeds CSS as inline `<style><![CDATA[...]]></style>` in
+the generated HTML (not an external stylesheet link) — so the generated
+file itself should be self-contained regardless of how it's opened. Real
+cause not yet confirmed; leading theories to check next: (1) the
+`window.open(blob:...)` popup may be silently blocked or opened without
+its content actually loading in some browser/session states — worth
+checking dev console for popup-blocked warnings; (2) Cockpit's own CSP
+(Content-Security-Policy) headers on the parent page might restrict
+`blob:` URLs in a way that strips `<style>` execution — untested. **Peter
+also asked whether old `main`'s dedicated `viewer.html`/`viewer.js`/
+`viewer.css` (a wrapping page for displaying reports, cut in the v4.0
+rewrite) needs to come back** — not yet answered; depends on the root
+cause. If it's a CSP/blob issue, a dedicated viewer page served from
+cockpit-scap's own origin (like old `main` had) may be the fix rather than
+a raw blob popup. **This blocks nothing in V4.2** (View Report already
+exists today for live scans, independent of history) but should be
+root-caused and fixed before or alongside the V4.2 build, since V4.2's
+"View report" reuses this same button/handler.
 
 ## Next step
 
