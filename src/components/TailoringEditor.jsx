@@ -690,7 +690,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                                             onChange={(_e, v) => updateValue(val, v)}
                                                         >
                                                             {val.options.map(opt => (
-                                                                <FormSelectOption key={opt.value} value={opt.value} label={opt.selector === opt.value ? opt.value : `${opt.selector}: ${opt.value}`} />
+                                                                <FormSelectOption key={opt.selector || opt.value} value={opt.value} label={opt.selector === opt.value ? opt.value : `${opt.selector}: ${opt.value}`} />
                                                             ))}
                                                         </FormSelect>
                                                     )

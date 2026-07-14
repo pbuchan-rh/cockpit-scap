@@ -114,11 +114,13 @@ const FailingRuleRow = ({ rule, meta, sdsPath, tailoringPath, isSelected, onTogg
                                 </code>
                             </FlexItem>
                         )}
-                        <FlexItem>
-                            <code className="ct-rule-id">
-                                {ruleShortId(rule.id)}
-                            </code>
-                        </FlexItem>
+                        {meta?.title && (
+                            <FlexItem>
+                                <code className="ct-rule-id">
+                                    {ruleShortId(rule.id)}
+                                </code>
+                            </FlexItem>
+                        )}
                         {meta && (
                             <FlexItem>
                                 <Label color={meta.automated ? 'blue' : 'grey'} isCompact variant="outline">
