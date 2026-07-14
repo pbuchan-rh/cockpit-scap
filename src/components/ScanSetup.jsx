@@ -15,6 +15,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-co
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
 import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
+import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/index.js";
 
 import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
 import { downloadBlob } from '../lib/download.js';
@@ -27,9 +28,9 @@ import { ProfileDescriptionPanel } from './ProfileDescriptionPanel.jsx';
 const _ = cockpit.gettext;
 
 const FIX_TYPES = [
-    { key: 'bash', label: _("Bash"), ext: '.sh', mimeType: 'text/x-shellscript' },
-    { key: 'ansible', label: _("Ansible"), ext: '.yml', mimeType: 'text/yaml' },
-    { key: 'puppet', label: _("Puppet"), ext: '.pp', mimeType: 'text/plain' },
+    { key: 'bash', label: _("Bash"), ext: '.sh', mimeType: 'text/x-shellscript', tooltip: _("Shell script for direct execution on RHEL/Fedora systems") },
+    { key: 'ansible', label: _("Ansible"), ext: '.yml', mimeType: 'text/yaml', tooltip: _("Ansible playbook for automated configuration management") },
+    { key: 'puppet', label: _("Puppet"), ext: '.pp', mimeType: 'text/plain', tooltip: _("Puppet manifest for Puppet-managed infrastructure") },
 ];
 
 function formatBytes(bytes) {
@@ -393,14 +394,16 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                             </Button>
                         </FlexItem>
                         <FlexItem>
-                            <Button
-                                variant="secondary"
-                                isDisabled={!canGenerate}
-                                isLoading={guideBusy}
-                                onClick={handleViewGuide}
-                            >
-                                {_("View Compliance Guide")}
-                            </Button>
+                            <Tooltip content={_("Generate and view the full oscap security guide for the selected profile")}>
+                                <Button
+                                    variant="secondary"
+                                    isDisabled={!canGenerate}
+                                    isLoading={guideBusy}
+                                    onClick={handleViewGuide}
+                                >
+                                    {_("View Compliance Guide")}
+                                </Button>
+                            </Tooltip>
                         </FlexItem>
                         <FlexItem>
                             <Dropdown
@@ -408,37 +411,50 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                                 onOpenChange={setIsFixMenuOpen}
                                 onSelect={() => setIsFixMenuOpen(false)}
                                 toggle={toggleRef => (
-                                    <MenuToggle
-                                        ref={toggleRef}
-                                        variant="secondary"
-                                        isExpanded={isFixMenuOpen}
-                                        isDisabled={!canGenerate || !!fixBusy}
-                                        splitButtonItems={[
-                                            <MenuToggleAction
-                                                key="download-remediation-primary"
-                                                id="ct-download-remediation-primary"
-                                                aria-label={_("Download Bash remediation")}
-                                                isDisabled={!canGenerate || !!fixBusy}
-                                                onClick={() => handleDownloadFix('bash')}
-                                            >
-                                                {fixBusy === 'bash' ? <Spinner size="sm" aria-label={_("Generating…")} /> : _("Download Remediation")}
-                                            </MenuToggleAction>,
-                                        ]}
-                                        onClick={() => setIsFixMenuOpen(o => !o)}
-                                        aria-label={_("Select remediation format")}
-                                    />
+                                    <>
+                                        <MenuToggle
+                                            ref={toggleRef}
+                                            variant="secondary"
+                                            isExpanded={isFixMenuOpen}
+                                            isDisabled={!canGenerate || !!fixBusy}
+                                            splitButtonItems={[
+                                                <MenuToggleAction
+                                                    key="download-remediation-primary"
+                                                    id="ct-download-remediation-primary"
+                                                    aria-label={_("Download Bash remediation")}
+                                                    isDisabled={!canGenerate || !!fixBusy}
+                                                    onClick={() => handleDownloadFix('bash')}
+                                                >
+                                                    {fixBusy === 'bash' ? <Spinner size="sm" aria-label={_("Generating…")} /> : _("Download Remediation")}
+                                                </MenuToggleAction>,
+                                            ]}
+                                            onClick={() => setIsFixMenuOpen(o => !o)}
+                                            aria-label={_("Select remediation format")}
+                                        />
+                                        {/* triggerRef (not child-wrapping) — this toggle's ref is already
+                                            owned by Dropdown, and Tooltip's usual clone-child-and-inject-ref
+                                            approach would collide with it. triggerRef attaches native
+                                            mouseenter/focus listeners straight to the DOM node instead, so
+                                            it can't interfere with MenuToggle/MenuToggleAction's own click
+                                            handling — verified live below. */}
+                                        <Tooltip
+                                            content={_("Generate and download a remediation script for all rules in the selected profile — no scan required")}
+                                            triggerRef={toggleRef}
+                                        />
+                                    </>
                                 )}
                             >
                                 <DropdownList>
                                     {FIX_TYPES.map(f => (
-                                        <DropdownItem
-                                            key={f.key}
-                                            value={f.key}
-                                            isDisabled={!canGenerate || !!fixBusy}
-                                            onClick={() => handleDownloadFix(f.key)}
-                                        >
-                                            {cockpit.format(_("Download $0 ($1)"), f.label, f.ext)}
-                                        </DropdownItem>
+                                        <Tooltip key={f.key} content={f.tooltip}>
+                                            <DropdownItem
+                                                value={f.key}
+                                                isDisabled={!canGenerate || !!fixBusy}
+                                                onClick={() => handleDownloadFix(f.key)}
+                                            >
+                                                {cockpit.format(_("Download $0 ($1)"), f.label, f.ext)}
+                                            </DropdownItem>
+                                        </Tooltip>
                                     ))}
                                 </DropdownList>
                             </Dropdown>
