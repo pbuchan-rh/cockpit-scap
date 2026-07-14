@@ -284,16 +284,15 @@ missed as "just reuse the existing helper" during the build session.
 
 ### 7. Size limits
 
-Old `main` imposed none. Recommend a **client-side cap checked against
-`file.size` before `FileReader` even starts reading** — a bad multi-hundred-MB
-selection would otherwise hold the full file in memory at least twice
-(as a `Blob`/`File` and again as an `ArrayBuffer`) purely in the browser tab,
-before any network/spawn activity even begins, which is a real way to make a
-browser tab visibly stall or crash on a large accidental selection (e.g. a
-`.iso` picked by mistake). Recommend **200 MB** as a starting number — roughly
-10x the one confirmed real-world datastream size (22 MB), generous headroom
-for larger vendor content, but the exact number is a judgment call flagged
-as an open question below rather than decided unilaterally.
+Old `main` imposed none. Client-side cap checked against `file.size` before
+`FileReader` even starts reading — a bad multi-hundred-MB selection would
+otherwise hold the full file in memory at least twice (as a `Blob`/`File` and
+again as an `ArrayBuffer`) purely in the browser tab, before any
+network/spawn activity even begins, which is a real way to make a browser
+tab visibly stall or crash on a large accidental selection (e.g. an `.iso`
+picked by mistake). **Decided with Peter: 100 MB** — he confirmed the
+largest real SDS he's aware of is ~45 MB, so 100 MB is still more than
+generous headroom without being the arbitrary 200 MB guess.
 
 ### 8. SELinux
 
@@ -339,14 +338,14 @@ Proposed additions:
 
 ## Open questions for Peter (not decided here, deliberately)
 
-1. **Uploaded-content list card placement, confirm or override:** this plan
-   recommends the Policy Tailoring tab (below `TailoringList.jsx`) since
-   tailoring is the motivating use case, but content is also consumed by
-   `ScanSetup.jsx` on the Host Scan tab. Is Tailoring-tab-only discoverable
-   enough, or should the list card (or at least a link to it) also surface
-   on Host Scan?
-2. **Size cap number:** 200 MB recommended (10x the one confirmed real
-   datastream size), but arbitrary — confirm, or pick a different number.
+1. **Uploaded-content list card placement — DECIDED.** Keep the management
+   list on the Policy Tailoring tab (tailoring is the motivating use case),
+   and add a small "Manage uploaded content →" link next to Host Scan's
+   content picker that jumps there — avoids building two separate management
+   surfaces for one feature.
+2. **Size cap number — DECIDED: 100 MB.** Peter confirmed the largest real
+   SDS he's aware of is ~45 MB; 100 MB is generous headroom without being an
+   arbitrary round number.
 3. **Web Crypto assumption:** `crypto.subtle` requires a secure context.
    Cockpit is served over HTTPS in every deployment this project targets, so
    this should hold, but hasn't been spiked yet. If it turns out not to hold
