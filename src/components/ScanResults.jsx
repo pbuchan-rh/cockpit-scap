@@ -12,7 +12,7 @@ import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 
 import { downloadBlob } from '../lib/download.js';
-import { generateFix } from '../lib/oscap.js';
+import { generateScopedFix } from '../lib/oscap.js';
 import { openReportViewer } from '../lib/reportViewer.js';
 import { RuleDetailsBlock } from './RuleDetails.jsx';
 
@@ -35,7 +35,7 @@ function ruleShortId(fullId) {
     return fullId.replace(/^xccdf_[^_]+_rule_/, '');
 }
 
-const FailingRuleRow = ({ rule, meta, tmpdir, isSelected, onToggle }) => {
+const FailingRuleRow = ({ rule, meta, sdsPath, tailoringPath, isSelected, onToggle }) => {
     const [expanded, setExpanded] = useState(false);
     const [fixExpanded, setFixExpanded] = useState(false);
     const [fixText, setFixText] = useState(null);
@@ -44,10 +44,10 @@ const FailingRuleRow = ({ rule, meta, tmpdir, isSelected, onToggle }) => {
     const [fixBusy, setFixBusy] = useState(null); // 'bash' | 'ansible' download-in-flight
 
     const hasDetails = !!(meta?.description || meta?.rationale);
-    // Fix generation shells out to oscap against tmpdir's results.xml — not
-    // available for a saved-scan view (readSavedScanFiles() only returns
-    // saved output, no live results.xml oscap can regenerate a fix from).
-    const hasFix = !!meta?.automated && !!tmpdir;
+    // Fix generation runs against static profile content (generateScopedFix,
+    // lib/oscap.js) — no live results.xml/tmpdir needed, so this works the
+    // same whether viewing a live scan or one loaded from history.
+    const hasFix = !!meta?.automated && !!sdsPath;
 
     async function handleToggleFix(e) {
         e.preventDefault();
@@ -58,7 +58,7 @@ const FailingRuleRow = ({ rule, meta, tmpdir, isSelected, onToggle }) => {
             setFixLoading(true);
             setFixLoadError(null);
             try {
-                const script = await generateFix(tmpdir, [rule.id], 'bash');
+                const script = await generateScopedFix(sdsPath, tailoringPath, [rule.id], 'bash');
                 setFixText(script);
             } catch (ex) {
                 setFixLoadError(ex.message || String(ex));
@@ -74,7 +74,9 @@ const FailingRuleRow = ({ rule, meta, tmpdir, isSelected, onToggle }) => {
         setFixBusy(fixType);
         setFixLoadError(null);
         try {
-            const script = fixType === 'bash' && fixText !== null ? fixText : await generateFix(tmpdir, [rule.id], fixType);
+            const script = fixType === 'bash' && fixText !== null
+                ? fixText
+                : await generateScopedFix(sdsPath, tailoringPath, [rule.id], fixType);
             const ext = fixType === 'bash' ? '.sh' : '.yml';
             const mimeType = fixType === 'bash' ? 'text/x-shellscript' : 'text/yaml';
             const idSuffix = meta?.cce || ruleShortId(rule.id);
@@ -181,7 +183,10 @@ const FailingRuleRow = ({ rule, meta, tmpdir, isSelected, onToggle }) => {
 };
 
 export const ScanResults = ({ result, tmpdir, onNewScan }) => {
-    const { scorePercent, pass, fail, error: errorCount, failingRules, reportHtml, resultsXmlGz, arfXmlGz, ruleMeta } = result;
+    const {
+        scorePercent, pass, fail, error: errorCount, failingRules, reportHtml, resultsXmlGz, arfXmlGz,
+        ruleMeta, sdsPath, tailoringPath,
+    } = result;
 
     const allSeverities = useMemo(
         () => [...new Set(failingRules.map(r => r.severity))],
@@ -257,7 +262,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
         setBusy(fixType);
         setFixError(null);
         try {
-            const script = await generateFix(tmpdir, [...selectedRuleIds], fixType);
+            const script = await generateScopedFix(sdsPath, tailoringPath, [...selectedRuleIds], fixType);
             downloadBlob(script, filename, 'text/plain');
         } catch (ex) {
             console.error('Fix generation failed:', ex.message);
@@ -379,7 +384,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                 : (
                     <Card>
                         <CardHeader
-                            actions={tmpdir
+                            actions={sdsPath
                                 ? {
                                     actions: (
                                         <Flex spaceItems={{ default: 'spaceItemsSm' }}>
@@ -444,7 +449,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                 ? <p>{_("No rules match the current severity filter.")}</p>
                                 : (
                                     <div className="ct-rules-list">
-                                        {tmpdir && (
+                                        {sdsPath && (
                                             <div className="ct-rules-controls">
                                                 <Button
                                                     variant="link" isInline
@@ -482,7 +487,8 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                                         key={rule.id}
                                                         rule={rule}
                                                         meta={ruleMeta?.[rule.id]}
-                                                        tmpdir={tmpdir}
+                                                        sdsPath={sdsPath}
+                                                        tailoringPath={tailoringPath}
                                                         isSelected={selectedRuleIds.has(rule.id)}
                                                         onToggle={toggleRule}
                                                     />
@@ -492,7 +498,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                     </div>
                                 )}
                         </CardBody>
-                        {tmpdir && (
+                        {sdsPath && (
                             <CardFooter>
                                 <span className="ct-fix-hint">
                                     {_("Select rules above to include in the fix scripts.")}

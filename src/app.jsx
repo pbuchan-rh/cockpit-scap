@@ -111,10 +111,13 @@ export const App = () => {
                 await saveScan({
                     profileId: config.profile,
                     profileTitle: config.tailoringName || extracted?.profile?.title || config.profile,
+                    baseProfileId: config.baseProfileId,
                     sdsPath: config.content,
                     tailoringFile: config.tailoringName || null,
+                    tailoringPath: config.tailoring,
                     parsed,
                     files,
+                    ruleMeta,
                 });
                 setHistorySaveError(null);
             } catch (ex) {
@@ -123,7 +126,14 @@ export const App = () => {
             }
             setHistoryRefreshKey(k => k + 1);
 
-            setScanResult({ ...parsed, ...files, ruleMeta });
+            setScanResult({
+                ...parsed,
+                ...files,
+                ruleMeta,
+                profileId: config.baseProfileId,
+                sdsPath: config.content,
+                tailoringPath: config.tailoring,
+            });
             setPhase('results');
         } catch (ex) {
             setError(ex.message || String(ex));
@@ -155,7 +165,16 @@ export const App = () => {
         const files = await readSavedScanFiles(manifest);
         const parsed = parseResults(files.resultsXml);
         setError(null);
-        setScanResult({ ...parsed, ...files, ruleMeta: {} });
+        setScanResult({
+            ...parsed,
+            ...files,
+            // rule_meta didn't exist in manifests saved before this fix —
+            // degrade to {} (FailingRuleRow already renders fine with no meta).
+            ruleMeta: manifest.rule_meta || {},
+            profileId: manifest.base_profile_id || manifest.profile_id,
+            sdsPath: manifest.sds_file,
+            tailoringPath: manifest.tailoring_path || null,
+        });
         setTmpdir(null);
         setPhase('results');
     }, []);

@@ -45,8 +45,19 @@ async function writeManifest(path, manifest) {
  * ~/SCAP/scans/<timestamp>/. `files` is readResults()'s return shape
  * (lib/oscap.js): { reportHtml, resultsXmlGz, arfXmlGz } as Uint8Array,
  * already gzipped for the XML/ARF. `parsed` is parseResults()'s return
- * shape (lib/results.js): { scorePercent, pass, fail, ... }. */
-export async function saveScan({ profileId, profileTitle, sdsPath, tailoringFile, parsed, files }) {
+ * shape (lib/results.js): { scorePercent, pass, fail, ... }. `ruleMeta` is
+ * handleScan()'s already-computed id -> {title,description,rationale,cce,
+ * automated} map (app.jsx) — persisted as-is so a saved scan viewed later
+ * from history doesn't lose rule detail (it can't be reconstructed from the
+ * manifest alone). `baseProfileId` is the base profile id used to resolve
+ * ruleMeta/fix generation, which for a tailoring-based scan differs from
+ * profileId (the tailoring's own extended profile id used to run the scan
+ * itself) — needed so Fix generation from a saved scan can call
+ * generateProfileFix() the same way ScanSetup.jsx does. `tailoringFile` is
+ * the tailoring's display name (shown in the history table); `tailoringPath`
+ * is the actual sidecar XML path oscap needs for --tailoring-file — kept
+ * distinct since they're different strings. */
+export async function saveScan({ profileId, profileTitle, sdsPath, tailoringFile, tailoringPath, parsed, files, ruleMeta, baseProfileId }) {
     const rootDir = await getScanHistoryDir();
     await ensureUserDir(rootDir);
 
@@ -75,10 +86,13 @@ export async function saveScan({ profileId, profileTitle, sdsPath, tailoringFile
         timestamp: ts,
         profile_id: profileId,
         profile_title: profileTitle || profileId,
+        base_profile_id: baseProfileId || profileId,
         sds_file: sdsPath,
         tailoring_file: tailoringFile || null,
+        tailoring_path: tailoringPath || null,
         score: parsed.scorePercent,
         counts: { pass: parsed.pass, fail: parsed.fail },
+        rule_meta: ruleMeta || {},
     };
     await writeManifest(manifestPath, manifest);
     return { ...manifest, dir };

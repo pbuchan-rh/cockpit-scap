@@ -233,9 +233,14 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
         setGuideBusy(true);
         setGuideError(null);
         const htmlPromise = generateGuide(content, activeProfileId, activeTailoringPath);
-        openReportViewer(htmlPromise);
+        const popupOpened = openReportViewer(htmlPromise);
         htmlPromise
-                .then(() => setGuideBusy(false))
+                .then(() => {
+                    setGuideBusy(false);
+                    if (!popupOpened) {
+                        setGuideError(_("Your browser blocked the compliance guide from opening in a new tab. Allow pop-ups for this site and try again."));
+                    }
+                })
                 .catch(ex => {
                     setGuideBusy(false);
                     setGuideError(ex.message || String(ex));

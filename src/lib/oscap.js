@@ -1,6 +1,7 @@
 import cockpit from 'cockpit';
 
 import { listUploadedContent } from './content.js';
+import { parseTailoringXml, readTailoringXml } from './tailoring.js';
 
 const SSG_CONTENT_DIR = '/usr/share/xml/scap/ssg/content';
 
@@ -123,18 +124,14 @@ export async function cleanupTmpdir(tmpdir) {
     }
 }
 
-export async function generateFix(tmpdir, ruleIds, fixType) {
-    const args = ['oscap', 'xccdf', 'generate', 'fix', '--fix-type', fixType];
-    for (const id of ruleIds) args.push('--rule', id);
-    args.push(`${tmpdir}/results.xml`);
-    return cockpit.spawn(args, { superuser: 'require', err: 'message' });
-}
-
 // Both of these run directly against static, world-readable SCAP content
-// (no results.xml, no scan) — no superuser needed, unlike generateFix()
-// above which reads out of the root-owned scan tmpdir. profileId must
+// (no results.xml, no scan, no tmpdir) — no superuser needed. profileId must
 // already be resolved to the tailoring's base profile id when tailoringPath
 // is set — oscap resolves a tailoring profile against the base Benchmark.
+// generateGuide is used by ScanSetup.jsx (pre-scan); generateProfileFix here
+// is the *whole-profile* fix, also only used by ScanSetup.jsx. Rule-scoped
+// Fix generation (ScanResults.jsx, live or saved scan) uses generateScopedFix
+// below instead — see its comment for why.
 export async function generateGuide(sdsPath, profileId, tailoringPath) {
     const args = ['oscap', 'xccdf', 'generate', 'guide', '--profile', profileId];
     if (tailoringPath) args.push('--tailoring-file', tailoringPath);
@@ -147,4 +144,69 @@ export async function generateProfileFix(sdsPath, profileId, tailoringPath, fixT
     if (tailoringPath) args.push('--tailoring-file', tailoringPath);
     args.push(sdsPath);
     return cockpit.spawn(args, { err: 'message' });
+}
+
+function escapeXml(s) {
+    return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+}
+
+/* oscap 1.4.3's `xccdf generate fix` has no working per-rule scoping: its
+ * `--rule` flag isn't a documented Fix option (confirmed against --help) and
+ * is silently ignored — passing it alongside --profile/--tailoring-file
+ * still generates a fix for the *entire* profile, not just the named
+ * rule(s). Verified empirically: --rule combined with --profile produced a
+ * 321-rule script for a single requested rule.
+ *
+ * The only way to scope `generate fix` to an arbitrary rule subset is a
+ * *standalone* (non-extending) XCCDF tailoring Profile containing only
+ * <select idref=.../> entries for the wanted rules — with no `extends`,
+ * nothing else is selected, so the output is exactly those rules. Verified
+ * this produces byte-identical remediation content (module minor "N / total"
+ * counter comments) to generating the full set of failing rules via
+ * --result-id and diffing out the one rule of interest.
+ *
+ * If tailoringPath is given, its <set-value> overrides are copied into the
+ * ephemeral profile too, so a customized rule parameter (e.g. a tailored
+ * password length) still remediates to the tailored value instead of the
+ * profile default — rule *selection* deltas from the original tailoring are
+ * irrelevant here since selection is being overridden anyway. */
+export async function generateScopedFix(sdsPath, tailoringPath, ruleIds, fixType) {
+    let valueChanges = {};
+    if (tailoringPath) {
+        const xml = await readTailoringXml(tailoringPath);
+        valueChanges = parseTailoringXml(xml).valueChanges;
+    }
+
+    const lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<Tailoring xmlns="http://checklists.nist.gov/xccdf/1.2" id="xccdf_cockpit-scap_tailoring_fixscope">',
+        '  <version time="' + new Date().toISOString()
+                .slice(0, 19) + '">1</version>',
+        '  <Profile id="xccdf_cockpit-scap_profile_fixscope">',
+        '    <title>cockpit-scap rule-scoped fix</title>',
+    ];
+    for (const id of ruleIds) lines.push('    <select idref="' + escapeXml(id) + '" selected="true"/>');
+    for (const [id, val] of Object.entries(valueChanges)) {
+        lines.push('    <set-value idref="' + escapeXml(id) + '">' + escapeXml(val) + '</set-value>');
+    }
+    lines.push('  </Profile>', '</Tailoring>');
+    const xml = lines.join('\n');
+
+    const tmpPath = (await cockpit.spawn(
+        ['mktemp', '/tmp/cockpit-scap-fixscope-XXXXXX.xml'], { err: 'message' }
+    )).trim();
+    try {
+        await cockpit.file(tmpPath).replace(xml);
+        return await cockpit.spawn([
+            'oscap', 'xccdf', 'generate', 'fix', '--fix-type', fixType,
+            '--profile', 'xccdf_cockpit-scap_profile_fixscope',
+            '--tailoring-file', tmpPath, sdsPath,
+        ], { err: 'message' });
+    } finally {
+        cockpit.spawn(['rm', '-f', tmpPath], { err: 'ignore' }).catch(() => {});
+    }
 }
