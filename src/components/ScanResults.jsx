@@ -11,7 +11,9 @@ import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/ind
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 
+import { downloadBlob } from '../lib/download.js';
 import { generateFix } from '../lib/oscap.js';
+import { openReportViewer } from '../lib/reportViewer.js';
 import { RuleDetailsBlock } from './RuleDetails.jsx';
 
 const _ = cockpit.gettext;
@@ -28,18 +30,6 @@ const SEVERITY_COLOR = {
 // result === 'error' are broken out into their own trailing group since
 // their severity attribute isn't a meaningful "how bad is this" signal.
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'unknown'];
-
-function downloadBlob(data, filename, mimeType) {
-    const blob = new Blob([data], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
 
 function ruleShortId(fullId) {
     return fullId.replace(/^xccdf_[^_]+_rule_/, '');
@@ -251,28 +241,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
     }
 
     function handleViewReport() {
-        // Open synchronously (before any async work) so the browser doesn't
-        // treat this as an unsolicited popup. A blob: URL isn't used here —
-        // it inherits a stripped-down CSP (no unsafe-inline) that blocks the
-        // report's inline <style>/<script>, so hand the report off via
-        // IndexedDB to a same-origin viewer.html instead, which gets
-        // Cockpit's real page CSP.
-        const popup = window.open('about:blank', '_blank');
-        const viewerUrl = new URL('viewer.html', window.location.href).href;
-        const blob = new Blob([reportHtml], { type: 'text/html' });
-
-        const req = indexedDB.open('cockpit-scap', 1);
-        req.onupgradeneeded = () => req.result.createObjectStore('reports');
-        req.onerror = () => { if (popup) popup.close(); };
-        req.onsuccess = () => {
-            const db = req.result;
-            const tx = db.transaction('reports', 'readwrite');
-            tx.objectStore('reports').put(blob, 'current');
-            tx.oncomplete = () => {
-                db.close();
-                if (popup) popup.location = viewerUrl;
-            };
-        };
+        openReportViewer(Promise.resolve(reportHtml));
     }
 
     function handleDownloadResultsXml() {

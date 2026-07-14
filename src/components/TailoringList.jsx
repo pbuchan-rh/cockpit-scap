@@ -10,6 +10,7 @@ import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
+import { downloadBlob } from '../lib/download.js';
 import { detectContent, sdsDisplayName } from '../lib/oscap.js';
 import { deleteTailoringFile, listTailoringFiles, readTailoringXml, saveUploadedTailoring } from '../lib/tailoring.js';
 import { ContentSelect } from './ContentSelect.jsx';
@@ -19,18 +20,6 @@ const _ = cockpit.gettext;
 function formatCreated(ts) {
     if (!ts) return '—';
     return ts.slice(0, 10) + ' ' + ts.slice(11).replace(/-/g, ':');
-}
-
-function downloadXml(xmlText, filename) {
-    const blob = new Blob([xmlText], { type: 'application/xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 }
 
 // diskUsage is the du -sh total for ~/SCAP/tailoring, fetched by app.jsx —
@@ -138,7 +127,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
 
     async function handleDownload(sidecar) {
         const xml = await readTailoringXml(sidecar.path);
-        downloadXml(xml, sidecar.path.split('/').pop());
+        downloadBlob(xml, sidecar.path.split('/').pop(), 'application/xml');
     }
 
     return (

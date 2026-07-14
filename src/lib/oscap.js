@@ -129,3 +129,22 @@ export async function generateFix(tmpdir, ruleIds, fixType) {
     args.push(`${tmpdir}/results.xml`);
     return cockpit.spawn(args, { superuser: 'require', err: 'message' });
 }
+
+// Both of these run directly against static, world-readable SCAP content
+// (no results.xml, no scan) — no superuser needed, unlike generateFix()
+// above which reads out of the root-owned scan tmpdir. profileId must
+// already be resolved to the tailoring's base profile id when tailoringPath
+// is set — oscap resolves a tailoring profile against the base Benchmark.
+export async function generateGuide(sdsPath, profileId, tailoringPath) {
+    const args = ['oscap', 'xccdf', 'generate', 'guide', '--profile', profileId];
+    if (tailoringPath) args.push('--tailoring-file', tailoringPath);
+    args.push(sdsPath);
+    return cockpit.spawn(args, { err: 'message' });
+}
+
+export async function generateProfileFix(sdsPath, profileId, tailoringPath, fixType) {
+    const args = ['oscap', 'xccdf', 'generate', 'fix', '--fix-type', fixType, '--profile', profileId];
+    if (tailoringPath) args.push('--tailoring-file', tailoringPath);
+    args.push(sdsPath);
+    return cockpit.spawn(args, { err: 'message' });
+}
