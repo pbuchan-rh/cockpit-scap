@@ -25,6 +25,7 @@ node_modules/
 tests/.env
 tests/screenshots/
 tests/adhoc/screenshots/
+tests/adhoc/fixtures/
 tests/report/
 tests/test-results/
 test-results/

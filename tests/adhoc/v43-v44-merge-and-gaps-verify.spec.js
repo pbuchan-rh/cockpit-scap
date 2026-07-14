@@ -18,7 +18,11 @@ const MODULE_PATH = '/cockpit/@localhost/scap/index.html';
 
 // Real SDS content (scp'd from rhel10cis:/usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml)
 // so uploads actually pass `oscap ds sds-validate`, not just the checksum step.
-const VALID_SDS_PATH = path.join('/home/pbuchan/.claude/jobs/b841e444/tmp/fixtures', 'valid-ssg-rhel10-ds.xml');
+// Lives in tests/adhoc/fixtures/ (gitignored, stable) — NOT a job tmp dir, which
+// gets cleaned up once that job ends and would break test discovery for the
+// whole suite (a module-scope readFileSync failure here throws during Playwright's
+// collection phase, before any test even runs).
+const VALID_SDS_PATH = path.join(__dirname, 'fixtures', 'valid-ssg-rhel10-ds.xml');
 const VALID_SDS_BUFFER = fs.readFileSync(VALID_SDS_PATH);
 
 async function loginNoAdmin(page) {
