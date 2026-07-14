@@ -11,6 +11,7 @@ import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
+import { downloadBlob } from '../lib/download.js';
 import { deleteScan, listScans, readSavedScanFiles } from '../lib/scanHistory.js';
 
 const _ = cockpit.gettext;
@@ -18,18 +19,6 @@ const _ = cockpit.gettext;
 function formatTimestamp(ts) {
     if (!ts) return '—';
     return ts.slice(0, 10) + ' ' + ts.slice(11).replace(/-/g, ':');
-}
-
-function downloadBlob(data, filename, mimeType) {
-    const blob = new Blob([data], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 }
 
 // props: refreshKey (bump to reload), onView(manifest) => Promise, called
