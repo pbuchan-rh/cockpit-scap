@@ -4,24 +4,17 @@ import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
-import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
-import { detectContent } from '../lib/oscap.js';
+import { detectContent, sdsDisplayName } from '../lib/oscap.js';
 import { deleteTailoringFile, listTailoringFiles, readTailoringXml, saveUploadedTailoring } from '../lib/tailoring.js';
+import { ContentSelect } from './ContentSelect.jsx';
 
 const _ = cockpit.gettext;
-
-function sdsDisplayName(path) {
-    if (!path) return '—';
-    const name = path.split('/').pop() ?? path;
-    return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '')
-            .replace(/-/g, ' ');
-}
 
 function formatCreated(ts) {
     if (!ts) return '—';
@@ -42,7 +35,7 @@ function downloadXml(xmlText, filename) {
 
 // diskUsage is the du -sh total for ~/SCAP/tailoring, fetched by app.jsx —
 // re-fetched there whenever onChanged() bumps refreshKey (upload/delete).
-export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage }) => {
+export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, contentRefreshKey }) => {
     const [sidecars, setSidecars] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -68,10 +61,10 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage }) => {
         detectContent().then(list => {
             if (cancelled) return;
             setContentList(list);
-            setUploadContent(c => c || list[0] || '');
+            setUploadContent(c => (c && list.some(item => item.path === c)) ? c : (list[0]?.path ?? ''));
         });
         return () => { cancelled = true };
-    }, []);
+    }, [contentRefreshKey]);
 
     function handleUploadClick() {
         fileInputRef.current?.click();
@@ -155,15 +148,12 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage }) => {
                     actions: (
                         <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
                             <FlexItem>
-                                <FormSelect
-                                    aria-label={_("Content for uploaded file")}
+                                <ContentSelect
+                                    ariaLabel={_("Content for uploaded file")}
                                     value={uploadContent}
                                     onChange={(_e, v) => setUploadContent(v)}
-                                >
-                                    {contentList.map(path => (
-                                        <FormSelectOption key={path} value={path} label={sdsDisplayName(path)} />
-                                    ))}
-                                </FormSelect>
+                                    contentList={contentList}
+                                />
                             </FlexItem>
                             <FlexItem>
                                 <Button variant="secondary" size="sm" isLoading={uploading} onClick={handleUploadClick}>

@@ -1,8 +1,10 @@
 import cockpit from 'cockpit';
 
+import { listUploadedContent } from './content.js';
+
 const SSG_CONTENT_DIR = '/usr/share/xml/scap/ssg/content';
 
-export async function detectContent() {
+async function detectSystemContent() {
     try {
         const output = await cockpit.spawn(
             ['find', SSG_CONTENT_DIR, '-name', '*-ds.xml', '-type', 'f'],
@@ -14,6 +16,38 @@ export async function detectContent() {
     } catch {
         return [];
     }
+}
+
+/* Merges auto-detected SSG system content with the user's uploaded content
+ * (~/SCAP/content/, see lib/content.js), tagged by source so every picker
+ * (ScanSetup.jsx, TailoringEditor.jsx, TailoringList.jsx) can render both
+ * without reimplementing detection. Breaking return-shape change from bare
+ * path strings to {path, source} objects — see PLAN_V4.3_CONTENT_UPLOAD.md
+ * Decision 6. */
+export async function detectContent() {
+    const [system, uploaded] = await Promise.all([detectSystemContent(), listUploadedContent()]);
+    return [
+        ...system.map(path => ({ path, source: 'system' })),
+        ...uploaded.map(c => ({ path: c.path, source: 'uploaded' })),
+    ];
+}
+
+/* Consolidates three previously copy-pasted sdsDisplayName() implementations
+ * (ScanSetup.jsx, TailoringEditor.jsx, TailoringList.jsx). SSG's
+ * ssg-<id>-ds.xml stripping only makes sense for system content; uploaded
+ * files just lose their .xml extension. `source` is optional — call sites
+ * that only have a bare path (e.g. a saved tailoring sidecar's sds_path,
+ * with no {path,source} object available) fall back to detecting system
+ * content by its fixed install-path prefix. */
+export function sdsDisplayName(path, source) {
+    if (!path) return '—';
+    const name = path.split('/').pop() ?? path;
+    const src = source ?? (path.startsWith(SSG_CONTENT_DIR + '/') ? 'system' : 'uploaded');
+    if (src === 'system') {
+        return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '')
+                .replace(/-/g, ' ');
+    }
+    return name.replace(/\.xml$/, '');
 }
 
 export async function getOsRelease() {

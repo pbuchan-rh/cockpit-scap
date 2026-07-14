@@ -1,39 +1,55 @@
 import cockpit from 'cockpit';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Form, FormGroup } from "@patternfly/react-core/dist/esm/components/Form/index.js";
 import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
 import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 
+import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
 import { detectContent, getOsRelease, getProfiles } from '../lib/oscap.js';
 import { listTailoringFiles } from '../lib/tailoring.js';
+import { ContentSelect } from './ContentSelect.jsx';
 import { ProfileDescriptionPanel } from './ProfileDescriptionPanel.jsx';
 
 const _ = cockpit.gettext;
 
-function sdsDisplayName(path) {
-    const name = path.split('/').pop() ?? path;
-    return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '')
-            .replace(/-/g, ' ');
+function formatBytes(bytes) {
+    if (!bytes && bytes !== 0) return '—';
+    if (bytes < 1024) return `${bytes} B`;
+    const units = ['KB', 'MB', 'GB'];
+    let value = bytes / 1024;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+        value /= 1024;
+        unit += 1;
+    }
+    return `${value.toFixed(1)} ${units[unit]}`;
+}
+
+function formatDate(ts) {
+    if (!ts) return '—';
+    return ts.slice(0, 10) + ' ' + ts.slice(11, 19);
 }
 
 function autoSelectContent(contentList, id, versionId) {
     const major = versionId?.split('.')[0] ?? '';
-    for (const path of contentList) {
-        const base = path.split('/').pop();
-        if (major && (base.includes(`${id}${major}`) || base.includes(`${id}-${major}`))) return path;
+    for (const c of contentList) {
+        const base = c.path.split('/').pop();
+        if (major && (base.includes(`${id}${major}`) || base.includes(`${id}-${major}`))) return c.path;
     }
-    for (const path of contentList) {
-        if (path.split('/').pop()
-                .includes(id)) return path;
+    for (const c of contentList) {
+        if (c.path.split('/').pop()
+                .includes(id)) return c.path;
     }
-    return contentList[0] ?? '';
+    return contentList[0]?.path ?? '';
 }
 
-export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey }) => {
+export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRefreshKey, onContentChanged, onManageContent }) => {
     const [contentList, setContentList] = useState([]);
     const [content, setContent] = useState('');
     const [manualPath, setManualPath] = useState(false);
@@ -44,22 +60,30 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey }) => {
     const [loadingContent, setLoadingContent] = useState(true);
     const [loadingProfiles, setLoadingProfiles] = useState(false);
     const [profileError, setProfileError] = useState(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState(null);
+    const [pendingUpload, setPendingUpload] = useState(null); // { file, existing }
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         let cancelled = false;
+        setLoadingContent(true);
         Promise.all([detectContent(), getOsRelease()])
                 .then(([list, { id, versionId }]) => {
                     if (cancelled) return;
                     setContentList(list);
-                    const selected = autoSelectContent(list, id, versionId);
-                    setContent(selected);
+                    // Only re-pick a default on first load or if the previously
+                    // selected content vanished (e.g. deleted elsewhere) — an
+                    // unrelated refresh (upload from another picker) must not
+                    // clobber the user's manual selection.
+                    setContent(prev => (prev && list.some(c => c.path === prev)) ? prev : autoSelectContent(list, id, versionId));
                     setLoadingContent(false);
                 })
                 .catch(() => {
                     if (!cancelled) setLoadingContent(false);
                 });
         return () => { cancelled = true };
-    }, []);
+    }, [contentRefreshKey]);
 
     useEffect(() => {
         if (!content) return;
@@ -110,6 +134,63 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey }) => {
         });
     }
 
+    function handleUploadClick() {
+        fileInputRef.current?.click();
+    }
+
+    function doUpload(file) {
+        setUploading(true);
+        setUploadError(null);
+        const reader = new FileReader();
+        reader.onload = async ev => {
+            try {
+                const uploaded = await uploadContent(file.name, new Uint8Array(ev.target.result));
+                setContent(uploaded.path);
+                onContentChanged?.();
+            } catch (ex) {
+                setUploadError(ex.message || String(ex));
+            } finally {
+                setUploading(false);
+            }
+        };
+        reader.onerror = () => {
+            setUploadError(_("Failed to read the selected file."));
+            setUploading(false);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    async function handleFileChosen(e) {
+        const file = e.target.files[0];
+        e.target.value = '';
+        // Guards against two uploads racing (e.g. a stat/confirm-replace
+        // round trip still in flight) writing concurrent scratch files —
+        // the modal closes as soon as the user confirms, before the actual
+        // write/validate/rename pipeline below has settled.
+        if (!file || uploading) return;
+
+        try {
+            sanitizeFilename(file.name);
+            checkUploadSize(file.size);
+        } catch (ex) {
+            setUploadError(ex.message || String(ex));
+            return;
+        }
+
+        const existing = await statExistingContent(file.name);
+        if (existing) {
+            setPendingUpload({ file, existing });
+        } else {
+            doUpload(file);
+        }
+    }
+
+    function handleConfirmReplace() {
+        const { file } = pendingUpload;
+        setPendingUpload(null);
+        doUpload(file);
+    }
+
     return (
         <Card>
             <CardHeader>
@@ -122,6 +203,14 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey }) => {
                     <div className="ct-form-col">
                         <Form onSubmit={handleSubmit} className="ct-scan-form">
                             <FormGroup label={_("Content file")} fieldId="ct-scap-content">
+                                {uploadError && (
+                                    <Alert
+                                        variant="danger" title={_("Upload failed")} isInline
+                                        actionClose={<Button variant="plain" onClick={() => setUploadError(null)}>×</Button>}
+                                    >
+                                        {uploadError}
+                                    </Alert>
+                                )}
                                 {loadingContent
                                     ? <Spinner size="sm" aria-label={_("Loading content")} />
                                     : manualPath
@@ -131,24 +220,31 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey }) => {
                                             onChange={(_e, v) => setContent(v)}
                                             placeholder="/usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml"
                                         />
-                                        : <FormSelect
+                                        : <ContentSelect
                                             id="ct-scap-content"
                                             value={content}
                                             onChange={(_e, v) => setContent(v)}
-                                        >
-                                            {contentList.length === 0 && (
-                                                <FormSelectOption value="" label={_("No content found in /usr/share/xml/scap/ssg/content/")} isDisabled />
-                                            )}
-                                            {contentList.map(path => (
-                                                <FormSelectOption key={path} value={path} label={sdsDisplayName(path)} />
-                                            ))}
-                                        </FormSelect>}
+                                            contentList={contentList}
+                                            emptyLabel={_("No content found — upload a datastream to get started")}
+                                        />}
                                 <Button
                                     variant="link" isInline className="ct-path-toggle"
                                     onClick={() => setManualPath(m => !m)}
                                 >
                                     {manualPath ? _("Use auto-detected content") : _("Enter path manually")}
                                 </Button>
+                                <Button variant="link" isInline isLoading={uploading} onClick={handleUploadClick}>
+                                    {_("Upload…")}
+                                </Button>
+                                <input
+                                    ref={fileInputRef} type="file" accept=".xml" hidden
+                                    onChange={handleFileChosen}
+                                />
+                                {onManageContent && (
+                                    <Button variant="link" isInline onClick={onManageContent}>
+                                        {_("Manage uploaded content →")}
+                                    </Button>
+                                )}
                             </FormGroup>
 
                             <FormGroup label={_("Profile")} fieldId="ct-scap-profile">
@@ -203,6 +299,25 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey }) => {
                     {_("Run Scan")}
                 </Button>
             </CardFooter>
+
+            {pendingUpload && (
+                <Modal variant="small" isOpen onClose={() => setPendingUpload(null)}>
+                    <ModalHeader title={_("Replace existing content?")} />
+                    <ModalBody>
+                        {cockpit.format(
+                            _("\"$0\" already exists ($1, uploaded $2). Replace with the new file ($3)?"),
+                            pendingUpload.file.name,
+                            formatBytes(pendingUpload.existing.size),
+                            formatDate(pendingUpload.existing.mtime),
+                            formatBytes(pendingUpload.file.size)
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button variant="primary" onClick={handleConfirmReplace}>{_("Replace")}</Button>
+                        <Button variant="link" onClick={() => setPendingUpload(null)}>{_("Cancel")}</Button>
+                    </ModalFooter>
+                </Modal>
+            )}
         </Card>
     );
 };

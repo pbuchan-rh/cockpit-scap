@@ -1,5 +1,5 @@
 import cockpit from 'cockpit';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
@@ -7,6 +7,7 @@ import { ExpandableSection } from "@patternfly/react-core/dist/esm/components/Ex
 import { Form, FormGroup } from "@patternfly/react-core/dist/esm/components/Form/index.js";
 import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { SearchInput } from "@patternfly/react-core/dist/esm/components/SearchInput/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
 import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
@@ -15,11 +16,13 @@ import { ToggleGroup, ToggleGroupItem } from "@patternfly/react-core/dist/esm/co
 import { TreeView } from "@patternfly/react-core/dist/esm/components/TreeView/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 
-import { detectContent, getProfiles } from '../lib/oscap.js';
+import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
+import { detectContent, getProfiles, sdsDisplayName } from '../lib/oscap.js';
 import {
     extractProfile, flattenProfileRules, parseTailoringXml, readTailoringXml,
     saveNewTailoring, updateTailoringFile,
 } from '../lib/tailoring.js';
+import { ContentSelect } from './ContentSelect.jsx';
 import { ProfileDescriptionPanel } from './ProfileDescriptionPanel.jsx';
 import { RuleDetailsBlock } from './RuleDetails.jsx';
 
@@ -34,10 +37,22 @@ const SEVERITY_COLOR = {
 
 const SEVERITY_ORDER = { high: 0, medium: 1, low: 2, unknown: 3 };
 
-function sdsDisplayName(path) {
-    const name = path.split('/').pop() ?? path;
-    return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '')
-            .replace(/-/g, ' ');
+function formatBytes(bytes) {
+    if (!bytes && bytes !== 0) return '—';
+    if (bytes < 1024) return `${bytes} B`;
+    const units = ['KB', 'MB', 'GB'];
+    let value = bytes / 1024;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+        value /= 1024;
+        unit += 1;
+    }
+    return `${value.toFixed(1)} ${units[unit]}`;
+}
+
+function formatUploadDate(ts) {
+    if (!ts) return '—';
+    return ts.slice(0, 10) + ' ' + ts.slice(11, 19);
 }
 
 function ruleVisible(rule, filters, ruleChanges) {
@@ -256,7 +271,7 @@ const ChangeSummaryPanel = ({ name, tailorData, ruleChanges, valueChanges }) => 
     );
 };
 
-export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit }) => {
+export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, contentRefreshKey, onContentChanged }) => {
     const [contentList, setContentList] = useState([]);
     const [content, setContent] = useState('');
     const [profiles, setProfiles] = useState([]);
@@ -274,6 +289,10 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit }) => {
     const [saveError, setSaveError] = useState(null);
     const [defaultAllExpanded, setDefaultAllExpanded] = useState(false);
     const [treeKey, setTreeKey] = useState(0);
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState(null);
+    const [pendingUpload, setPendingUpload] = useState(null); // { file, existing }
+    const fileInputRef = useRef(null);
 
     const isEditing = !!editingSidecar;
 
@@ -281,7 +300,64 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit }) => {
         let cancelled = false;
         detectContent().then(list => { if (!cancelled) setContentList(list); });
         return () => { cancelled = true };
-    }, []);
+    }, [contentRefreshKey]);
+
+    function handleUploadClick() {
+        fileInputRef.current?.click();
+    }
+
+    function doUpload(file) {
+        setUploading(true);
+        setUploadError(null);
+        const reader = new FileReader();
+        reader.onload = async ev => {
+            try {
+                const uploaded = await uploadContent(file.name, new Uint8Array(ev.target.result));
+                setContent(uploaded.path);
+                onContentChanged?.();
+            } catch (ex) {
+                setUploadError(ex.message || String(ex));
+            } finally {
+                setUploading(false);
+            }
+        };
+        reader.onerror = () => {
+            setUploadError(_("Failed to read the selected file."));
+            setUploading(false);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    async function handleFileChosen(e) {
+        const file = e.target.files[0];
+        e.target.value = '';
+        // Guards against two uploads racing (e.g. a stat/confirm-replace
+        // round trip still in flight) writing concurrent scratch files —
+        // the modal closes as soon as the user confirms, before the actual
+        // write/validate/rename pipeline below has settled.
+        if (!file || uploading) return;
+
+        try {
+            sanitizeFilename(file.name);
+            checkUploadSize(file.size);
+        } catch (ex) {
+            setUploadError(ex.message || String(ex));
+            return;
+        }
+
+        const existing = await statExistingContent(file.name);
+        if (existing) {
+            setPendingUpload({ file, existing });
+        } else {
+            doUpload(file);
+        }
+    }
+
+    function handleConfirmReplace() {
+        const { file } = pendingUpload;
+        setPendingUpload(null);
+        doUpload(file);
+    }
 
     useEffect(() => {
         if (!editingSidecar) return;
@@ -480,12 +556,28 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit }) => {
                                 : (
                                     <>
                                         <FormGroup label={_("Content file")} fieldId="ct-tailor-content-select">
-                                            <FormSelect id="ct-tailor-content-select" value={content} onChange={(_e, v) => setContent(v)}>
-                                                <FormSelectOption value="" label={_("Select content…")} isDisabled />
-                                                {contentList.map(path => (
-                                                    <FormSelectOption key={path} value={path} label={sdsDisplayName(path)} />
-                                                ))}
-                                            </FormSelect>
+                                            {uploadError && (
+                                                <Alert
+                                                    variant="danger" title={_("Upload failed")} isInline
+                                                    actionClose={<Button variant="plain" onClick={() => setUploadError(null)}>×</Button>}
+                                                >
+                                                    {uploadError}
+                                                </Alert>
+                                            )}
+                                            <ContentSelect
+                                                id="ct-tailor-content-select"
+                                                value={content}
+                                                onChange={(_e, v) => setContent(v)}
+                                                contentList={contentList}
+                                                emptyLabel={_("Select content…")}
+                                            />
+                                            <Button variant="link" isInline isLoading={uploading} onClick={handleUploadClick}>
+                                                {_("Upload…")}
+                                            </Button>
+                                            <input
+                                                ref={fileInputRef} type="file" accept=".xml" hidden
+                                                onChange={handleFileChosen}
+                                            />
                                         </FormGroup>
                                         <FormGroup label={_("Base profile")} fieldId="ct-tailor-profile-select">
                                             <FormSelect
@@ -644,6 +736,25 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit }) => {
                     </>
                 )}
             </CardBody>
+
+            {pendingUpload && (
+                <Modal variant="small" isOpen onClose={() => setPendingUpload(null)}>
+                    <ModalHeader title={_("Replace existing content?")} />
+                    <ModalBody>
+                        {cockpit.format(
+                            _("\"$0\" already exists ($1, uploaded $2). Replace with the new file ($3)?"),
+                            pendingUpload.file.name,
+                            formatBytes(pendingUpload.existing.size),
+                            formatUploadDate(pendingUpload.existing.mtime),
+                            formatBytes(pendingUpload.file.size)
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button variant="primary" onClick={handleConfirmReplace}>{_("Replace")}</Button>
+                        <Button variant="link" onClick={() => setPendingUpload(null)}>{_("Cancel")}</Button>
+                    </ModalFooter>
+                </Modal>
+            )}
         </Card>
     );
 };

@@ -12,6 +12,7 @@ import { saveScan, readSavedScanFiles, getScanHistoryDiskUsage } from './lib/sca
 import { ScanSetup } from './components/ScanSetup.jsx';
 import { ScanProgress } from './components/ScanProgress.jsx';
 import { ScanResults } from './components/ScanResults.jsx';
+import { ContentUploadCard } from './components/ContentUploadCard.jsx';
 import { ScanHistory } from './components/ScanHistory.jsx';
 import { TailoringEditor } from './components/TailoringEditor.jsx';
 import { TailoringList } from './components/TailoringList.jsx';
@@ -30,6 +31,7 @@ export const App = () => {
     const [tailoringRefreshKey, setTailoringRefreshKey] = useState(0);
     const [editingSidecar, setEditingSidecar] = useState(null);
     const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+    const [contentRefreshKey, setContentRefreshKey] = useState(0);
     const [historySaveError, setHistorySaveError] = useState(null);
     const [scanDiskUsage, setScanDiskUsage] = useState(null);
     const [tailoringDiskUsage, setTailoringDiskUsage] = useState(null);
@@ -171,6 +173,14 @@ export const App = () => {
         setHistoryRefreshKey(k => k + 1);
     }, []);
 
+    const handleContentChanged = useCallback(() => {
+        setContentRefreshKey(k => k + 1);
+    }, []);
+
+    const handleManageContent = useCallback(() => {
+        setActiveTab('tailoring');
+    }, []);
+
     return (
         <Page className="pf-m-no-sidebar">
             <PageSection>
@@ -210,7 +220,13 @@ export const App = () => {
                     <Tab eventKey="scan" title={<TabTitleText>{_("Host Scan")}</TabTitleText>}>
                         <div className="ct-tab-body">
                             {phase === 'setup' && (
-                                <ScanSetup adminAllowed={adminAllowed} onScan={handleScan} tailoringRefreshKey={tailoringRefreshKey} />
+                                <ScanSetup
+                                    adminAllowed={adminAllowed} onScan={handleScan}
+                                    tailoringRefreshKey={tailoringRefreshKey}
+                                    contentRefreshKey={contentRefreshKey}
+                                    onContentChanged={handleContentChanged}
+                                    onManageContent={handleManageContent}
+                                />
                             )}
 
                             {phase === 'running' && (
@@ -235,12 +251,19 @@ export const App = () => {
                                 editingSidecar={editingSidecar}
                                 onSaved={handleTailoringSaved}
                                 onCancelEdit={() => setEditingSidecar(null)}
+                                contentRefreshKey={contentRefreshKey}
+                                onContentChanged={handleContentChanged}
                             />
                             <TailoringList
                                 refreshKey={tailoringRefreshKey}
                                 onEdit={setEditingSidecar}
                                 onChanged={handleTailoringListChanged}
                                 diskUsage={tailoringDiskUsage}
+                                contentRefreshKey={contentRefreshKey}
+                            />
+                            <ContentUploadCard
+                                refreshKey={contentRefreshKey}
+                                onChanged={handleContentChanged}
                             />
                         </div>
                     </Tab>
