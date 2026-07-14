@@ -319,24 +319,32 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                                                 contentList={contentList}
                                                 emptyLabel={_("No content found — upload a datastream to get started")}
                                             />}
-                                    <Button
-                                        variant="link" isInline className="ct-path-toggle"
-                                        onClick={() => setManualPath(m => !m)}
-                                    >
-                                        {manualPath ? _("Use auto-detected content") : _("Enter path manually")}
-                                    </Button>
-                                    <Button variant="link" isInline isLoading={uploading} onClick={handleUploadClick}>
-                                        {_("Upload…")}
-                                    </Button>
+                                    <Flex flexWrap={{ default: 'wrap' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                                        <FlexItem>
+                                            <Button
+                                                variant="link" isInline className="ct-path-toggle"
+                                                onClick={() => setManualPath(m => !m)}
+                                            >
+                                                {manualPath ? _("Use auto-detected content") : _("Enter path manually")}
+                                            </Button>
+                                        </FlexItem>
+                                        <FlexItem>
+                                            <Button variant="link" isInline isLoading={uploading} onClick={handleUploadClick}>
+                                                {_("Upload…")}
+                                            </Button>
+                                        </FlexItem>
+                                        {onManageContent && (
+                                            <FlexItem>
+                                                <Button variant="link" isInline onClick={onManageContent}>
+                                                    {_("Manage uploaded content →")}
+                                                </Button>
+                                            </FlexItem>
+                                        )}
+                                    </Flex>
                                     <input
                                         ref={fileInputRef} type="file" accept=".xml" hidden
                                         onChange={handleFileChosen}
                                     />
-                                    {onManageContent && (
-                                        <Button variant="link" isInline onClick={onManageContent}>
-                                            {_("Manage uploaded content →")}
-                                        </Button>
-                                    )}
                                 </FormGroup>
 
                                 <FormGroup label={_("Profile")} fieldId="ct-scap-profile">
