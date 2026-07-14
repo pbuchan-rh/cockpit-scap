@@ -13,9 +13,22 @@
 }
 
 // PF6 CardTitle has no divider by default; old main's design separated the
-// title from the card body with a bottom border. Restore that here.
-.pf-v6-c-card__title {
+// title from the card body with a bottom border. CardHeader is `display:flex`
+// and CardTitle shrinks to its text width inside it, so the border has to go
+// on the header (the actual full-width flex container), not the title —
+// PF also zeroes the title's own padding once it's nested in a header.
+.pf-v6-c-card__header {
+    padding: var(--pf-t--global--spacer--md) var(--pf-t--global--spacer--lg);
     border-bottom: 1px solid var(--pf-t--global--border--color--100);
+}
+
+// Old main's design also separated the card footer's action buttons from
+// the body with a top border. Restore that here.
+.pf-v6-c-card__footer {
+    padding: var(--pf-t--global--spacer--md) var(--pf-t--global--spacer--lg);
+    border-top: 1px solid var(--pf-t--global--border--color--100);
+    display: flex;
+    gap: var(--pf-t--global--spacer--sm);
 }
 
 .pf-v6-c-card .pf-v6-c-card__body {
