@@ -2,7 +2,9 @@
 
 **Source:** Analysis of OpenSCAP/scap-workbench GitHub repository (archived September 2024)  
 **Purpose:** Feature reference for cockpit-scap gap analysis and future TUI tool design  
-**Last updated:** 2026-06-02
+**Last updated:** 2026-07-15 (Gap Analysis section only — see note below; sections 1–10 are the raw workbench feature reference and are unchanged since 2026-06-02)
+
+**Revision note (2026-07-15):** The Gap Analysis section below was originally written against the old vanilla-JS `main` branch, before the React/PatternFly rewrite existed. It's been rewritten from scratch against the current `rewrite` branch (post V4.1–V4.4: tailoring editor, scan history, content upload, guide/remediation buttons), verified directly against source rather than assumed. It intentionally does **not** re-litigate features `main` had that `rewrite` deliberately dropped (activity log, container scanning, Compliance Dashboard, Settings tab) — those were considered and cut on purpose during the rewrite; this doc is about workbench parity, not main parity.
 
 ---
 
@@ -178,81 +180,62 @@
 
 ---
 
-## cockpit-scap Gap Analysis
+## cockpit-scap Gap Analysis (vs `rewrite`, 2026-07-15)
+
+This section compares scap-workbench's actual feature set (sections 1–10 above) against the current React/PatternFly `rewrite` branch, verified directly against source (`git grep` + reading the relevant components), not assumed. It reflects the state after V4.1 (tailoring editor), V4.1.1 (formatting/TreeView polish), V4.1.2 (Scan Results parity), V4.2 (scan history), V4.3 (content upload), and V4.4 (guide/remediation buttons).
 
 ### Matched or Exceeded
 
 | Workbench Feature | cockpit-scap Status |
 |---|---|
 | SSG auto-detection | ✅ Matched |
-| Profile selection + description | ✅ Matched |
+| Profile selection + description | ✅ Matched — includes the two-column profile description side panel |
+| Profile title editing | ✅ Matched — editable inline in the tailoring editor on save/update |
 | Local scan via oscap | ✅ Matched |
 | Scan cancellation | ✅ Matched |
 | Real-time scan progress | ✅ Matched |
-| HTML report viewer | ✅ Exceeded — IndexedDB bridge handles large reports CSP-compliant |
-| Bash remediation download | ✅ Matched |
-| Ansible remediation download | ✅ Matched |
-| Online remediation (apply fixes) | ✅ Exceeded — Apply Now runs selected-rule bash script with two-gate confirmation, live output streaming, and audit log; more controlled than `--remediate` which blindly applies all |
-| Pre-scan role generation | ✅ Exceeded — Full Profile Remediation on all 3 tabs (host, container, tailoring); bash + ansible; tailoring file included when active; descriptive filename from profile name |
-| Post-scan result-based role generation | ✅ Exceeded — Selective Remediation Builder allows per-rule selection, not just all-or-nothing |
-| Benchmark guide viewer | ✅ Matched — View Compliance Guide on all 3 scan tabs via `oscap xccdf generate guide` |
-| Dry-run / CLI preview mode | ✅ Matched — View oscap command collapsible shows full `oscap xccdf eval` command with clipboard copy |
-| Diagnostics / log dialog | ✅ Exceeded — Activity Log tab; timestamped record of all user actions; filterable by type; exportable as CSV |
-| Tailoring rule tree with checkboxes | ✅ Matched |
-| Rule search in tailoring | ✅ Matched |
-| Expand / collapse all in tailoring | ✅ Matched |
+| HTML report viewer | ✅ Exceeded — IndexedDB bridge handles large reports, CSP-compliant (no inline scripts) |
+| Benchmark guide viewer | ✅ Matched — "View Compliance Guide" on Scan Setup (V4.4) |
+| Bash remediation generation | ✅ Matched — both pre-scan (whole profile) and post-scan (failed rules only) |
+| Ansible remediation generation | ✅ Matched — same pre/post-scan distinction |
+| **Puppet remediation generation** | ✅ Matched — restored in V4.4; old `main` never had this either, so `rewrite` now covers a workbench feature `main` didn't |
+| Post-scan result-based generation | ✅ Matched — per-rule "Fix" preview + download in Scan Results, correctly scoped via `generateScopedFix()` (a real oscap `--rule`-flag bug found and fixed 2026-07-14; earlier builds silently produced near-empty stubs) |
+| **ARF export** | ✅ Matched — confirmed present (`handleDownloadArf()` in `ScanResults.jsx`, ARF also stored per-scan in history as `arf.xml.gz`). Corrects this doc's own earlier (2026-06-02) claim that ARF wasn't implemented. |
+| Tailoring rule tree with checkboxes | ✅ Matched — PatternFly `TreeView` (migrated from native `<details>` in V4.1.1) |
+| **Rule search in tailoring** | ✅ Matched — confirmed live: PatternFly `SearchInput` filters the rule tree and auto-expands matching groups |
+| Expand / collapse all in tailoring | ✅ Matched — TreeView expand/collapse |
 | Value editing in tailoring | ✅ Matched |
-| Save / load / delete tailoring files | ✅ Exceeded — Workbench had no saved file management UI |
-| Upload external tailoring file | ✅ Exceeded — not a Workbench feature |
+| Save / load / delete / upload tailoring files | ✅ Exceeded — workbench had no saved-file management UI at all, just OS file dialogs |
 | Tailored scan support | ✅ Matched |
-| Scan history | ✅ Exceeded — Workbench had no scan history at all |
-| Prerequisite detection | ✅ Exceeded — Workbench assumed packages installed |
+| Scan history | ✅ Exceeded — workbench had no scan history at all. Deliberately leaner than old `main`'s version by design (no retention/auto-pruning, no CSV export, no activity-log tie-in) — see [[project_cockpit_scap]] for the 2026-07-07 scope call. |
+| Content upload + validation | ✅ Exceeded — not a workbench feature at all; validates via `oscap ds sds-validate` before accepting, atomic rename-on-success only |
+| CCE tags / Automated-Manual badges / severity-grouped results | ✅ Exceeded — not a workbench feature |
+| Disk-usage indicators (scans, tailoring policies) | ✅ Exceeded — not a workbench feature |
 
-### Not Implemented in cockpit-scap (Intentional or Deferred)
+### Not Implemented (real gaps vs workbench)
 
 | Workbench Feature | cockpit-scap Status | Notes |
 |---|---|---|
-| Remote SSH scanning | ⬜ Out of scope | Explicit design decision — Cockpit's native multi-host handles this at the platform layer |
-| Offline remediation (ARF re-apply) | ⬜ Not implemented | Distinct from Apply Now; no UI surface planned |
-| Puppet manifest generation | ⬜ Not implemented | Bash + Ansible only; Puppet market share does not justify the dep |
-| Fetch remote resources checkbox | ⬜ Not implemented | `--fetch-remote-resources` flag; low demand for air-gapped target audience |
-| 10 result states | ⬜ Partial | We show pass/fail/error/notchecked; remaining states (notapplicable, notselected, informational, fixed, unknown, processing) are collapsed into notchecked |
-| ARF export | ⬜ Not implemented | We save results.xml (XCCDF); ARF adds OVAL + asset ID bundle |
-| Save content to directory | ⬜ Not implemented | Content closure export; low priority |
-| Save as RPM | ⬜ Not implemented | We distribute via COPR; in-app RPM building not planned |
-| Undo / redo in tailoring | ⬜ Not implemented | Full undo stack; deferred |
-| Value-to-rules dependency map | ⬜ Not implemented | Which rules are affected by a given value change |
-| Checklist (component) selector | ⬜ Not implemented | Multi-checklist SDS; all current SSG SDS files have one checklist |
-| Capability-gated features by oscap version | ⬜ Not implemented | We assume openscap ≥ 1.3; prerequisite check handles missing binary |
-| Profile shadowing option | ⬜ Not implemented | Tailored profile always gets a new ID |
-| Profile title / description editing | ⬜ Partial | Profile name editable via inline field in tailoring editor; description not exposed |
+| **Online / live remediation ("Apply Now" / `--remediate`)** | ⬜ Not implemented | The one substantive remaining gap. Confirmed via source search — zero matches for any apply/execute-fix-live affordance. You can download a fix script; nothing runs it on the host with live streaming output. Old `main` actually had this (two-gate confirmation, live output, audit log) — `rewrite` hasn't rebuilt it. This is the still-open "remediation panel" item flagged in the 2026-07-07 feature-gap audit, not yet scoped or built. |
+| Offline remediation (re-apply a saved ARF without rescanning) | ⬜ Not implemented | |
+| Undo / redo in tailoring | ⬜ Not implemented | Confirmed — the only "undo" hits in source are delete-confirmation copy ("This cannot be undone"), not an actual undo stack. |
+| Dry-run / CLI command preview | ⬜ Not implemented | Confirmed zero references. Workbench (and old `main`) let you view/copy the exact `oscap` command before running it; `rewrite` doesn't expose one. |
+| Prerequisite / oscap-availability detection | ⬜ Not implemented | No explicit "oscap not found" check/banner found in source — presumably fails ungracefully if missing, rather than degrading with a clear message. |
+| 10 distinct result states | ⬜ Partial, unchanged | `lib/results.js` counts `notapplicable`/`notselected`/`informational`/`notchecked` distinctly, but `ScanResults.jsx` doesn't surface them as separate visual states — still collapsed to pass/fail/error for display purposes. |
+| Remote SSH scanning | ⬜ Out of scope by design | Not a code gap — deliberate architectural call that Cockpit's own multi-host federation covers this at the platform layer. |
+| Value-to-rules dependency map | ⬜ Not implemented | |
+| Checklist / component selector (multi-checklist SDS) | ⬜ Not implemented | All current SSG datastreams have one checklist, so this hasn't mattered in practice yet. |
+| Profile shadowing (tailored profile replacing original ID) | ⬜ Not implemented | Tailored profile always gets a new ID. |
+| Save content to directory / save as RPM | ⬜ Not implemented, not planned | |
 
 ### cockpit-scap Has No Workbench Equivalent
 
 | cockpit-scap Feature | Notes |
 |---|---|
-| Scan history with per-entry report + remediation access | Workbench was session-only; no persistence |
-| Tailoring file management (saved files list, edit, delete, upload) | Workbench opened/saved files manually via OS dialog |
-| Tailoring files filtered by SDS in scan tab | Workbench had no concept of a tailoring library |
-| Container image scanning via oscap-podman | Root Podman store enumeration; per-image history; selective remediation download |
-| SDS content library with upload + validation | Upload additional SDS files via browser; validate with `oscap ds sds-validate` |
-| Multi-version SDS with cross-version filtering | RHEL 6–10 SDS supported; auto-filters to OS-compatible content |
-| Compliance Dashboard | Host compliance hero card; score trend chart (last 10 scans); unified critical findings with automatable annotations; rule detail drawer; container cards |
-| Score trend chart | Full-width SVG in dashboard; color-coded by trend direction; hover tooltips |
-| Regression / improvement detection | Banner fires when failure count changes vs previous same-profile scan; "See what changed" shows rule-level diff |
-| Failing rules summary with CCE and inline description | Collapsible HIGH/MEDIUM/LOW groups; search by title or CCE; Automated/Manual annotation; inline description and rationale |
-| Action Board | Severity breakdown (HIGH/MEDIUM/LOW counts) + automatable count on scan complete; Quick Fix and Review All shortcuts |
-| Drawer-based remediation panel | Slides in from right; scan results stay fully visible; Esc/backdrop/Close button to dismiss |
-| Scan ETA | Elapsed + estimated remaining time during active scans; computed from previous matching scan duration |
-| Scan duration and scan ID | `scan_duration_s` and `scan_id` stored in manifest; displayed in results card header |
-| Score delta in history | ↑/↓ vs previous same-profile scan inline in history table |
-| Selective Remediation Builder | Search, select individual failing rules; download filtered bash or Ansible script; or Apply Now directly on the host |
-| Apply Now with two-gate confirmation | Live streaming output; full audit trail in activity log; host-only, admin-gated |
-| Settings tab | Scan result retention; tab visibility toggles; Content Library management; Manual Scheduling (cron-paste); Clear All Data |
-| Keyboard shortcuts | `/` focuses failing rules search; `Q` triggers Quick Fix; `Esc` closes any open drawer |
-| Activity Log | Timestamped record of all user actions; filterable by type; exportable as CSV |
-| JSON sidecar for fast tailoring metadata | Internal implementation detail |
+| Scan history with per-entry report + remediation access, disk-usage total | Workbench was session-only; no persistence |
+| Tailoring file management (saved list, edit, delete, upload) | Workbench opened/saved files manually via OS dialog; this is a real library |
+| SDS content library with upload + validation | Upload additional SDS files via browser; validated with `oscap ds sds-validate` before being exposed to any picker |
+| Puppet remediation format | Workbench has this; old `main` didn't; `rewrite` does now (V4.4) |
 | Browser-based (no X11/Wayland/desktop dependency) | By design |
-| SELinux enforcing mode support | By design |
-| CSP compliance | By design |
+| CSP compliance | By design — confirmed `content-security-policy` set in `src/manifest.json`, no inline scripts anywhere in the report/guide viewers |
 | Air-gapped / no CDN dependency | By design |
