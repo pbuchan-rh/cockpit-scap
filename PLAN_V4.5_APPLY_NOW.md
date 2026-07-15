@@ -147,32 +147,26 @@ silently.
 - Applying from a scan pulled out of History (vs. a scan just run this
   session) — see open question below.
 
-## Open questions for Peter
+## Decisions locked in with Peter (2026-07-15)
 
-1. **Audit logging model** (see above) — syslog + per-scan-directory log
-   file, or something else (or nothing)? This is the load-bearing question
-   for this whole feature; recommend the approach above but it's a real
-   product call given the "no root command runs without a trace" stakes.
-2. **Available from Scan History, or only right after a live scan?**
-   `generateScopedFix()` operates on static content + tailoring files, not
-   stored results, so technically nothing blocks offering Apply Now from a
-   history entry too — but re-applying "this scan's" fix set against
-   *today's* live host, possibly long after the scan ran, could be
-   surprising if the system has drifted since. Recommend: allow it, since
-   `sdsPath`/`tailoringPath` resolution already has to handle "content may
-   no longer exist" as an error case regardless (same as today's Download
-   Fix from History) — but flagging since it's a real behavioral choice, not
-   a no-brainer either way.
-3. **Live output component** — build a small reusable streaming-output
-   component now (bash script output today, could serve a future
-   long-running action later), or keep it a one-off inline `<pre>` scoped to
-   this feature? No strong recommendation; leaning toward one-off for now
-   since there's no second consumer yet, but worth a decision before the
-   build session rather than an ad-hoc call mid-build.
+All three open questions resolved, the recommended option in each case:
+
+1. **Audit logging: syslog + per-scan log file.** `logger -t cockpit-scap`
+   entry plus `~/SCAP/scans/<timestamp>/remediation.log` (script + full
+   output + exit code + timestamp + user + rule IDs applied), alongside that
+   scan's existing `manifest.json`/`report.html`/`results.xml` — covered by
+   the same delete-the-scan-directory cleanup Scan History already has, no
+   new retention question, no Activity Log tab resurrection.
+2. **Available from Scan History, not just a live scan.** `generateScopedFix()`
+   already handles "content no longer exists" as an error case (same as
+   today's Download Fix from History) — no new error-handling surface, just
+   reusing an existing path.
+3. **One-off inline `<pre>` for live output**, not a reusable component. No
+   second consumer exists yet; generalize later if one shows up.
 
 ## Next step
 
-Get this plan reviewed and approved. Once approved, open a separate build
-session (scaffolding + component code) — per established practice, planning
-sessions produce docs only, implementation is a distinct, separately-approved
-step.
+Plan approved, no open questions remaining. Ready for a separate build
+session (scaffolding + component code) whenever Peter wants to schedule it —
+per established practice, planning sessions produce docs only,
+implementation is a distinct, separately-approved step.
