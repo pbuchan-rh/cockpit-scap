@@ -3,7 +3,7 @@
   "description": "Cockpit UI for SCAP security compliance scanning",
   "type": "module",
   "main": "index.js",
-  "repository": "http://git.beastmode.localdomain:3000/admin/cockpit-scap.git",
+  "repository": "https://github.com/pbuchan-rh/cockpit-scap.git",
   "author": "",
   "license": "LGPL-2.1",
   "engines": {
