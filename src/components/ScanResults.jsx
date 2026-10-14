@@ -11,8 +11,8 @@ import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/ind
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 
-import { downloadBlob } from '../lib/download.js';
-import { generateScopedFix } from '../lib/oscap.js';
+import { downloadFile } from '../lib/download.js';
+import { generateScopedFix, isEmptyFix } from '../lib/oscap.js';
 import { openReportViewer } from '../lib/reportViewer.js';
 import { RuleDetailsBlock } from './RuleDetails.jsx';
 
@@ -35,13 +35,15 @@ function ruleShortId(fullId) {
     return fullId.replace(/^xccdf_[^_]+_rule_/, '');
 }
 
-const FailingRuleRow = ({ rule, meta, sdsPath, tailoringPath, isSelected, onToggle }) => {
+const FailingRuleRow = ({ rule, meta, scope, isSelected, onToggle }) => {
+    const sdsPath = scope.sdsPath;
     const [expanded, setExpanded] = useState(false);
     const [fixExpanded, setFixExpanded] = useState(false);
     const [fixText, setFixText] = useState(null);
     const [fixLoading, setFixLoading] = useState(false);
     const [fixLoadError, setFixLoadError] = useState(null);
     const [fixBusy, setFixBusy] = useState(null); // 'bash' | 'ansible' download-in-flight
+    const [fixEmpty, setFixEmpty] = useState(null);
 
     const hasDetails = !!(meta?.description || meta?.rationale);
     // Fix generation runs against static profile content (generateScopedFix,
@@ -58,7 +60,7 @@ const FailingRuleRow = ({ rule, meta, sdsPath, tailoringPath, isSelected, onTogg
             setFixLoading(true);
             setFixLoadError(null);
             try {
-                const script = await generateScopedFix(sdsPath, tailoringPath, [rule.id], 'bash');
+                const script = await generateScopedFix(scope, [rule.id], 'bash');
                 setFixText(script);
             } catch (ex) {
                 setFixLoadError(ex.message || String(ex));
@@ -73,14 +75,20 @@ const FailingRuleRow = ({ rule, meta, sdsPath, tailoringPath, isSelected, onTogg
         e.stopPropagation();
         setFixBusy(fixType);
         setFixLoadError(null);
+        setFixEmpty(null);
         try {
             const script = fixType === 'bash' && fixText !== null
                 ? fixText
-                : await generateScopedFix(sdsPath, tailoringPath, [rule.id], fixType);
+                : await generateScopedFix(scope, [rule.id], fixType);
+            if (isEmptyFix(script, fixType)) {
+                setFixEmpty(fixType === 'bash'
+                    ? _("This rule has no Bash remediation.")
+                    : _("This rule has no Ansible remediation."));
+                return;
+            }
             const ext = fixType === 'bash' ? '.sh' : '.yml';
-            const mimeType = fixType === 'bash' ? 'text/x-shellscript' : 'text/yaml';
             const idSuffix = meta?.cce || ruleShortId(rule.id);
-            downloadBlob(script, `fix-${idSuffix}${ext}`, mimeType);
+            await downloadFile(script, `fix-${idSuffix}${ext}`);
         } catch (ex) {
             setFixLoadError(ex.message || String(ex));
         } finally {
@@ -89,7 +97,7 @@ const FailingRuleRow = ({ rule, meta, sdsPath, tailoringPath, isSelected, onTogg
     }
 
     return (
-        <div className="ct-rule-row">
+        <div className="ct-rule-row" data-rule-id={rule.id}>
             <Checkbox
                 id={`ct-rule-${rule.id}`}
                 isChecked={isSelected}
@@ -157,6 +165,7 @@ const FailingRuleRow = ({ rule, meta, sdsPath, tailoringPath, isSelected, onTogg
                             {fixLoadError}
                         </Alert>
                     )}
+                    {fixEmpty && <Alert variant="warning" isInline isPlain title={fixEmpty} />}
                     {!fixLoading && fixText !== null && (
                         <>
                             <pre className="ct-rule-rem-pre">{fixText}</pre>
@@ -187,8 +196,12 @@ const FailingRuleRow = ({ rule, meta, sdsPath, tailoringPath, isSelected, onTogg
 export const ScanResults = ({ result, tmpdir, onNewScan }) => {
     const {
         scorePercent, pass, fail, error: errorCount, failingRules, reportHtml, resultsXmlGz, arfXmlGz,
-        ruleMeta, sdsPath, tailoringPath,
+        ruleMeta, sdsPath, tailoringPath, scanProfileId, allRuleIds,
     } = result;
+    const scope = useMemo(
+        () => ({ sdsPath, profileId: scanProfileId, tailoringPath, allRuleIds }),
+        [sdsPath, scanProfileId, tailoringPath, allRuleIds]
+    );
 
     const allSeverities = useMemo(
         () => [...new Set(failingRules.map(r => r.severity))],
@@ -203,6 +216,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
     );
     const [busy, setBusy] = useState(null); // 'bash' | 'ansible'
     const [fixError, setFixError] = useState(null);
+    const [fixWarning, setFixWarning] = useState(null);
 
     const visibleRules = useMemo(
         () => failingRules.filter(r => severityFilter.has(r.severity)),
@@ -252,20 +266,29 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
     }
 
     function handleDownloadResultsXml() {
-        downloadBlob(resultsXmlGz, 'scan-results.xml.gz', 'application/gzip');
+        setFixError(null);
+        downloadFile(resultsXmlGz, 'scan-results.xml.gz').catch(ex => setFixError(ex.message || String(ex)));
     }
 
     function handleDownloadArf() {
-        downloadBlob(arfXmlGz, 'scan-arf.xml.gz', 'application/gzip');
+        setFixError(null);
+        downloadFile(arfXmlGz, 'scan-arf.xml.gz').catch(ex => setFixError(ex.message || String(ex)));
     }
 
     async function handleDownloadFix(fixType) {
         const filename = fixType === 'bash' ? 'remediation.sh' : 'remediation.yml';
         setBusy(fixType);
         setFixError(null);
+        setFixWarning(null);
         try {
-            const script = await generateScopedFix(sdsPath, tailoringPath, [...selectedRuleIds], fixType);
-            downloadBlob(script, filename, 'text/plain');
+            const script = await generateScopedFix(scope, [...selectedRuleIds], fixType);
+            if (isEmptyFix(script, fixType)) {
+                setFixWarning(fixType === 'bash'
+                    ? _("None of the selected rules has a Bash remediation, so there is nothing to download.")
+                    : _("None of the selected rules has an Ansible remediation, so there is nothing to download."));
+                return;
+            }
+            await downloadFile(script, filename);
         } catch (ex) {
             console.error('Fix generation failed:', ex.message);
             setFixError(ex.message || String(ex));
@@ -312,7 +335,19 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                     {fixError}
                 </Alert>
             )}
-            <Card>
+            {fixWarning && (
+                <Alert
+                    variant="warning"
+                    title={_("Empty remediation")}
+                    isInline
+                    actionClose={
+                        <Button variant="plain" onClick={() => setFixWarning(null)}>×</Button>
+                    }
+                >
+                    {fixWarning}
+                </Alert>
+            )}
+            <Card data-ct-results>
                 <CardHeader
                     actions={{
                         actions: (
@@ -375,11 +410,21 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                 ? (
                     <Card>
                         <CardBody>
-                            <EmptyState titleText={_("All rules passed")} headingLevel="h3">
-                                <EmptyStateBody>
-                                    {_("No failing or error rules found in this scan.")}
-                                </EmptyStateBody>
-                            </EmptyState>
+                            {pass > 0
+                                ? (
+                                    <EmptyState titleText={_("All rules passed")} headingLevel="h3">
+                                        <EmptyStateBody>
+                                            {_("No failing or error rules found in this scan.")}
+                                        </EmptyStateBody>
+                                    </EmptyState>
+                                )
+                                : (
+                                    <EmptyState titleText={_("No rules were evaluated")} headingLevel="h3" status="warning">
+                                        <EmptyStateBody>
+                                            {_("Nothing passed or failed: no rule in this profile applied to this host. This usually means the content is for a different operating system.")}
+                                        </EmptyStateBody>
+                                    </EmptyState>
+                                )}
                         </CardBody>
                     </Card>
                 )
@@ -489,8 +534,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                                         key={rule.id}
                                                         rule={rule}
                                                         meta={ruleMeta?.[rule.id]}
-                                                        sdsPath={sdsPath}
-                                                        tailoringPath={tailoringPath}
+                                                        scope={scope}
                                                         isSelected={selectedRuleIds.has(rule.id)}
                                                         onToggle={toggleRule}
                                                     />

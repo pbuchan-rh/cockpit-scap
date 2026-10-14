@@ -10,7 +10,7 @@ import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
-import { downloadBlob } from '../lib/download.js';
+import { downloadFile } from '../lib/download.js';
 import { detectContent, sdsDisplayName } from '../lib/oscap.js';
 import { deleteTailoringFile, listTailoringFiles, readTailoringXml, saveUploadedTailoring } from '../lib/tailoring.js';
 import { ContentSelect } from './ContentSelect.jsx';
@@ -126,8 +126,13 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
     }
 
     async function handleDownload(sidecar) {
-        const xml = await readTailoringXml(sidecar.path);
-        downloadBlob(xml, sidecar.path.split('/').pop(), 'application/xml');
+        setError(null);
+        try {
+            const xml = await readTailoringXml(sidecar.path);
+            await downloadFile(xml, sidecar.path.split('/').pop());
+        } catch (ex) {
+            setError(ex.message || String(ex));
+        }
     }
 
     return (

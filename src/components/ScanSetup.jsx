@@ -18,8 +18,12 @@ import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js
 import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/index.js";
 
 import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
-import { downloadBlob } from '../lib/download.js';
-import { autoSelectContent, detectContent, generateGuide, generateProfileFix, getOsRelease, getProfiles } from '../lib/oscap.js';
+import { downloadFile } from '../lib/download.js';
+import {
+    autoSelectContent, cpeDisplayName, detectContent, generateGuide, generateProfileFix, getContentPlatform,
+    getOsRelease, getProfiles, isEmptyFix, isPlatformMismatch,
+} from '../lib/oscap.js';
+import { listScans } from '../lib/scanHistory.js';
 import { listTailoringFiles } from '../lib/tailoring.js';
 import { openReportViewer } from '../lib/reportViewer.js';
 import { ContentSelect } from './ContentSelect.jsx';
@@ -76,15 +80,19 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
     const [guideError, setGuideError] = useState(null);
     const [fixBusy, setFixBusy] = useState(null); // 'bash' | 'ansible' | 'puppet'
     const [fixError, setFixError] = useState(null);
+    const [fixWarning, setFixWarning] = useState(null);
     const [isFixMenuOpen, setIsFixMenuOpen] = useState(false);
+    const [host, setHost] = useState({ cpe: '', prettyName: '' });
+    const [contentCpe, setContentCpe] = useState(null);
 
     useEffect(() => {
         let cancelled = false;
         setLoadingContent(true);
         Promise.all([detectContent(), getOsRelease()])
-                .then(([list, { id, versionId }]) => {
+                .then(([list, { id, versionId, cpe, prettyName }]) => {
                     if (cancelled) return;
                     setContentList(list);
+                    setHost({ cpe, prettyName });
                     // Only re-pick a default on first load or if the previously
                     // selected content vanished (e.g. deleted elsewhere) — an
                     // unrelated refresh (upload from another picker) must not
@@ -106,11 +114,18 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
         setProfiles([]);
         setProfile('');
         setTailoringSelection('');
-        getProfiles(content)
-                .then(list => {
+        setContentCpe(null);
+        getContentPlatform(content).then(cpe => { if (!cancelled) setContentCpe(cpe); });
+        // No silent default (R4): preselect only the profile of the newest
+        // saved scan of this same content (Amendment 1: derived from
+        // ~/SCAP/scans, no new storage), else "Select a profile…".
+        Promise.all([getProfiles(content), listScans().catch(() => [])])
+                .then(([list, scans]) => {
                     if (cancelled) return;
                     setProfiles(list);
-                    setProfile(list[0]?.id ?? '');
+                    const last = scans.find(sc => sc.sds_file === content); // listScans is newest first
+                    const lastId = last && (last.base_profile_id || last.profile_id);
+                    setProfile(list.some(p => p.id === lastId) ? lastId : '');
                     setLoadingProfiles(false);
                 })
                 .catch(ex => {
@@ -140,7 +155,10 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
     // NOT gated behind adminAllowed.
     const canGenerate = content && (selectedTailoring || profile) && !loadingProfiles;
 
-    const activeProfileId = selectedTailoring ? selectedTailoring.base_profile_id : profile;
+    // The TAILORED profile id with the tailoring file — the base id would
+    // make oscap ignore the tailoring (C§1c-2).
+    const activeProfileId = selectedTailoring ? selectedTailoring.profile_id : profile;
+    const platformMismatch = isPlatformMismatch(contentCpe, host.cpe);
     const activeTailoringPath = selectedTailoring ? selectedTailoring.path : null;
     const activeProfileTitle = selectedTailoring
         ? selectedTailoring.name
@@ -239,10 +257,15 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
         if (!canGenerate || fixBusy) return;
         setFixBusy(fixType);
         setFixError(null);
+        setFixWarning(null);
         try {
             const script = await generateProfileFix(content, activeProfileId, activeTailoringPath, fixType);
-            const { ext, mimeType } = FIX_TYPES.find(f => f.key === fixType);
-            downloadBlob(script, `profile-remediation-${slugify(activeProfileTitle)}${ext}`, mimeType);
+            const { ext, label } = FIX_TYPES.find(f => f.key === fixType);
+            if (isEmptyFix(script, fixType)) {
+                setFixWarning(cockpit.format(_("No rule in \"$0\" has a $1 remediation, so there is nothing to download."), activeProfileTitle, label));
+                return;
+            }
+            await downloadFile(script, `profile-remediation-${slugify(activeProfileTitle)}${ext}`);
         } catch (ex) {
             setFixError(ex.message || String(ex));
         } finally {
@@ -274,6 +297,18 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                     }
                 >
                     {fixError}
+                </Alert>
+            )}
+            {fixWarning && (
+                <Alert
+                    variant="warning"
+                    title={_("Empty remediation")}
+                    isInline
+                    actionClose={
+                        <Button variant="plain" onClick={() => setFixWarning(null)}>×</Button>
+                    }
+                >
+                    {fixWarning}
                 </Alert>
             )}
             <Card>
@@ -337,6 +372,17 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                                         ref={fileInputRef} type="file" accept=".xml" hidden
                                         onChange={handleFileChosen}
                                     />
+                                    {platformMismatch && (
+                                        <Alert
+                                            variant="warning" isInline isPlain className="ct-content-mismatch"
+                                            title={cockpit.format(
+                                                _("This content is for $0, but this host runs $1"),
+                                                cpeDisplayName(contentCpe), host.prettyName || cpeDisplayName(host.cpe)
+                                            )}
+                                        >
+                                            {_("Most rules will not apply to this host, and the score will not mean much. Pick content that matches the host unless you know you need this one.")}
+                                        </Alert>
+                                    )}
                                 </FormGroup>
 
                                 <FormGroup label={_("Profile")} fieldId="ct-scap-profile">
@@ -348,13 +394,15 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                                             onChange={(_e, v) => setProfile(v)}
                                             isDisabled={!content || profiles.length === 0 || !!selectedTailoring}
                                         >
-                                            {profiles.length === 0 && (
-                                                <FormSelectOption
-                                                    value=""
-                                                    label={profileError ? _("Failed to load profiles") : _("No profiles found")}
-                                                    isDisabled
-                                                />
-                                            )}
+                                            {profiles.length === 0
+                                                ? (
+                                                    <FormSelectOption
+                                                        value=""
+                                                        label={profileError ? _("Failed to load profiles") : _("No profiles found")}
+                                                        isDisabled
+                                                    />
+                                                )
+                                                : <FormSelectOption value="" label={_("Select a profile…")} isPlaceholder isDisabled />}
                                             {profiles.map(p => (
                                                 <FormSelectOption key={p.id} value={p.id} label={p.title || p.id} />
                                             ))}

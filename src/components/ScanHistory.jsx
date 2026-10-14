@@ -11,7 +11,7 @@ import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
-import { downloadBlob } from '../lib/download.js';
+import { downloadFile } from '../lib/download.js';
 import { deleteScan, listScans, readSavedScanFiles } from '../lib/scanHistory.js';
 
 const _ = cockpit.gettext;
@@ -60,7 +60,7 @@ export const ScanHistory = ({ refreshKey, onView, onChanged, diskUsage }) => {
         setError(null);
         try {
             const files = await readSavedScanFiles(sc);
-            downloadBlob(files.resultsXmlGz, `scan-results-${sc.timestamp}.xml.gz`, 'application/gzip');
+            await downloadFile(files.resultsXmlGz, `scan-results-${sc.timestamp}.xml.gz`);
         } catch (ex) {
             setError(ex.message || String(ex));
         } finally {
