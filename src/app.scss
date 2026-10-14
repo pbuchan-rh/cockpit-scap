@@ -201,25 +201,123 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
-// Failing rules list
-.ct-rules-list {
+// ---- Results page (spec B, v3 structure from main index.html/style.css) --
+
+.ct-results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--pf-t--global--spacer--lg);
+    flex-wrap: wrap;
+}
+
+.ct-results-label {
+    font-size: var(--pf-t--global--font--size--xs);
+    font-weight: var(--pf-t--global--font--weight--body--bold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--pf-t--global--text--color--subtle);
+    margin: 0 0 var(--pf-t--global--spacer--xs);
+}
+
+.ct-results-profile {
+    font-weight: var(--pf-t--global--font--weight--heading--bold);
+}
+
+.ct-results-sub {
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+    margin: var(--pf-t--global--spacer--xs) 0 0;
+}
+
+.ct-results-meta {
     display: flex;
     flex-direction: column;
-}
-
-.ct-rules-controls {
-    margin-block-end: var(--pf-t--global--spacer--sm);
+    align-items: flex-end;
+    gap: var(--pf-t--global--spacer--xs);
     font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+    white-space: nowrap;
 }
 
-// Severity-grouped collapsible sections (one ExpandableSection per
-// severity, plus a trailing one for error-result rules).
-.ct-failing-group {
-    margin-block-end: var(--pf-t--global--spacer--sm);
+// Three zones in one row, divided: score | summary | builder panel.
+// Stacked (horizontal dividers) below the lg breakpoint.
+.ct-results-zones {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pf-t--global--spacer--md);
+    padding-block: var(--pf-t--global--spacer--sm);
+}
 
-    &:last-child {
-        margin-block-end: 0;
+.ct-results-zone {
+    min-inline-size: 0;
+}
+
+.ct-results-zone-score,
+.ct-results-zone-summary {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ct-results-zone-score {
+    align-items: center;
+}
+
+.ct-results-summary-line {
+    font-size: var(--pf-t--global--font--size--md);
+    font-variant-numeric: tabular-nums;
+    margin: 0;
+}
+
+@media (width >= 992px) {
+    .ct-results-zones {
+        flex-direction: row;
+        align-items: stretch;
     }
+
+    .ct-results-zone-score {
+        flex: 0 0 auto;
+    }
+
+    .ct-results-zone-summary {
+        flex: 1 1 0;
+    }
+
+    .ct-builder-panel {
+        flex: 0 1 26rem;
+    }
+}
+
+// Remediation Builder panel: tinted surface with the brand accent bar.
+.ct-builder-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pf-t--global--spacer--sm);
+    padding: var(--pf-t--global--spacer--md) var(--pf-t--global--spacer--lg);
+}
+
+.ct-builder-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--pf-t--global--spacer--sm);
+}
+
+// Failing rules: search row, then severity groups divided from each other.
+.ct-rules-search-row {
+    padding-block-end: var(--pf-t--global--spacer--md);
+}
+
+.ct-rules-search {
+    max-inline-size: 28rem;
+}
+
+.ct-no-match {
+    padding-block: var(--pf-t--global--spacer--md);
+}
+
+.ct-failing-group {
+    padding-block: var(--pf-t--global--spacer--sm);
 }
 
 // Severity group headers (R6): bold neutral text plus a PF Label that
@@ -236,17 +334,42 @@
     color: var(--pf-t--global--text--color--regular);
 }
 
-.ct-selected-count {
-    color: var(--pf-t--global--text--color--subtle);
+// One rule: a full-width button row (title, CCE second line, Automated /
+// Manual right-aligned), divided from its neighbours.
+.ct-rule-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--pf-t--global--spacer--sm);
+    inline-size: 100%;
+    padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--xs);
+    background: none;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &:hover {
+        background: var(--pf-t--global--background--color--primary--hover);
+    }
+
+    &:focus-visible {
+        outline: var(--pf-t--global--border--width--strong, 2px) solid var(--pf-t--global--color--brand--default);
+        outline-offset: -2px;
+    }
 }
 
-.ct-rule-row {
-    padding-block: var(--pf-t--global--spacer--xs);
-    border-block-end: 1px solid var(--pf-t--global--border--color--default);
+.ct-rule-toggle-icon {
+    flex: 0 0 auto;
+    color: var(--pf-t--global--icon--color--subtle);
+    padding-block-start: 1px;
+}
 
-    &:last-child {
-        border-block-end: none;
-    }
+.ct-rule-text-col {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-inline-size: 0;
 }
 
 .ct-rule-title {
@@ -259,14 +382,65 @@
     word-break: break-all;
 }
 
-// CCE identifier tag, shown next to the rule title when present.
 .ct-rule-cce {
     font-size: var(--pf-t--global--font--size--sm);
     color: var(--pf-t--global--text--color--subtle);
 }
 
-// Description/rationale block, shown on click-to-expand for both a failing
-// scan result row and a tailoring-tree rule row.
+.ct-rule-tag {
+    flex: 0 0 auto;
+    margin-inline-start: auto;
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+}
+
+.ct-rule-tag-auto {
+    font-weight: var(--pf-t--global--font--weight--body--bold);
+    color: var(--pf-t--global--text--color--regular);
+}
+
+// Expanded rule: tinted detail panel (spec D) with description, rationale,
+// framework chips and the remediation script disclosure.
+.ct-rule-detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pf-t--global--spacer--sm);
+    margin: 0 0 var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--lg);
+    padding: var(--pf-t--global--spacer--md);
+    font-size: var(--pf-t--global--font--size--sm);
+}
+
+.ct-rule-detail-label {
+    font-weight: var(--pf-t--global--font--weight--body--bold);
+    margin: 0;
+}
+
+.ct-rule-detail-desc,
+.ct-rule-detail-rat {
+    overflow-wrap: anywhere;
+}
+
+.ct-inline-code {
+    font-family: var(--pf-t--global--font--family--mono);
+    font-size: 0.95em;
+    padding: 0 var(--pf-t--global--spacer--xs);
+    border-radius: var(--pf-t--global--border--radius--tiny);
+    background: var(--pf-t--global--background--color--primary--default);
+    overflow-wrap: anywhere;
+}
+
+.ct-rich-pre {
+    font-family: var(--pf-t--global--font--family--mono);
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: var(--pf-t--global--spacer--xs) 0;
+    padding: var(--pf-t--global--spacer--sm);
+    background: var(--pf-t--global--background--color--primary--default);
+    border-radius: var(--pf-t--global--border--radius--tiny);
+}
+
+// Description/rationale block for a rule in the tailoring tree
+// (RuleDetails.jsx).
 .ct-rule-details {
     margin-inline-start: var(--pf-t--global--spacer--lg);
     margin-block-start: var(--pf-t--global--spacer--xs);
@@ -284,15 +458,6 @@
     }
 }
 
-// Inline per-rule remediation preview, shown on click-to-expand next to
-// a failing rule's "Fix" toggle.
-.ct-rule-rem {
-    margin-inline-start: var(--pf-t--global--spacer--lg);
-    margin-block-start: var(--pf-t--global--spacer--xs);
-    padding-inline-start: var(--pf-t--global--spacer--sm);
-    border-inline-start: 1px solid var(--pf-t--global--border--color--default);
-}
-
 .ct-rule-rem-loading {
     font-size: var(--pf-t--global--font--size--sm);
     color: var(--pf-t--global--text--color--subtle);
@@ -301,9 +466,8 @@
 .ct-rule-rem-pre {
     font-family: var(--pf-t--global--font--family--mono);
     font-size: var(--pf-t--global--font--size--sm);
-    color: var(--pf-t--global--text--color--subtle);
-    background: var(--pf-t--global--background--color--secondary--default);
-    border: 1px solid var(--pf-t--global--border--color--default);
+    color: var(--pf-t--global--text--color--regular);
+    background: var(--pf-t--global--background--color--primary--default);
     border-radius: var(--pf-t--global--border--radius--tiny);
     padding: var(--pf-t--global--spacer--sm);
     margin-block-end: 0;
@@ -319,18 +483,83 @@
     margin-block-start: var(--pf-t--global--spacer--xs);
 }
 
-// Severity filter labels — click to toggle
-.ct-sev-filter {
-    cursor: pointer;
+// Footer action bar: View report, Download ▾ ... Close set apart.
+.ct-results-close {
+    margin-inline-start: auto;
 }
 
-.ct-sev-inactive {
-    opacity: 0.35;
+// ---- Remediation Builder drawer (spec C) ---------------------------------
+
+// The drawer wraps the whole Page so its panel is viewport-high and scrolls
+// on its own; the page keeps its own scrolling underneath.
+.ct-builder-drawer-root,
+.ct-builder-drawer-root > .pf-v6-c-drawer__main {
+    block-size: 100%;
 }
 
-.ct-fix-hint {
-    font-size: var(--pf-t--global--font--size--sm);
+.ct-drawer-main {
+    block-size: 100%;
+    padding: 0;
+}
+
+.ct-builder-drawer {
+    display: flex;
+    flex-direction: column;
+}
+
+.ct-builder-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--pf-t--global--spacer--sm);
+}
+
+.ct-builder-context {
+    margin-inline: var(--pf-t--global--spacer--lg);
+    margin-block-end: var(--pf-t--global--spacer--md);
+    padding: var(--pf-t--global--spacer--md);
+}
+
+.ct-builder-toolbar {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--pf-t--global--spacer--md);
+}
+
+.ct-builder-count {
+    font-weight: var(--pf-t--global--font--weight--body--bold);
+}
+
+.ct-builder-group-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: var(--pf-t--global--spacer--sm);
+}
+
+.ct-builder-group-select {
+    padding-block-start: var(--pf-t--global--spacer--sm);
+}
+
+.ct-builder-group-count {
     color: var(--pf-t--global--text--color--subtle);
+}
+
+.ct-builder-rule {
+    padding-block: var(--pf-t--global--spacer--xs);
+}
+
+.ct-builder-rule-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--pf-t--global--spacer--sm);
+}
+
+.ct-builder-footer {
+    flex: 0 0 auto;
 }
 
 .ct-btn-danger-link {

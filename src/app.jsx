@@ -2,16 +2,18 @@ import cockpit from 'cockpit';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
+import { Drawer, DrawerContent, DrawerContentBody } from "@patternfly/react-core/dist/esm/components/Drawer/index.js";
 import { Page, PageSection } from "@patternfly/react-core/dist/esm/components/Page/index.js";
 import { Tab, Tabs, TabTitleText } from "@patternfly/react-core/dist/esm/components/Tabs/index.js";
 
 import { makeTmpdir, startScan, readResults, cleanupTmpdir } from './lib/oscap.js';
-import { parseResults } from './lib/results.js';
+import { groupReferences, parseResults } from './lib/results.js';
 import { extractProfile, flattenProfileRules, getTailoringDiskUsage } from './lib/tailoring.js';
 import { saveScan, readSavedScanFiles, getScanHistoryDiskUsage } from './lib/scanHistory.js';
 import { ScanSetup } from './components/ScanSetup.jsx';
 import { ScanProgress } from './components/ScanProgress.jsx';
 import { ScanResults } from './components/ScanResults.jsx';
+import { RemediationBuilder } from './components/RemediationBuilder.jsx';
 import { ContentUploadCard } from './components/ContentUploadCard.jsx';
 import { ScanHistory } from './components/ScanHistory.jsx';
 import { TailoringEditor } from './components/TailoringEditor.jsx';
@@ -35,6 +37,9 @@ export const App = () => {
     const [historySaveError, setHistorySaveError] = useState(null);
     const [scanDiskUsage, setScanDiskUsage] = useState(null);
     const [tailoringDiskUsage, setTailoringDiskUsage] = useState(null);
+    // Remediation Builder drawer: null when closed, else { preset, key }
+    // (key remounts it so each open starts from its preset selection).
+    const [builder, setBuilder] = useState(null);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -102,7 +107,14 @@ export const App = () => {
             const ruleMeta = {};
             if (extracted) {
                 flattenProfileRules(extracted).forEach(r => {
-                    ruleMeta[r.id] = { title: r.title, description: r.description, rationale: r.rationale, cce: r.cce, automated: r.hasFix };
+                    ruleMeta[r.id] = {
+                        title: r.title,
+                        description: r.description,
+                        rationale: r.rationale,
+                        cce: r.cce,
+                        automated: r.hasFix,
+                        refs: groupReferences(r.refs || []),
+                    };
                 });
             }
             const parsed = parseResults(files.resultsXml);
@@ -126,6 +138,7 @@ export const App = () => {
             }
             setHistoryRefreshKey(k => k + 1);
 
+            setBuilder(null);
             setScanResult({
                 ...parsed,
                 ...files,
@@ -134,6 +147,8 @@ export const App = () => {
                 scanProfileId: config.profile,
                 sdsPath: config.content,
                 tailoringPath: config.tailoring,
+                profileTitle: config.tailoringName || extracted?.profile?.title || config.profile,
+                tailoringName: config.tailoringName || null,
             });
             setPhase('results');
         } catch (ex) {
@@ -156,6 +171,7 @@ export const App = () => {
             cleanupTmpdir(tmpdir).catch(() => {});
             setTmpdir(null);
         }
+        setBuilder(null);
         setScanResult(null);
         setError(null);
         setOutput([]);
@@ -178,7 +194,10 @@ export const App = () => {
             scanProfileId: manifest.profile_id || parsed.header.testedProfileId,
             sdsPath: manifest.sds_file,
             tailoringPath: manifest.tailoring_path || null,
+            profileTitle: manifest.profile_title || manifest.profile_id,
+            tailoringName: manifest.tailoring_file || null,
         });
+        setBuilder(null);
         setTmpdir(null);
         setPhase('results');
     }, []);
@@ -204,94 +223,117 @@ export const App = () => {
         setActiveTab('tailoring');
     }, []);
 
+    const handleOpenBuilder = useCallback(preset => {
+        setBuilder(b => ({ preset, key: (b?.key ?? 0) + 1 }));
+    }, []);
+
+    const builderPanel = builder && scanResult && phase === 'results'
+        ? <RemediationBuilder key={builder.key} result={scanResult} preset={builder.preset} onClose={() => setBuilder(null)} />
+        : null;
+
     return (
-        <Page className="pf-m-no-sidebar">
-            <PageSection>
-                {error && (
-                    <Alert
+        <Drawer
+            isExpanded={!!builderPanel}
+            className="ct-builder-drawer-root"
+            onExpand={() => document.querySelector('.ct-builder-title')?.focus()}
+        >
+            <DrawerContent panelContent={builderPanel ?? <span />}>
+                <DrawerContentBody className="ct-drawer-main">
+                    <Page className="pf-m-no-sidebar">
+                        <PageSection>
+                            {error && (
+                                <Alert
                         variant="danger"
                         title={_("Scan failed")}
                         isInline
                         actionClose={
                             <Button variant="plain" onClick={() => setError(null)}>×</Button>
                         }
-                    >
-                        {error}
-                    </Alert>
-                )}
+                                >
+                                    {error}
+                                </Alert>
+                            )}
 
-                {historySaveError && (
-                    <Alert
+                            {historySaveError && (
+                                <Alert
                         variant="warning"
                         title={_("Scan completed, but couldn't be saved to history")}
                         isInline
                         actionClose={
                             <Button variant="plain" onClick={() => setHistorySaveError(null)}>×</Button>
                         }
-                    >
-                        {historySaveError}
-                    </Alert>
-                )}
+                                >
+                                    {historySaveError}
+                                </Alert>
+                            )}
 
-                {!adminAllowed && phase === 'setup' && activeTab === 'scan' && (
-                    <Alert variant="info" title={_("Administrative access required")} isInline>
-                        {_('Running a scan requires root. Unlock "Administrative access" above to continue.')}
-                    </Alert>
-                )}
+                            {!adminAllowed && phase === 'setup' && activeTab === 'scan' && (
+                                <Alert variant="info" title={_("Administrative access required")} isInline>
+                                    {_('Running a scan requires root. Unlock "Administrative access" above to continue.')}
+                                </Alert>
+                            )}
 
-                <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)}>
-                    <Tab eventKey="scan" title={<TabTitleText>{_("Host Scan")}</TabTitleText>}>
-                        <div className="ct-tab-body">
-                            {phase === 'setup' && (
-                                <ScanSetup
+                            <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)}>
+                                <Tab eventKey="scan" title={<TabTitleText>{_("Host Scan")}</TabTitleText>}>
+                                    <div className="ct-tab-body">
+                                        {phase === 'setup' && (
+                                            <ScanSetup
                                     adminAllowed={adminAllowed} onScan={handleScan}
                                     tailoringRefreshKey={tailoringRefreshKey}
                                     contentRefreshKey={contentRefreshKey}
                                     onContentChanged={handleContentChanged}
                                     onManageContent={handleManageContent}
-                                />
-                            )}
+                                            />
+                                        )}
 
-                            {phase === 'running' && (
-                                <ScanProgress output={output} onCancel={handleCancel} />
-                            )}
+                                        {phase === 'running' && (
+                                            <ScanProgress output={output} onCancel={handleCancel} />
+                                        )}
 
-                            {phase === 'results' && (
-                                <ScanResults result={scanResult} tmpdir={tmpdir} onNewScan={handleNewScan} />
-                            )}
+                                        {phase === 'results' && (
+                                            <ScanResults
+                                    key={scanResult?.header?.startTime ?? 'results'}
+                                    result={scanResult}
+                                    onClose={handleNewScan}
+                                    onOpenBuilder={handleOpenBuilder}
+                                            />
+                                        )}
 
-                            <ScanHistory
+                                        <ScanHistory
                                 refreshKey={historyRefreshKey}
                                 onView={handleViewSavedScan}
                                 onChanged={handleHistoryChanged}
                                 diskUsage={scanDiskUsage}
-                            />
-                        </div>
-                    </Tab>
-                    <Tab eventKey="tailoring" title={<TabTitleText>{_("Policy Tailoring")}</TabTitleText>}>
-                        <div className="ct-tab-body ct-tailoring-tab">
-                            <TailoringEditor
+                                        />
+                                    </div>
+                                </Tab>
+                                <Tab eventKey="tailoring" title={<TabTitleText>{_("Policy Tailoring")}</TabTitleText>}>
+                                    <div className="ct-tab-body ct-tailoring-tab">
+                                        <TailoringEditor
                                 editingSidecar={editingSidecar}
                                 onSaved={handleTailoringSaved}
                                 onCancelEdit={() => setEditingSidecar(null)}
                                 contentRefreshKey={contentRefreshKey}
                                 onContentChanged={handleContentChanged}
-                            />
-                            <TailoringList
+                                        />
+                                        <TailoringList
                                 refreshKey={tailoringRefreshKey}
                                 onEdit={setEditingSidecar}
                                 onChanged={handleTailoringListChanged}
                                 diskUsage={tailoringDiskUsage}
                                 contentRefreshKey={contentRefreshKey}
-                            />
-                            <ContentUploadCard
+                                        />
+                                        <ContentUploadCard
                                 refreshKey={contentRefreshKey}
                                 onChanged={handleContentChanged}
-                            />
-                        </div>
-                    </Tab>
-                </Tabs>
-            </PageSection>
-        </Page>
+                                        />
+                                    </div>
+                                </Tab>
+                            </Tabs>
+                        </PageSection>
+                    </Page>
+                </DrawerContentBody>
+            </DrawerContent>
+        </Drawer>
     );
 };
