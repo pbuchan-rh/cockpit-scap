@@ -1,7 +1,7 @@
 import cockpit from 'cockpit';
 
 import { listUploadedContent } from './content.js';
-import { parseTailoringXml, readTailoringXml } from './tailoring.js';
+import { readTailoringXml } from './tailoring.js';
 
 const SSG_CONTENT_DIR = '/usr/share/xml/scap/ssg/content';
 
@@ -70,12 +70,56 @@ export function autoSelectContent(contentList, id, versionId) {
 export async function getOsRelease() {
     try {
         const output = await cockpit.spawn(['cat', '/etc/os-release'], { err: 'ignore' });
-        const id = (output.match(/^ID=(.*)$/m)?.[1] ?? '').replace(/"/g, '').toLowerCase();
-        const versionId = (output.match(/^VERSION_ID=(.*)$/m)?.[1] ?? '').replace(/"/g, '').toLowerCase();
-        return { id, versionId };
+        const field = name => (output.match(new RegExp(`^${name}=(.*)$`, 'm'))?.[1] ?? '').replace(/"/g, '');
+        return {
+            id: field('ID').toLowerCase(),
+            versionId: field('VERSION_ID').toLowerCase(),
+            cpe: field('CPE_NAME').toLowerCase(),
+            prettyName: field('PRETTY_NAME'),
+        };
     } catch {
-        return { id: '', versionId: '' };
+        return { id: '', versionId: '', cpe: '', prettyName: '' };
     }
+}
+
+/* First OS CPE named in a datastream (its CPE dictionary / Benchmark
+ * <platform>), e.g. "cpe:/o:redhat:enterprise_linux:9". grep -m1 stops at
+ * the first hit, so this costs a few ms even on a 30 MB SSG file. Resolves
+ * null when the content names no OS CPE (nothing to compare against). */
+export async function getContentPlatform(sdsPath) {
+    try {
+        const out = await cockpit.spawn(
+            ['grep', '-m1', '-oE', 'cpe:/o:[a-z0-9_.-]+:[a-z0-9_.-]+:[0-9]+', sdsPath],
+            { err: 'ignore' }
+        );
+        return out.trim().split('\n')[0] || null;
+    } catch {
+        return null;
+    }
+}
+
+/* True when the content's OS CPE names a different vendor:product or major
+ * version than the host's CPE_NAME (cpe:/o:redhat:enterprise_linux:10.2).
+ * Unknown on either side is not a mismatch. */
+export function isPlatformMismatch(contentCpe, hostCpe) {
+    if (!contentCpe || !hostCpe) return false;
+    const parse = cpe => {
+        const [, , vendor, product, version] = cpe.toLowerCase().split(':');
+        return { vp: `${vendor}:${product}`, major: (version || '').split('.')[0] };
+    };
+    const c = parse(contentCpe);
+    const h = parse(hostCpe);
+    return c.vp !== h.vp || (!!c.major && !!h.major && c.major !== h.major);
+}
+
+/* "Red Hat Enterprise Linux 9" from cpe:/o:redhat:enterprise_linux:9 —
+ * only used to word the mismatch warning. */
+export function cpeDisplayName(cpe) {
+    if (!cpe) return '';
+    const [, , vendor, product, version] = cpe.split(':');
+    const known = { 'redhat:enterprise_linux': 'Red Hat Enterprise Linux', 'fedoraproject:fedora': 'Fedora', 'centos:centos': 'CentOS Stream' };
+    const name = known[`${vendor}:${product}`] ?? (product || '').replace(/_/g, ' ');
+    return version ? `${name} ${version}` : name;
 }
 
 export async function getProfiles(sdsPath) {
@@ -141,10 +185,12 @@ export async function cleanupTmpdir(tmpdir) {
 }
 
 // Both of these run directly against static, world-readable SCAP content
-// (no results.xml, no scan, no tmpdir) — no superuser needed. profileId must
-// already be resolved to the tailoring's base profile id when tailoringPath
-// is set — oscap resolves a tailoring profile against the base Benchmark.
-// generateGuide is used by ScanSetup.jsx (pre-scan); generateProfileFix here
+// (no results.xml, no scan, no tmpdir) — no superuser needed. When
+// tailoringPath is set, profileId must be the TAILORED profile id (the
+// tailoring's own <Profile id>), not its base: with the base id oscap
+// silently evaluates the untailored base profile and the tailoring is
+// ignored (C§1c-2: 509 fixes instead of 505 for a tailoring that deselects
+// 4 rules). generateGuide is used by ScanSetup.jsx (pre-scan); generateProfileFix here
 // is the *whole-profile* fix, also only used by ScanSetup.jsx. Rule-scoped
 // Fix generation (ScanResults.jsx, live or saved scan) uses generateScopedFix
 // below instead — see its comment for why.
@@ -162,55 +208,60 @@ export async function generateProfileFix(sdsPath, profileId, tailoringPath, fixT
     return cockpit.spawn(args, { err: 'message' });
 }
 
-function escapeXml(s) {
-    return String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-}
+const XCCDF_NS = 'http://checklists.nist.gov/xccdf/1.2';
+const SCOPE_PROFILE_ID = 'xccdf_cockpit-scap_profile_fixscope';
 
-/* oscap 1.4.3's `xccdf generate fix` has no working per-rule scoping: its
- * `--rule` flag isn't a documented Fix option (confirmed against --help) and
- * is silently ignored — passing it alongside --profile/--tailoring-file
- * still generates a fix for the *entire* profile, not just the named
- * rule(s). Verified empirically: --rule combined with --profile produced a
- * 321-rule script for a single requested rule.
+/* Fix for just `ruleIds`, with the variable values of the profile that was
+ * actually scanned.
  *
- * The only way to scope `generate fix` to an arbitrary rule subset is a
- * *standalone* (non-extending) XCCDF tailoring Profile containing only
- * <select idref=.../> entries for the wanted rules — with no `extends`,
- * nothing else is selected, so the output is exactly those rules. Verified
- * this produces byte-identical remediation content (module minor "N / total"
- * counter comments) to generating the full set of failing rules via
- * --result-id and diffing out the one rule of interest.
- *
- * If tailoringPath is given, its <set-value> overrides are copied into the
- * ephemeral profile too, so a customized rule parameter (e.g. a tailored
- * password length) still remediates to the tailored value instead of the
- * profile default — rule *selection* deltas from the original tailoring are
- * irrelevant here since selection is being overridden anyway. */
-export async function generateScopedFix(sdsPath, tailoringPath, ruleIds, fixType) {
-    let valueChanges = {};
+ * oscap's `xccdf generate fix` has no per-rule option (`--rule` is silently
+ * ignored and the whole profile comes out), so scoping goes through an
+ * ephemeral tailoring Profile. That Profile EXTENDS the scanned profile
+ * (`profileId`: the tailored profile id when the scan used a tailoring,
+ * whose XML is then copied into the ephemeral file so the id resolves) and
+ * explicitly deselects every other rule in the benchmark (`allRuleIds`, all
+ * rule-result idrefs of the scan's results.xml). Extending keeps the
+ * profile's refine-value / set-value choices; a standalone Profile with no
+ * `extends` falls back to the benchmark defaults (C§1c-1: CIS L1 minlen 15
+ * instead of 14, faillock deny 3 instead of 5, ...). Verified with oscap
+ * 1.4.4 that every variable matches `generate fix --profile <same>` for the
+ * same rules (tests/v46-phase1-scoped-fix-values.spec.js). */
+export async function generateScopedFix({ sdsPath, profileId, tailoringPath, allRuleIds }, ruleIds, fixType) {
+    if (!profileId) throw new Error(_scopeError('the scanned profile is unknown'));
+    if (!allRuleIds?.length) throw new Error(_scopeError('the scan results list no rules'));
+
+    let doc;
     if (tailoringPath) {
-        const xml = await readTailoringXml(tailoringPath);
-        valueChanges = parseTailoringXml(xml).valueChanges;
+        doc = new DOMParser().parseFromString(await readTailoringXml(tailoringPath), 'application/xml');
+        if (doc.querySelector('parsererror') || doc.documentElement.localName !== 'Tailoring')
+            throw new Error(_scopeError(`${tailoringPath} is not an XCCDF tailoring file`));
+    } else {
+        doc = new DOMParser().parseFromString(
+            `<Tailoring xmlns="${XCCDF_NS}" id="xccdf_cockpit-scap_tailoring_fixscope">` +
+            `<version time="${new Date().toISOString()
+                    .slice(0, 19)}">1</version></Tailoring>`,
+            'application/xml');
     }
-
-    const lines = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<Tailoring xmlns="http://checklists.nist.gov/xccdf/1.2" id="xccdf_cockpit-scap_tailoring_fixscope">',
-        '  <version time="' + new Date().toISOString()
-                .slice(0, 19) + '">1</version>',
-        '  <Profile id="xccdf_cockpit-scap_profile_fixscope">',
-        '    <title>cockpit-scap rule-scoped fix</title>',
-    ];
-    for (const id of ruleIds) lines.push('    <select idref="' + escapeXml(id) + '" selected="true"/>');
-    for (const [id, val] of Object.entries(valueChanges)) {
-        lines.push('    <set-value idref="' + escapeXml(id) + '">' + escapeXml(val) + '</set-value>');
-    }
-    lines.push('  </Profile>', '</Tailoring>');
-    const xml = lines.join('\n');
+    const root = doc.documentElement;
+    const ns = root.namespaceURI || XCCDF_NS;
+    const prefix = root.prefix ? root.prefix + ':' : '';
+    const el = (name, attrs = {}, text = null) => {
+        const e = doc.createElementNS(ns, prefix + name);
+        for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+        if (text !== null) e.textContent = text;
+        return e;
+    };
+    const profile = el('Profile', { id: SCOPE_PROFILE_ID, extends: profileId });
+    profile.appendChild(el('title', {}, 'cockpit-scap rule-scoped fix'));
+    const wanted = new Set(ruleIds);
+    for (const id of new Set([...allRuleIds, ...ruleIds]))
+        profile.appendChild(el('select', { idref: id, selected: wanted.has(id) ? 'true' : 'false' }));
+    root.appendChild(profile);
+    // Some engines (Chromium) keep the parsed source's XML declaration on
+    // serialization, others drop it: normalise to exactly one.
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        new XMLSerializer().serializeToString(doc)
+                .replace(/^<\?xml[^>]*\?>\s*/, '');
 
     const tmpPath = (await cockpit.spawn(
         ['mktemp', '/tmp/cockpit-scap-fixscope-XXXXXX.xml'], { err: 'message' }
@@ -219,10 +270,25 @@ export async function generateScopedFix(sdsPath, tailoringPath, ruleIds, fixType
         await cockpit.file(tmpPath).replace(xml);
         return await cockpit.spawn([
             'oscap', 'xccdf', 'generate', 'fix', '--fix-type', fixType,
-            '--profile', 'xccdf_cockpit-scap_profile_fixscope',
+            '--profile', SCOPE_PROFILE_ID,
             '--tailoring-file', tmpPath, sdsPath,
         ], { err: 'message' });
     } finally {
         cockpit.spawn(['rm', '-f', tmpPath], { err: 'ignore' }).catch(() => {});
     }
+}
+
+function _scopeError(why) {
+    return `Cannot generate a rule-scoped fix: ${why}.`;
+}
+
+/* oscap happily emits a script with no remediation in it when none of the
+ * requested rules has a fix of that type (e.g. grub2_password has no Ansible
+ * task): a bash header with no "# BEGIN fix" block, or a playbook whose
+ * `tasks:` list is empty. Callers warn instead of downloading that. */
+export function isEmptyFix(script, fixType) {
+    if (fixType === 'bash') return !/^# BEGIN fix/m.test(script);
+    if (fixType === 'ansible') return !/^\s*- name:/m.test(script.split(/^\s*tasks:\s*$/m)[1] ?? '');
+    if (fixType === 'puppet') return !/\S/.test(script.replace(/^#.*$/gm, ''));
+    return false;
 }

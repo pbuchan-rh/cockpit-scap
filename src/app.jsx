@@ -131,6 +131,7 @@ export const App = () => {
                 ...files,
                 ruleMeta,
                 profileId: config.baseProfileId,
+                scanProfileId: config.profile,
                 sdsPath: config.content,
                 tailoringPath: config.tailoring,
             });
@@ -172,6 +173,9 @@ export const App = () => {
             // degrade to {} (FailingRuleRow already renders fine with no meta).
             ruleMeta: manifest.rule_meta || {},
             profileId: manifest.base_profile_id || manifest.profile_id,
+            // The profile actually evaluated (tailored id for a tailored
+            // scan); falls back to what the results file itself says.
+            scanProfileId: manifest.profile_id || parsed.header.testedProfileId,
             sdsPath: manifest.sds_file,
             tailoringPath: manifest.tailoring_path || null,
         });
