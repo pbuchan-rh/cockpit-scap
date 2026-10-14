@@ -25,6 +25,43 @@ async function loginToCockpit(page) {
     await page.waitForLoadState('domcontentloaded');
 }
 
+// Path of the module inside the Cockpit shell. V4.6 specs run against the
+// dev copy (tools/deploy-dev-copies.sh), never the RPM's /scap.
+const SHELL_PATH = process.env.SCAP_SHELL_PATH || '/scap-dev';
+
+/* Log in, elevate admin on the shell page, then open the module INSIDE the
+ * Cockpit shell (/scap-dev, module in its iframe) rather than at its direct
+ * URL. The direct URL has no shell CSP around it, which is how the Firefox
+ * blob-download block went unseen (C§1b). Returns the module's Frame; use
+ * `page` itself for shell-level things like download events. */
+async function openModuleInShell(page, shellPath = SHELL_PATH) {
+    await page.goto(COCKPIT_URL);
+    await page.locator('#login-user-input').waitFor({ timeout: 15000 });
+    await page.fill('#login-user-input', COCKPIT_USER);
+    await page.fill('#login-password-input', COCKPIT_PASS);
+    await page.click('#login-button');
+    await page.waitForFunction(() => !document.getElementById('login-user-input'), null, { timeout: 20000 });
+    await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+    await requestAdmin(page);
+    await page.goto(COCKPIT_URL + shellPath);
+    const iframe = page.locator(`iframe[name="cockpit1:localhost${shellPath}"]`);
+    await iframe.waitFor({ state: 'attached', timeout: 30000 });
+    const frame = await (await iframe.elementHandle()).contentFrame();
+    await frame.locator('.pf-v6-c-card').first()
+            .waitFor({ timeout: 30000 });
+    return frame;
+}
+
+/* Run a command on the test host through the module frame's own cockpit
+ * bridge (as the logged-in user; superuser only when asked). */
+async function hostSpawn(frame, args, { superuser = false } = {}) {
+    // await inside: a cockpit.spawn() proc is a thenable, not a real
+    // Promise, so returning it unawaited serializes to undefined.
+    return frame.evaluate(async ({ args, superuser }) =>
+        await window.cockpit.spawn(args, { err: 'message', ...(superuser ? { superuser: 'require' } : {}) }),
+    { args, superuser });
+}
+
 async function getModuleFrame(page) {
     // Module loads directly on the page when navigated by URL — no iframe wrapper
     await page.locator('.pf-v6-c-card').first().waitFor({ timeout: 30000 });
@@ -70,4 +107,7 @@ async function canDoPrivilegedWrite(page) {
     return !visible;
 }
 
-module.exports = { loginToCockpit, getModuleFrame, requestAdmin, canDoPrivilegedWrite, COCKPIT_URL };
+module.exports = {
+    loginToCockpit, getModuleFrame, requestAdmin, canDoPrivilegedWrite, COCKPIT_URL,
+    openModuleInShell, hostSpawn, SHELL_PATH,
+};
