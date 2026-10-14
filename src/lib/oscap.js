@@ -51,6 +51,22 @@ export function sdsDisplayName(path, source) {
     return name.replace(/\.xml$/, '');
 }
 
+/* Default content for this host: the SSG datastream matching the OS major
+ * version, else any datastream for the OS id, else the first one found.
+ * Shared by ScanSetup.jsx and TailoringEditor.jsx. */
+export function autoSelectContent(contentList, id, versionId) {
+    const major = versionId?.split('.')[0] ?? '';
+    for (const c of contentList) {
+        const base = c.path.split('/').pop();
+        if (major && (base.includes(`${id}${major}`) || base.includes(`${id}-${major}`))) return c.path;
+    }
+    for (const c of contentList) {
+        if (c.path.split('/').pop()
+                .includes(id)) return c.path;
+    }
+    return contentList[0]?.path ?? '';
+}
+
 export async function getOsRelease() {
     try {
         const output = await cockpit.spawn(['cat', '/etc/os-release'], { err: 'ignore' });

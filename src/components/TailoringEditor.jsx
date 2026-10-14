@@ -17,7 +17,7 @@ import { TreeView } from "@patternfly/react-core/dist/esm/components/TreeView/in
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 
 import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
-import { detectContent, getProfiles, sdsDisplayName } from '../lib/oscap.js';
+import { autoSelectContent, detectContent, getOsRelease, getProfiles, sdsDisplayName } from '../lib/oscap.js';
 import {
     extractProfile, flattenProfileRules, parseTailoringXml, readTailoringXml,
     saveNewTailoring, updateTailoringFile,
@@ -293,12 +293,26 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
     const [uploadError, setUploadError] = useState(null);
     const [pendingUpload, setPendingUpload] = useState(null); // { file, existing }
     const fileInputRef = useRef(null);
+    const defaultContentRef = useRef('');
+    // Bumped by resetForm so the profile list reloads even when the content
+    // value it resets to is unchanged.
+    const [formResetKey, setFormResetKey] = useState(0);
 
     const isEditing = !!editingSidecar;
 
     useEffect(() => {
         let cancelled = false;
-        detectContent().then(list => { if (!cancelled) setContentList(list); });
+        Promise.all([detectContent(), getOsRelease()])
+                .then(([list, { id, versionId }]) => {
+                    if (cancelled) return;
+                    setContentList(list);
+                    // Pre-select the host's content like the Scan tab does. Without
+                    // this the picker shows the first option while the state is
+                    // empty, and choosing that option fires no change event.
+                    // Never override an existing choice (edit mode, upload).
+                    defaultContentRef.current = autoSelectContent(list, id, versionId);
+                    setContent(prev => prev || defaultContentRef.current);
+                });
         return () => { cancelled = true };
     }, [contentRefreshKey]);
 
@@ -397,7 +411,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
             setProfileId(list[0]?.id ?? '');
         });
         return () => { cancelled = true };
-    }, [content, isEditing]);
+    }, [content, isEditing, formResetKey]);
 
     const handleLoad = useCallback(() => {
         if (!profileId || !content) return;
@@ -436,7 +450,8 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
     }
 
     function resetForm() {
-        setContent('');
+        setContent(defaultContentRef.current);
+        setFormResetKey(k => k + 1);
         setProfileId('');
         setProfiles([]);
         setName('');

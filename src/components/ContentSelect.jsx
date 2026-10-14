@@ -25,6 +25,9 @@ export const ContentSelect = ({ id, ariaLabel, value, onChange, contentList, isD
 
     return (
         <FormSelect id={id} aria-label={ariaLabel} value={value} onChange={onChange} isDisabled={isDisabled}>
+            {!contentList.some(c => c.path === value) && (
+                <FormSelectOption value="" label={_("Select content…")} isPlaceholder isDisabled />
+            )}
             {system.length > 0 && (
                 <FormSelectOptionGroup key="system" label={_("Detected")}>
                     {system.map(c => (

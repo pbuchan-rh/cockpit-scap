@@ -19,7 +19,7 @@ import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/inde
 
 import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
 import { downloadBlob } from '../lib/download.js';
-import { detectContent, generateGuide, generateProfileFix, getOsRelease, getProfiles } from '../lib/oscap.js';
+import { autoSelectContent, detectContent, generateGuide, generateProfileFix, getOsRelease, getProfiles } from '../lib/oscap.js';
 import { listTailoringFiles } from '../lib/tailoring.js';
 import { openReportViewer } from '../lib/reportViewer.js';
 import { ContentSelect } from './ContentSelect.jsx';
@@ -55,19 +55,6 @@ function slugify(text) {
     return text.toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-+|-+$/g, '');
-}
-
-function autoSelectContent(contentList, id, versionId) {
-    const major = versionId?.split('.')[0] ?? '';
-    for (const c of contentList) {
-        const base = c.path.split('/').pop();
-        if (major && (base.includes(`${id}${major}`) || base.includes(`${id}-${major}`))) return c.path;
-    }
-    for (const c of contentList) {
-        if (c.path.split('/').pop()
-                .includes(id)) return c.path;
-    }
-    return contentList[0]?.path ?? '';
 }
 
 export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRefreshKey, onContentChanged, onManageContent }) => {
