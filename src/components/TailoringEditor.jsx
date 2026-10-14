@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { ExpandableSection } from "@patternfly/react-core/dist/esm/components/ExpandableSection/index.js";
 import { Form, FormGroup } from "@patternfly/react-core/dist/esm/components/Form/index.js";
 import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
@@ -543,6 +544,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                     </Title>
                 </CardTitle>
             </CardHeader>
+            <Divider />
             <CardBody>
                 {saveError && (
                     <Alert

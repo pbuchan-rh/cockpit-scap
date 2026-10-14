@@ -2,6 +2,7 @@ import cockpit from 'cockpit';
 import React, { useEffect, useRef } from 'react';
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
@@ -28,11 +29,13 @@ export const ScanProgress = ({ output, onCancel }) => {
                     </Flex>
                 </CardTitle>
             </CardHeader>
+            <Divider />
             <CardBody>
                 <pre className="ct-scan-output" ref={logRef}>
                     {output.join('\n')}
                 </pre>
             </CardBody>
+            <Divider />
             <CardFooter>
                 <Button variant="secondary" onClick={onCancel}>
                     {_("Cancel")}

@@ -30,6 +30,13 @@ const SEVERITY_COLOR = {
 // result === 'error' are broken out into their own trailing group since
 // their severity attribute isn't a meaningful "how bad is this" signal.
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'unknown'];
+const SEVERITY_LABEL = {
+    critical: _("Critical"),
+    high: _("High"),
+    medium: _("Medium"),
+    low: _("Low"),
+    unknown: _("Unknown"),
+};
 
 function ruleShortId(fullId) {
     return fullId.replace(/^xccdf_[^_]+_rule_/, '');
@@ -232,12 +239,12 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
         const bySeverity = SEVERITY_ORDER
                 .map(sev => ({
                     key: sev,
-                    label: sev.toUpperCase(),
+                    label: SEVERITY_LABEL[sev],
                     rules: visibleRules.filter(r => r.result !== 'error' && r.severity === sev),
                 }))
                 .filter(g => g.rules.length > 0);
         if (errorRules.length > 0) {
-            bySeverity.push({ key: 'error', label: _("ERRORS"), rules: errorRules, isError: true });
+            bySeverity.push({ key: 'error', label: _("Errors"), rules: errorRules, isError: true });
         }
         return bySeverity;
     }, [visibleRules]);
@@ -313,14 +320,6 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
         });
     }
 
-    const scoreColor = scorePercent === null
-        ? 'grey'
-        : scorePercent >= 80
-            ? 'green'
-            : scorePercent >= 60
-                ? 'gold'
-                : 'red';
-
     return (
         <>
             {fixError && (
@@ -368,7 +367,7 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                     </Button>
                                 </FlexItem>
                                 <FlexItem>
-                                    <Button variant="primary" size="sm" onClick={onNewScan}>
+                                    <Button variant="secondary" size="sm" onClick={onNewScan}>
                                         {tmpdir ? _("New Scan") : _("Close")}
                                     </Button>
                                 </FlexItem>
@@ -383,8 +382,12 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                 <CardBody>
                     <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsLg' }}>
                         <FlexItem>
-                            <span className={`ct-score-value ct-score-${scoreColor}`}>
-                                {scorePercent !== null ? `${scorePercent}%` : _("N/A")}
+                            {/* Neutral on purpose (Amendment 2): no good/bad color by value. */}
+                            <span className="ct-score-tile ct-surface-tint">
+                                <span className="ct-score-value">
+                                    {scorePercent !== null ? `${scorePercent}%` : _("N/A")}
+                                </span>
+                                <span className="ct-score-caption">{_("Score")}</span>
                             </span>
                         </FlexItem>
                         <FlexItem>
@@ -519,11 +522,15 @@ export const ScanResults = ({ result, tmpdir, onNewScan }) => {
                                         {groups.map(g => (
                                             <ExpandableSection
                                                 key={g.key}
-                                                toggleText={
-                                                    g.isError
-                                                        ? cockpit.format(_("$0 — $1 rule"), g.label, g.rules.length) +
-                                                          (g.rules.length === 1 ? '' : 's')
-                                                        : cockpit.format(_("$0 — $1 failing"), g.label, g.rules.length)
+                                                toggleContent={
+                                                    <span className="ct-sev-group-toggle">
+                                                        <span className="ct-sev-group-name">{g.label}</span>
+                                                        <Label isCompact color={g.isError ? 'orange' : (SEVERITY_COLOR[g.key] ?? 'grey')}>
+                                                            {g.isError
+                                                                ? cockpit.format(cockpit.ngettext("$0 error", "$0 errors", g.rules.length), g.rules.length)
+                                                                : cockpit.format(_("$0 failing"), g.rules.length)}
+                                                        </Label>
+                                                    </span>
                                                 }
                                                 isExpanded={expandedGroups.has(g.key)}
                                                 onToggle={() => toggleGroup(g.key)}

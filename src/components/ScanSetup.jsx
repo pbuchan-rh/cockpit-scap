@@ -3,6 +3,7 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { Dropdown } from "@patternfly/react-core/dist/esm/components/Dropdown/Dropdown.js";
 import { DropdownItem } from "@patternfly/react-core/dist/esm/components/Dropdown/DropdownItem.js";
 import { DropdownList } from "@patternfly/react-core/dist/esm/components/Dropdown/DropdownList.js";
@@ -317,6 +318,7 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                         <Title headingLevel="h2" size="lg">{_("SCAP Security Scan")}</Title>
                     </CardTitle>
                 </CardHeader>
+                <Divider />
                 <CardBody>
                     <div className="ct-two-col-form">
                         <div className="ct-form-col">
@@ -430,6 +432,7 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                         />
                     </div>
                 </CardBody>
+                <Divider />
                 <CardFooter>
                     <Flex flexWrap={{ default: 'wrap' }} spaceItems={{ default: 'spaceItemsSm' }}>
                         <FlexItem>

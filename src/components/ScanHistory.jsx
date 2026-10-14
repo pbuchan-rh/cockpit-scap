@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
@@ -90,6 +91,7 @@ export const ScanHistory = ({ refreshKey, onView, onChanged, diskUsage }) => {
                     <Title headingLevel="h2" size="lg">{_("Scan History")}</Title>
                 </CardTitle>
             </CardHeader>
+            <Divider />
             <CardBody>
                 {error && (
                     <Alert

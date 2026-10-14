@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
@@ -166,6 +167,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                     <Title headingLevel="h2" size="lg">{_("Saved Tailoring Policies")}</Title>
                 </CardTitle>
             </CardHeader>
+            <Divider />
             <CardBody>
                 {error && <Alert variant="danger" title={_("Error")} isInline>{error}</Alert>}
                 {uploadError && (
