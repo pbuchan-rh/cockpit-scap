@@ -119,6 +119,36 @@ async function runScan(frame, { profileId = PROFILE_L1, tailoringPath = null } =
     await frame.locator('[data-ct-results]').waitFor({ timeout: 300000 });
 }
 
+/* Results page -> Remediation Builder drawer with a preset
+ * ('critical' = "Critical & high (n)", 'all' = "All failures (n)"). */
+async function openBuilder(frame, preset) {
+    const name = preset === 'critical' ? /^Critical & high \(\d+\)$/ : /^All failures \(\d+\)$/;
+    await frame.locator('[data-ct-results]').getByRole('button', { name })
+            .click();
+    const drawer = frame.locator('.ct-builder-drawer');
+    await expect(drawer).toBeVisible();
+    return drawer;
+}
+
+async function closeBuilder(frame) {
+    await frame.getByRole('button', { name: 'Close Remediation Builder' }).click();
+    await expect(frame.locator('.pf-v6-c-drawer.pf-m-expanded')).toHaveCount(0);
+}
+
+async function builderDownload(page, frame, fixType) {
+    const name = fixType === 'bash' ? 'Download Bash script' : 'Download Ansible playbook';
+    return expectDownload(page, () => frame.locator('.ct-builder-drawer').getByRole('button', { name })
+            .click());
+}
+
+/* Results footer "Download ▾" -> item ('HTML report' | 'Results XML' | 'ARF'). */
+async function resultsDownload(frame, item) {
+    const results = frame.locator('[data-ct-results]');
+    await results.locator('.ct-results-footer').getByRole('button', { name: 'Download', exact: true })
+            .click();
+    await frame.getByRole('menuitem', { name: new RegExp('^' + item) }).click();
+}
+
 /* var_* assignments in a generated fix: bash `var_x='14'` / Ansible vars
  * `var_x: !!str 14`. Returns Map name -> Set of values seen. */
 function fixVariables(text, fixType) {
@@ -155,5 +185,6 @@ function countFixBlocks(text) {
 module.exports = {
     DS, RULE, PROFILE_L1, TEST_TAILORING_NAME, TEST_TAILORED_PROFILE, DESELECTED, SET_VALUES, NO_ANSIBLE_RULES,
     homeDir, snapshotScans, snapshotTmp, createTestTailoring, cleanupCreated, expectDownload, runScan,
+    openBuilder, closeBuilder, builderDownload, resultsDownload,
     fixVariables, diffVariables, countFixBlocks,
 };

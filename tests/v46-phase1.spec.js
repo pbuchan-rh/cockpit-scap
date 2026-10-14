@@ -60,11 +60,12 @@ async function legacyScoped(fixType, ruleIds) {
 async function checkScopedValues(label, profileId, tailoring) {
     const results = frame.locator('[data-ct-results]');
     await expect(results).toBeVisible();
+    // Every failing rule, through the Remediation Builder (V4.6 phase 3).
+    await S.openBuilder(frame, 'all');
     const out = {};
     for (const fixType of ['bash', 'ansible']) {
-        const btn = frame.getByRole('button', { name: fixType === 'bash' ? 'Download Bash Fix' : 'Download Ansible Fix' });
-        const dl = await S.expectDownload(page, () => btn.click());
-        expect(dl.filename).toBe(fixType === 'bash' ? 'remediation.sh' : 'remediation.yml');
+        const dl = await S.builderDownload(page, frame, fixType);
+        expect(dl.filename).toMatch(fixType === 'bash' ? /^remediation-.*-rules\.sh$/ : /^remediation-.*-rules\.yml$/);
         const ref = await reference(fixType, profileId, tailoring);
         const d = S.diffVariables(dl.text, ref, fixType);
         out[fixType] = d;
@@ -72,6 +73,7 @@ async function checkScopedValues(label, profileId, tailoring) {
         expect(d.diffs, `${label} ${fixType}: values that differ from the profile`).toEqual([]);
         if (fixType === 'bash') out.ruleIds = scopedRuleIds(dl.text);
     }
+    await S.closeBuilder(frame);
     return out;
 }
 
@@ -124,46 +126,50 @@ test('CIS L1 scan: scoped bash/Ansible values equal the profile values', async (
     report.cisL1 = { rules: r.ruleIds.length, bash: r.bash, ansible: r.ansible, legacyBashDiffs: legacyDiff.diffs };
 });
 
-test('results downloads arrive: per-rule .sh, results XML, ARF; empty Ansible fix warns', async () => {
-    const collapsed = frame.locator('.ct-failing-group button[aria-expanded="false"]');
-    while (await collapsed.count() > 0) await collapsed.first().click();
-    // Any automated rule: its per-rule bash fix downloads.
-    const firstId = await frame.locator('.ct-rule-row').filter({ has: frame.getByRole('button', { name: 'Fix', exact: true }) })
-            .first()
-            .getAttribute('data-rule-id');
-    const row = frame.locator(`.ct-rule-row[data-rule-id="${firstId}"]`);
-    await row.getByRole('button', { name: 'Fix', exact: true }).click();
-    await expect(row.locator('pre')).toContainText('BEGIN fix', { timeout: 60000 });
+test('results downloads arrive: per-rule .sh, HTML report, results XML, ARF; empty Ansible fix warns', async () => {
+    // Any automated rule in the default-expanded (critical/high) groups.
+    const row = frame.locator('.ct-rule-item').filter({ hasText: 'Automated' })
+            .first();
+    await row.locator('.ct-rule-row').click();
+    await row.getByRole('button', { name: 'Remediation script' }).click();
+    await expect(row.locator('pre.ct-rule-rem-pre')).toContainText('BEGIN fix', { timeout: 60000 });
     const sh = await S.expectDownload(page, () => row.getByRole('button', { name: 'Download .sh' }).click());
     expect(sh.filename).toMatch(/^fix-.*\.sh$/);
     expect(sh.text).toMatch(/^# BEGIN fix/m);
-    // An automated rule with no Ansible task (CIS L1 on RHEL 10 / SSG 0.1.81).
-    let noAnsible = null;
-    for (const id of S.NO_ANSIBLE_RULES) {
-        const r = frame.locator(`.ct-rule-row[data-rule-id="${S.RULE}${id}"]`)
-                .filter({ has: frame.getByRole('button', { name: 'Fix', exact: true }) });
-        if (await r.count() > 0) { noAnsible = frame.locator(`.ct-rule-row[data-rule-id="${S.RULE}${id}"]`); break }
+
+    for (const [item, re, magic] of [['HTML report', /-report\.html$/, null], ['Results XML', /-results\.xml\.gz$/, 0x1f], ['ARF', /-arf\.xml\.gz$/, 0x1f]]) {
+        const dl = await S.expectDownload(page, () => S.resultsDownload(frame, item), { binary: true });
+        expect(dl.filename).toMatch(re);
+        if (magic) expect(dl.buffer[0]).toBe(magic);
+        else expect(dl.buffer.toString('utf8', 0, 4000)).toContain('<html');
     }
-    if (noAnsible) {
-        await noAnsible.getByRole('button', { name: 'Fix', exact: true }).click();
-        await noAnsible.getByRole('button', { name: 'Download .yml' }).click();
-        await expect(noAnsible.locator('.pf-v6-c-alert.pf-m-warning')).toContainText('no Ansible remediation', { timeout: 60000 });
-        report.emptyAnsibleWarned = true;
+
+    // A rule with a bash fix but no Ansible task: the Builder warns
+    // instead of downloading an empty playbook.
+    await S.openBuilder(frame, 'all');
+    const drawer = frame.locator('.ct-builder-drawer');
+    await drawer.getByRole('button', { name: 'Deselect all', exact: true }).first()
+            .click();
+    let picked = null;
+    for (const id of S.NO_ANSIBLE_RULES) {
+        const cb = drawer.locator(`.ct-builder-rule[data-rule-id="${S.RULE}${id}"] input[type=checkbox]`);
+        await drawer.locator('.ct-builder-search input').fill(id);
+        if (await cb.count() > 0) { await cb.check(); picked = id; break }
+    }
+    await drawer.locator('.ct-builder-search input').fill('');
+    if (picked) {
+        await drawer.getByRole('button', { name: 'Download Ansible playbook' }).click();
+        await expect(drawer.locator('.pf-v6-c-alert.pf-m-warning')).toContainText('Ansible remediation', { timeout: 60000 });
+        report.emptyAnsibleWarned = picked;
     } else {
         report.emptyAnsibleWarned = 'no candidate rule failing';
     }
-
-    const xml = await S.expectDownload(page, () => frame.getByRole('button', { name: 'Results XML' }).click(), { binary: true });
-    expect(xml.filename).toBe('scan-results.xml.gz');
-    expect(xml.buffer[0]).toBe(0x1f);
-    expect(xml.buffer[1]).toBe(0x8b);
-    const arf = await S.expectDownload(page, () => frame.getByRole('button', { name: 'ARF' }).click(), { binary: true });
-    expect(arf.filename).toBe('scan-arf.xml.gz');
-    expect(arf.buffer.length).toBeGreaterThan(1000);
+    await S.closeBuilder(frame);
 });
 
 test('after a scan, the setup page preselects the last scanned profile', async () => {
-    await frame.getByRole('button', { name: 'New Scan' }).click();
+    await frame.locator('[data-ct-results]').getByRole('button', { name: 'Close', exact: true })
+            .click();
     await frame.locator('#ct-scap-content').selectOption(S.DS);
     await expect(frame.locator('#ct-scap-profile')).toBeEnabled({ timeout: 60000 });
     await expect(frame.locator('#ct-scap-profile')).toHaveValue(S.PROFILE_L1);
@@ -211,10 +217,13 @@ test('tailored scan: scoped values include the set-values', async () => {
 test('fix generation errors are shown', async () => {
     await hostSpawn(frame, ['mv', tailoringPath, tailoringPath + '.v46-test-moved']);
     try {
-        await frame.getByRole('button', { name: 'Download Bash Fix' }).click();
-        const alert = frame.locator('.pf-v6-c-alert.pf-m-danger').filter({ hasText: 'Fix generation failed' });
+        await S.openBuilder(frame, 'all');
+        await frame.locator('.ct-builder-drawer').getByRole('button', { name: 'Download Bash script' })
+                .click();
+        const alert = frame.locator('.ct-builder-drawer .pf-v6-c-alert.pf-m-danger').filter({ hasText: 'Fix generation failed' });
         await expect(alert).toBeVisible({ timeout: 60000 });
         report.errorShown = (await alert.innerText()).slice(0, 300);
+        await S.closeBuilder(frame);
     } finally {
         await hostSpawn(frame, ['mv', tailoringPath + '.v46-test-moved', tailoringPath]);
     }
@@ -228,7 +237,7 @@ test('history and tailoring downloads arrive', async () => {
 
     const [popup] = await Promise.all([
         page.context().waitForEvent('page', { timeout: 60000 }),
-        frame.locator('[data-ct-results]').getByRole('button', { name: 'View Report', exact: true }).click(),
+        frame.locator('[data-ct-results]').getByRole('button', { name: 'View report', exact: true }).click(),
     ]);
     await popup.waitForURL(/viewer\.html/, { timeout: 60000 });
     await popup.waitForFunction(() => /OpenSCAP Evaluation Report/.test(document.title + document.body?.innerText), null, { timeout: 60000 });
