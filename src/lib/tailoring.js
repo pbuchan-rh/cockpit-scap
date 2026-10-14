@@ -1,6 +1,7 @@
 import cockpit from 'cockpit';
 
 import { ensureUserDir, getUser, makeTimestamp } from './homedir.js';
+import { REF_KEEP } from './results.js';
 
 const TAILORING_SUBDIR = 'SCAP/tailoring';
 
@@ -18,6 +19,9 @@ export const PY_EXTRACT_PROFILE = [
     'def tag(t): return "{" + NS + "}" + t',
     'def text(el): return (el.text or "").strip() if el is not None else ""',
     'pid, sds = sys.argv[1], sys.argv[2]',
+    // href substrings of the framework references kept for rule chips
+    // (same list as lib/results.js REF_KEEP).
+    'REF_KEEP = ' + JSON.stringify(REF_KEEP.map(([pat]) => pat)),
     'bench = None',
     'for _, el in ET.iterparse(sds, events=("end",)):',
     '    if el.tag == tag("Benchmark"): bench = el; break',
@@ -42,7 +46,8 @@ export const PY_EXTRACT_PROFILE = [
     '    ci = next((i for i in el.findall(tag("ident")) if "cce" in (i.get("system","")).lower()), None)',
     '    cce = ci.text.strip() if ci is not None and ci.text else ""',
     '    has_fix = el.find(tag("fix")) is not None',
-    '    return {"id": rid, "title": text(t), "severity": el.get("severity", "unknown"), "selected": is_sel(rid, d), "description": desc, "rationale": rat, "cce": cce, "hasFix": has_fix}',
+    '    refs = [{"href": x.get("href", ""), "text": text(x)} for x in el.findall(tag("reference")) if any(k in x.get("href", "").lower() for k in REF_KEEP)]',
+    '    return {"id": rid, "title": text(t), "severity": el.get("severity", "unknown"), "selected": is_sel(rid, d), "description": desc, "rationale": rat, "cce": cce, "hasFix": has_fix, "refs": refs}',
     'def proc_group(el):',
     '    t = el.find(tag("title"))',
     '    r = {"id": el.get("id", ""), "title": text(t), "groups": [], "rules": []}',

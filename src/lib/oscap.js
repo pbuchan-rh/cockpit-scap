@@ -287,7 +287,13 @@ function _scopeError(why) {
  * task): a bash header with no "# BEGIN fix" block, or a playbook whose
  * `tasks:` list is empty. Callers warn instead of downloading that. */
 export function isEmptyFix(script, fixType) {
-    if (fixType === 'bash') return !/^# BEGIN fix/m.test(script);
+    if (fixType === 'bash') {
+        // A rule without a bash fix still gets a "# BEGIN fix" block whose
+        // only content is an echo "FIX FOR THIS RULE '...' IS MISSING!".
+        const blocks = (script.match(/^# BEGIN fix/gm) || []).length;
+        const missing = (script.match(/FIX FOR THIS RULE '[^']*' IS MISSING!/g) || []).length;
+        return blocks - missing <= 0;
+    }
     if (fixType === 'ansible') return !/^\s*- name:/m.test(script.split(/^\s*tasks:\s*$/m)[1] ?? '');
     if (fixType === 'puppet') return !/\S/.test(script.replace(/^#.*$/gm, ''));
     return false;
