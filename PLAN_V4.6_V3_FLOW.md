@@ -267,3 +267,22 @@ what new specs need.
    Select with actions in the menu + Manage dialog?
 4. **Checkpoint host.** Dev copies on scap-test10 next to your RPM install
    (planned). OK?
+
+## Amendments (2026-10-14)
+
+Approved by Peter on 2026-10-14, after the plan was dispatched. They
+override the matching text above.
+
+1. **Phase 1 item 5, "remember last profile": no new storage.** Do not use
+   localStorage or any other new store. Derive the last-used profile from
+   the newest saved scan in `~/SCAP/scans` whose `sds_file` matches the
+   selected content. If there is none, the select starts on "Select a
+   profile…".
+2. **Phase 2/3 score tile: neutral tint only.** No good/bad color bands or
+   thresholds on the score anywhere (no yellow/green/red by value). That is
+   the cut compliance-threshold opinion coming back; the number speaks for
+   itself. Severity colors on rule groups are fine (they are the content's
+   data).
+
+Reason: the module stays stateless (only `~/SCAP` user artifacts) and
+opinionless (the Cockpit ideal: no stored opinion of server state).
