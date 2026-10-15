@@ -14,7 +14,10 @@ import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/es
 import { downloadFile } from '../lib/download.js';
 import { listFooterText } from '../lib/format.js';
 import { detectContent, sdsDisplayName } from '../lib/oscap.js';
-import { deleteTailoringFile, listTailoringFiles, readTailoringXml, saveUploadedTailoring } from '../lib/tailoring.js';
+import {
+    deleteTailoringFile, listTailoringFiles, matchBenchmarkContent, readTailoringXml, saveUploadedTailoring,
+    tailoringBenchmarkHref,
+} from '../lib/tailoring.js';
 import { ContentSelect } from './ContentSelect.jsx';
 
 const _ = cockpit.gettext;
@@ -31,7 +34,9 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [contentList, setContentList] = useState([]);
-    const [uploadContent, setUploadContent] = useState('');
+    // An uploaded tailoring whose <benchmark href> matches no single
+    // content: { upload, href, matches, choice } while the modal asks.
+    const [pendingTailoring, setPendingTailoring] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
@@ -50,9 +55,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
     useEffect(() => {
         let cancelled = false;
         detectContent().then(list => {
-            if (cancelled) return;
-            setContentList(list);
-            setUploadContent(c => (c && list.some(item => item.path === c)) ? c : (list[0]?.path ?? ''));
+            if (!cancelled) setContentList(list);
         });
         return () => { cancelled = true };
     }, [contentRefreshKey]);
@@ -88,28 +91,40 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
             const extendsId = profileEl.getAttribute('extends') || '';
             const titleEl = profileEl.getElementsByTagNameNS(NS, 'title')[0];
             const name = titleEl ? titleEl.textContent.trim() : (profileId || file.name);
+            const upload = { xmlContent, profileId, baseProfileId: extendsId, baseProfileTitle: extendsId, name };
 
-            setUploading(true);
+            // F2: the file says which content it is for; ask only when
+            // that names nothing here (or more than one file).
+            const href = tailoringBenchmarkHref(doc);
+            const matches = matchBenchmarkContent(href, contentList);
             setUploadError(null);
-            try {
-                await saveUploadedTailoring({
-                    xmlContent,
-                    sdsPath: uploadContent,
-                    profileId,
-                    baseProfileId: extendsId,
-                    baseProfileTitle: extendsId,
-                    name,
-                });
-                const list = await listTailoringFiles();
-                setSidecars(list);
-                onChanged?.();
-            } catch (ex) {
-                setUploadError(ex.message || String(ex));
-            } finally {
-                setUploading(false);
-            }
+            if (matches.length === 1)
+                saveTailoring(upload, matches[0].path);
+            else
+                setPendingTailoring({ upload, href, matches, choice: matches[0]?.path ?? '' });
         };
         reader.readAsText(file);
+    }
+
+    async function saveTailoring(upload, sdsPath) {
+        setUploading(true);
+        setUploadError(null);
+        try {
+            await saveUploadedTailoring({ ...upload, sdsPath });
+            const list = await listTailoringFiles();
+            setSidecars(list);
+            onChanged?.();
+        } catch (ex) {
+            setUploadError(ex.message || String(ex));
+        } finally {
+            setUploading(false);
+        }
+    }
+
+    function handleConfirmContent() {
+        const { upload, choice } = pendingTailoring;
+        setPendingTailoring(null);
+        saveTailoring(upload, choice);
     }
 
     async function handleDeleteConfirm() {
@@ -142,25 +157,15 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
             <CardHeader
                 actions={{
                     actions: (
-                        <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                            <FlexItem>
-                                <ContentSelect
-                                    ariaLabel={_("Content for uploaded file")}
-                                    value={uploadContent}
-                                    onChange={(_e, v) => setUploadContent(v)}
-                                    contentList={contentList}
-                                />
-                            </FlexItem>
-                            <FlexItem>
-                                <Button variant="secondary" size="sm" isLoading={uploading} onClick={handleUploadClick}>
-                                    {_("Upload Tailoring File")}
-                                </Button>
-                                <input
-                                    ref={fileInputRef} type="file" accept=".xml" hidden
-                                    onChange={handleFileChosen}
-                                />
-                            </FlexItem>
-                        </Flex>
+                        <>
+                            <Button variant="secondary" size="sm" isLoading={uploading} onClick={handleUploadClick}>
+                                {_("Upload Tailoring File")}
+                            </Button>
+                            <input
+                                ref={fileInputRef} type="file" accept=".xml" hidden
+                                onChange={handleFileChosen}
+                            />
+                        </>
                     ),
                 }}
             >
@@ -233,6 +238,32 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
             </CardBody>
             <Divider />
             <CardFooter className="ct-list-footer">{listFooterText(sidecars.length, diskUsage)}</CardFooter>
+
+            {pendingTailoring && (
+                <Modal variant="small" isOpen onClose={() => setPendingTailoring(null)}>
+                    <ModalHeader title={_("Which content is this policy for?")} />
+                    <ModalBody>
+                        <p className="ct-modal-text">
+                            {!pendingTailoring.href
+                                ? cockpit.format(_("\"$0\" does not say which SCAP content it tailors."), pendingTailoring.upload.name)
+                                : pendingTailoring.matches.length === 0
+                                    ? cockpit.format(_("\"$0\" was made for $1, which is not on this host."), pendingTailoring.upload.name, pendingTailoring.href)
+                                    : cockpit.format(_("\"$0\" was made for $1, which matches more than one content file here."), pendingTailoring.upload.name, pendingTailoring.href)}
+                        </p>
+                        <ContentSelect
+                            id="ct-tailoring-upload-content"
+                            ariaLabel={_("Content for the uploaded policy")}
+                            value={pendingTailoring.choice}
+                            onChange={(_e, v) => setPendingTailoring(p => ({ ...p, choice: v }))}
+                            contentList={contentList}
+                        />
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button variant="primary" isDisabled={!pendingTailoring.choice} onClick={handleConfirmContent}>{_("Save policy")}</Button>
+                        <Button variant="link" onClick={() => setPendingTailoring(null)}>{_("Cancel")}</Button>
+                    </ModalFooter>
+                </Modal>
+            )}
 
             {deleteTarget && (
                 <Modal variant="small" isOpen onClose={() => setDeleteTarget(null)}>

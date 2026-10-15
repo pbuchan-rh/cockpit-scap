@@ -17,6 +17,7 @@ import { ToggleGroup, ToggleGroupItem } from "@patternfly/react-core/dist/esm/co
 import { TreeView } from "@patternfly/react-core/dist/esm/components/TreeView/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 
+import { formatBytes, formatTimestamp } from '../lib/format.js';
 import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
 import { autoSelectContent, detectContent, getOsRelease, getProfiles, sdsDisplayName } from '../lib/oscap.js';
 import {
@@ -24,6 +25,7 @@ import {
     saveNewTailoring, updateTailoringFile,
 } from '../lib/tailoring.js';
 import { ContentSelect } from './ContentSelect.jsx';
+import { OtherContentMenu } from './OtherContentMenu.jsx';
 import { ProfileDescriptionPanel } from './ProfileDescriptionPanel.jsx';
 import { RuleDetailsBlock } from './RuleDetails.jsx';
 
@@ -38,23 +40,7 @@ const SEVERITY_COLOR = {
 
 const SEVERITY_ORDER = { high: 0, medium: 1, low: 2, unknown: 3 };
 
-function formatBytes(bytes) {
-    if (!bytes && bytes !== 0) return '—';
-    if (bytes < 1024) return `${bytes} B`;
-    const units = ['KB', 'MB', 'GB'];
-    let value = bytes / 1024;
-    let unit = 0;
-    while (value >= 1024 && unit < units.length - 1) {
-        value /= 1024;
-        unit += 1;
-    }
-    return `${value.toFixed(1)} ${units[unit]}`;
-}
 
-function formatUploadDate(ts) {
-    if (!ts) return '—';
-    return ts.slice(0, 10) + ' ' + ts.slice(11, 19);
-}
 
 function ruleVisible(rule, filters, ruleChanges) {
     const term = filters.search.trim().toLowerCase();
@@ -272,7 +258,7 @@ const ChangeSummaryPanel = ({ name, tailorData, ruleChanges, valueChanges }) => 
     );
 };
 
-export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, contentRefreshKey, onContentChanged }) => {
+export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, contentRefreshKey, onContentChanged, onManageContent }) => {
     const [contentList, setContentList] = useState([]);
     const [content, setContent] = useState('');
     const [profiles, setProfiles] = useState([]);
@@ -588,9 +574,12 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                                 contentList={contentList}
                                                 emptyLabel={_("Select content…")}
                                             />
-                                            <Button variant="link" isInline isLoading={uploading} onClick={handleUploadClick}>
-                                                {_("Upload…")}
-                                            </Button>
+                                            <OtherContentMenu
+                                                id="ct-tailor-other-content"
+                                                onUpload={handleUploadClick}
+                                                uploading={uploading}
+                                                onManage={onManageContent}
+                                            />
                                             <input
                                                 ref={fileInputRef} type="file" accept=".xml" hidden
                                                 onChange={handleFileChosen}
@@ -762,7 +751,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                             _("\"$0\" already exists ($1, uploaded $2). Replace with the new file ($3)?"),
                             pendingUpload.file.name,
                             formatBytes(pendingUpload.existing.size),
-                            formatUploadDate(pendingUpload.existing.mtime),
+                            formatTimestamp(pendingUpload.existing.mtime),
                             formatBytes(pendingUpload.file.size)
                         )}
                     </ModalBody>

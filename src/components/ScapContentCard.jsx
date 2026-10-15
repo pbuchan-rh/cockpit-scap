@@ -2,7 +2,7 @@ import cockpit from 'cockpit';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
-import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
@@ -10,36 +10,38 @@ import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/inde
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
-import { checkUploadSize, deleteUploadedContent, listUploadedContent, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
+import {
+    checkUploadSize, deleteUploadedContent, listIncludedContent, listUploadedContent, sanitizeFilename,
+    statExistingContent, uploadContent,
+} from '../lib/content.js';
+import { formatBytes, formatTimestamp, listFooterText } from '../lib/format.js';
+import { SYSTEM_CONTENT_DIR, getContentVersion, getSsgPackageVersion, sdsDisplayName } from '../lib/oscap.js';
 
 const _ = cockpit.gettext;
 
-function formatBytes(bytes) {
-    if (!bytes && bytes !== 0) return '—';
-    if (bytes < 1024) return `${bytes} B`;
-    const units = ['KB', 'MB', 'GB'];
-    let value = bytes / 1024;
-    let unit = 0;
-    while (value >= 1024 && unit < units.length - 1) {
-        value /= 1024;
-        unit += 1;
-    }
-    return `${value.toFixed(1)} ${units[unit]}`;
+async function loadContent() {
+    const [included, uploaded, ssgVersion] = await Promise.all([
+        listIncludedContent(SYSTEM_CONTENT_DIR), listUploadedContent(), getSsgPackageVersion(),
+    ]);
+    const rows = [
+        ...included.map(c => ({ ...c, source: 'system' })),
+        ...uploaded.map(c => ({ ...c, source: 'uploaded' })),
+    ];
+    // grep -m1 per file: a few ms each, never `oscap info`.
+    const versions = await Promise.all(rows.map(r => getContentVersion(r.path)));
+    return { rows: rows.map((r, i) => ({ ...r, version: versions[i] })), ssgVersion };
 }
 
-function formatDate(ts) {
-    if (!ts) return '—';
-    return ts.slice(0, 10) + ' ' + ts.slice(11, 19);
-}
-
-// Minimal "Uploaded Content" management surface (Decision 2 in
-// PLAN_V4.3_CONTENT_UPLOAD.md) — Name/Size/Uploaded date/Delete only, no
-// validate-on-demand, no disk-usage meter. Owns the primary Upload entry
-// point; ScanSetup.jsx and TailoringEditor.jsx each get their own inline
-// Upload button calling the same lib/content.js functions, so upload works
-// from any of the three entry points without duplicating upload logic.
-export const ContentUploadCard = ({ refreshKey, onChanged }) => {
-    const [items, setItems] = useState([]);
+/* "SCAP Content" (G1): every datastream on the host in one table.
+ * Included rows come from the scap-security-guide RPM
+ * (/usr/share/xml/scap/ssg/content, no Delete); Uploaded rows are the
+ * user's ~/SCAP/content (Delete). Not "SSG Content": uploads can be any
+ * vendor's SCAP content. Owns the Upload entry point; the content pickers'
+ * "Other content" menus upload through the same lib/content.js calls and
+ * their "Manage content" item brings this card into view. */
+export const ScapContentCard = ({ refreshKey, onChanged }) => {
+    const [rows, setRows] = useState([]);
+    const [ssgVersion, setSsgVersion] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -49,18 +51,25 @@ export const ContentUploadCard = ({ refreshKey, onChanged }) => {
     const [deleting, setDeleting] = useState(false);
     const fileInputRef = useRef(null);
 
+    function reload() {
+        return loadContent().then(({ rows, ssgVersion }) => {
+            setRows(rows);
+            setSsgVersion(ssgVersion);
+        });
+    }
+
     useEffect(() => {
         let cancelled = false;
-        setLoading(true);
-        listUploadedContent()
-                .then(list => { if (!cancelled) { setItems(list); setLoading(false) } })
+        loadContent()
+                .then(({ rows, ssgVersion }) => {
+                    if (cancelled) return;
+                    setRows(rows);
+                    setSsgVersion(ssgVersion);
+                    setLoading(false);
+                })
                 .catch(ex => { if (!cancelled) { setError(ex.message || String(ex)); setLoading(false) } });
         return () => { cancelled = true };
     }, [refreshKey]);
-
-    function handleUploadClick() {
-        fileInputRef.current?.click();
-    }
 
     function doUpload(file) {
         setUploading(true);
@@ -69,8 +78,7 @@ export const ContentUploadCard = ({ refreshKey, onChanged }) => {
         reader.onload = async ev => {
             try {
                 await uploadContent(file.name, new Uint8Array(ev.target.result));
-                const list = await listUploadedContent();
-                setItems(list);
+                await reload();
                 onChanged?.();
             } catch (ex) {
                 setUploadError(ex.message || String(ex));
@@ -88,10 +96,8 @@ export const ContentUploadCard = ({ refreshKey, onChanged }) => {
     async function handleFileChosen(e) {
         const file = e.target.files[0];
         e.target.value = '';
-        // Guards against two uploads racing (e.g. a stat/confirm-replace
-        // round trip still in flight) writing concurrent scratch files —
-        // the modal closes as soon as the user confirms, before the actual
-        // write/validate/rename pipeline below has settled.
+        // Guards against two uploads racing (a stat/confirm-replace round
+        // trip still in flight) writing concurrent scratch files.
         if (!file || uploading) return;
 
         try {
@@ -121,7 +127,7 @@ export const ContentUploadCard = ({ refreshKey, onChanged }) => {
         setDeleting(true);
         try {
             await deleteUploadedContent(deleteTarget.path);
-            setItems(prev => prev.filter(i => i.path !== deleteTarget.path));
+            setRows(prev => prev.filter(i => i.path !== deleteTarget.path));
             setDeleteTarget(null);
             onChanged?.();
         } catch (ex) {
@@ -131,13 +137,15 @@ export const ContentUploadCard = ({ refreshKey, onChanged }) => {
         }
     }
 
+    const totalBytes = rows.reduce((sum, r) => sum + (r.size || 0), 0);
+
     return (
-        <Card>
+        <Card id="ct-scap-content-card">
             <CardHeader
                 actions={{
                     actions: (
                         <>
-                            <Button variant="secondary" size="sm" isLoading={uploading} onClick={handleUploadClick}>
+                            <Button variant="secondary" size="sm" isLoading={uploading} onClick={() => fileInputRef.current?.click()}>
                                 {_("Upload Content")}
                             </Button>
                             <input
@@ -149,7 +157,7 @@ export const ContentUploadCard = ({ refreshKey, onChanged }) => {
                 }}
             >
                 <CardTitle>
-                    <Title headingLevel="h2" size="lg">{_("Uploaded Content")}</Title>
+                    <Title headingLevel="h2" size="lg" className="ct-scap-content-title" tabIndex={-1}>{_("SCAP Content")}</Title>
                 </CardTitle>
             </CardHeader>
             <Divider />
@@ -165,38 +173,61 @@ export const ContentUploadCard = ({ refreshKey, onChanged }) => {
                 )}
 
                 {loading
-                    ? <Spinner size="md" aria-label={_("Loading uploaded content")} />
-                    : items.length === 0
+                    ? <Spinner size="md" aria-label={_("Loading SCAP content")} />
+                    : rows.length === 0
                         ? (
-                            <EmptyState titleText={_("No uploaded content")} headingLevel="h3">
+                            <EmptyState titleText={_("No SCAP content")} headingLevel="h3">
                                 <EmptyStateBody>
-                                    {_("Upload a vendor or custom SCAP datastream (.xml) to make it available in the content pickers.")}
+                                    {_("Install scap-security-guide, or upload a vendor or custom SCAP datastream (.xml).")}
                                 </EmptyStateBody>
                             </EmptyState>
                         )
                         : (
-                            <Table aria-label={_("Uploaded content")} variant="compact">
+                            <Table aria-label={_("SCAP content")} variant="compact" className="ct-table-band">
                                 <Thead>
                                     <Tr>
                                         <Th>{_("Name")}</Th>
-                                        <Th>{_("Size")}</Th>
-                                        <Th>{_("Uploaded")}</Th>
-                                        <Th screenReaderText={_("Actions")} />
+                                        <Th>{_("Source")}</Th>
+                                        <Th>{_("Version")}</Th>
+                                        <Th className="ct-num-col">{_("Size")}</Th>
+                                        <Th>{_("Added")}</Th>
+                                        <Th className="ct-actions-cell">{_("Actions")}</Th>
                                     </Tr>
                                 </Thead>
                                 <Tbody>
-                                    {items.map(item => (
-                                        <Tr key={item.path}>
-                                            <Td dataLabel={_("Name")}>{item.name}</Td>
-                                            <Td dataLabel={_("Size")}>{formatBytes(item.size)}</Td>
-                                            <Td dataLabel={_("Uploaded")}>{formatDate(item.mtime)}</Td>
-                                            <Td isActionCell className="ct-actions-cell">
-                                                <Button
-                                                    variant="link" isInline className="ct-btn-danger-link"
-                                                    onClick={() => setDeleteTarget(item)}
-                                                >
-                                                    {_("Delete")}
-                                                </Button>
+                                    {rows.map(item => (
+                                        <Tr key={item.path} data-ct-source={item.source}>
+                                            <Td dataLabel={_("Name")}>
+                                                <div>{sdsDisplayName(item.path, item.source)}</div>
+                                                <div className="ct-cell-subline">{item.name}</div>
+                                            </Td>
+                                            <Td dataLabel={_("Source")}>
+                                                {item.source === 'system'
+                                                    ? (
+                                                        <>
+                                                            <div>{_("Included")}</div>
+                                                            {ssgVersion && (
+                                                                <div className="ct-cell-subline">
+                                                                    {cockpit.format(_("scap-security-guide $0"), ssgVersion)}
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    )
+                                                    : _("Uploaded")}
+                                            </Td>
+                                            <Td dataLabel={_("Version")}>{item.version || '—'}</Td>
+                                            <Td dataLabel={_("Size")} className="ct-num-col">{formatBytes(item.size)}</Td>
+                                            <Td dataLabel={_("Added")}>{formatTimestamp(item.mtime)}</Td>
+                                            <Td dataLabel={_("Actions")} className="ct-actions-cell">
+                                                {item.source === 'uploaded' && (
+                                                    <Button
+                                                        variant="link" isInline className="ct-btn-danger-link"
+                                                        aria-label={cockpit.format(_("Delete $0"), item.name)}
+                                                        onClick={() => setDeleteTarget(item)}
+                                                    >
+                                                        {_("Delete")}
+                                                    </Button>
+                                                )}
                                             </Td>
                                         </Tr>
                                     ))}
@@ -204,6 +235,8 @@ export const ContentUploadCard = ({ refreshKey, onChanged }) => {
                             </Table>
                         )}
             </CardBody>
+            <Divider />
+            <CardFooter className="ct-list-footer">{listFooterText(rows.length, totalBytes)}</CardFooter>
 
             {pendingUpload && (
                 <Modal variant="small" isOpen onClose={() => setPendingUpload(null)}>
@@ -213,7 +246,7 @@ export const ContentUploadCard = ({ refreshKey, onChanged }) => {
                             _("\"$0\" already exists ($1, uploaded $2). Replace with the new file ($3)?"),
                             pendingUpload.file.name,
                             formatBytes(pendingUpload.existing.size),
-                            formatDate(pendingUpload.existing.mtime),
+                            formatTimestamp(pendingUpload.existing.mtime),
                             formatBytes(pendingUpload.file.size)
                         )}
                     </ModalBody>

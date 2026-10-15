@@ -18,6 +18,7 @@ import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/index.js";
 
+import { formatBytes, formatTimestamp } from '../lib/format.js';
 import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
 import { downloadFile } from '../lib/download.js';
 import {
@@ -28,6 +29,7 @@ import { listScans } from '../lib/scanHistory.js';
 import { listTailoringFiles } from '../lib/tailoring.js';
 import { openReportViewer } from '../lib/reportViewer.js';
 import { ContentSelect } from './ContentSelect.jsx';
+import { OtherContentMenu } from './OtherContentMenu.jsx';
 import { ProfileDescriptionPanel } from './ProfileDescriptionPanel.jsx';
 
 const _ = cockpit.gettext;
@@ -38,23 +40,7 @@ const FIX_TYPES = [
     { key: 'puppet', label: _("Puppet"), ext: '.pp', mimeType: 'text/plain', tooltip: _("Puppet manifest for Puppet-managed infrastructure") },
 ];
 
-function formatBytes(bytes) {
-    if (!bytes && bytes !== 0) return '—';
-    if (bytes < 1024) return `${bytes} B`;
-    const units = ['KB', 'MB', 'GB'];
-    let value = bytes / 1024;
-    let unit = 0;
-    while (value >= 1024 && unit < units.length - 1) {
-        value /= 1024;
-        unit += 1;
-    }
-    return `${value.toFixed(1)} ${units[unit]}`;
-}
 
-function formatDate(ts) {
-    if (!ts) return '—';
-    return ts.slice(0, 10) + ' ' + ts.slice(11, 19);
-}
 
 function slugify(text) {
     return text.toLowerCase()
@@ -351,28 +337,14 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                                                 contentList={contentList}
                                                 emptyLabel={_("No content found — upload a datastream to get started")}
                                             />}
-                                    <Flex flexWrap={{ default: 'wrap' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                                        <FlexItem>
-                                            <Button
-                                                variant="link" isInline className="ct-path-toggle"
-                                                onClick={() => setManualPath(m => !m)}
-                                            >
-                                                {manualPath ? _("Use auto-detected content") : _("Enter path manually")}
-                                            </Button>
-                                        </FlexItem>
-                                        <FlexItem>
-                                            <Button variant="link" isInline isLoading={uploading} onClick={handleUploadClick}>
-                                                {_("Upload…")}
-                                            </Button>
-                                        </FlexItem>
-                                        {onManageContent && (
-                                            <FlexItem>
-                                                <Button variant="link" isInline onClick={onManageContent}>
-                                                    {_("Manage uploaded content →")}
-                                                </Button>
-                                            </FlexItem>
-                                        )}
-                                    </Flex>
+                                    <OtherContentMenu
+                                        id="ct-scan-other-content"
+                                        onUpload={handleUploadClick}
+                                        uploading={uploading}
+                                        manualPath={manualPath}
+                                        onToggleManual={() => setManualPath(m => !m)}
+                                        onManage={onManageContent}
+                                    />
                                     <input
                                         ref={fileInputRef} type="file" accept=".xml" hidden
                                         onChange={handleFileChosen}
@@ -522,7 +494,7 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                                 _("\"$0\" already exists ($1, uploaded $2). Replace with the new file ($3)?"),
                                 pendingUpload.file.name,
                                 formatBytes(pendingUpload.existing.size),
-                                formatDate(pendingUpload.existing.mtime),
+                                formatTimestamp(pendingUpload.existing.mtime),
                                 formatBytes(pendingUpload.file.size)
                             )}
                         </ModalBody>

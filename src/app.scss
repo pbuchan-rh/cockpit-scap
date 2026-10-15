@@ -918,3 +918,7 @@
 .ct-menu-danger .pf-v6-c-menu__item-text {
     color: var(--pf-t--global--text--color--status--danger--default);
 }
+
+.ct-modal-text {
+    margin-block-end: var(--pf-t--global--spacer--md);
+}

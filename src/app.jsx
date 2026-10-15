@@ -14,7 +14,7 @@ import { ScanSetup } from './components/ScanSetup.jsx';
 import { ScanProgress } from './components/ScanProgress.jsx';
 import { ScanResults } from './components/ScanResults.jsx';
 import { RemediationBuilder } from './components/RemediationBuilder.jsx';
-import { ContentUploadCard } from './components/ContentUploadCard.jsx';
+import { ScapContentCard } from './components/ScapContentCard.jsx';
 import { ScanHistory } from './components/ScanHistory.jsx';
 import { TailoringEditor } from './components/TailoringEditor.jsx';
 import { TailoringList } from './components/TailoringList.jsx';
@@ -250,9 +250,21 @@ export const App = () => {
         setContentRefreshKey(k => k + 1);
     }, []);
 
+    // "Other content ▾" → Manage content: the SCAP Content card on the
+    // Policy Tailoring tab, scrolled into view and focused.
+    const [contentFocusKey, setContentFocusKey] = useState(0);
     const handleManageContent = useCallback(() => {
         setActiveTab('tailoring');
+        setContentFocusKey(k => k + 1);
     }, []);
+
+    useEffect(() => {
+        if (!contentFocusKey) return;
+        const title = document.querySelector('#ct-scap-content-card .ct-scap-content-title');
+        if (!title) return;
+        document.getElementById('ct-scap-content-card').scrollIntoView({ block: 'start', behavior: 'smooth' });
+        title.focus({ preventScroll: true });
+    }, [contentFocusKey]);
 
     const handleOpenBuilder = useCallback(preset => {
         setBuilder(b => ({ preset, key: (b?.key ?? 0) + 1 }));
@@ -346,6 +358,7 @@ export const App = () => {
                                 onCancelEdit={() => setEditingSidecar(null)}
                                 contentRefreshKey={contentRefreshKey}
                                 onContentChanged={handleContentChanged}
+                                onManageContent={handleManageContent}
                                         />
                                         <TailoringList
                                 refreshKey={tailoringRefreshKey}
@@ -354,7 +367,7 @@ export const App = () => {
                                 diskUsage={tailoringDiskUsage}
                                 contentRefreshKey={contentRefreshKey}
                                         />
-                                        <ContentUploadCard
+                                        <ScapContentCard
                                 refreshKey={contentRefreshKey}
                                 onChanged={handleContentChanged}
                                         />

@@ -94,8 +94,11 @@ export function flattenProfileRules(data) {
 
 /* Emit standard XCCDF <Tailoring>/<Profile extends="..."> with <select idref=.../>
  * and <set-value idref=...> entries for only the deltas. Plain string template,
- * no XML library — ported verbatim from old main's tailoring.js:913. */
-export function generateTailoringXml(baseProfileId, newProfileId, newProfileTitle, ruleChanges, valueChanges) {
+ * no XML library — ported from old main's tailoring.js:913. `sdsPath` goes
+ * into <benchmark href> (optional in XCCDF 1.2, written by SCAP Workbench
+ * too), so an exported policy uploaded again matches its content without
+ * asking (F2). */
+export function generateTailoringXml(baseProfileId, newProfileId, newProfileTitle, ruleChanges, valueChanges, sdsPath) {
     const esc = s => String(s)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -106,6 +109,7 @@ export function generateTailoringXml(baseProfileId, newProfileId, newProfileTitl
     const lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<Tailoring xmlns="http://checklists.nist.gov/xccdf/1.2" id="xccdf_cockpit-scap_tailoring_default">',
+        ...(sdsPath ? ['  <benchmark href="' + esc(sdsPath) + '"/>'] : []),
         '  <version time="' + ts + '">1</version>',
         '  <Profile id="' + esc(newProfileId) + '" extends="' + esc(baseProfileId) + '">',
         '    <title>' + esc(newProfileTitle) + '</title>',
@@ -119,6 +123,25 @@ export function generateTailoringXml(baseProfileId, newProfileId, newProfileTitl
     });
     lines.push('  </Profile>', '</Tailoring>');
     return lines.join('\n');
+}
+
+/* The content a tailoring file says it is for: its <benchmark href>,
+ * "" when it names none. */
+export function tailoringBenchmarkHref(doc) {
+    const el = doc.getElementsByTagNameNS('http://checklists.nist.gov/xccdf/1.2', 'benchmark')[0];
+    return (el?.getAttribute('href') || '').trim();
+}
+
+/* Detected/uploaded content (detectContent() shape) that `href` names:
+ * the exact path, else every file with the same name (a policy exported
+ * on another host names that host's path). */
+export function matchBenchmarkContent(href, contentList) {
+    if (!href) return [];
+    const path = href.replace(/^file:\/\//, '');
+    const exact = contentList.filter(c => c.path === path);
+    if (exact.length) return exact;
+    const base = path.split('/').pop();
+    return contentList.filter(c => c.path.split('/').pop() === base);
 }
 
 export function parseTailoringXml(xmlContent) {
@@ -210,7 +233,7 @@ export async function saveNewTailoring({ baseProfileId, baseProfileTitle, newPro
     const xmlPath = `${dir}/${filename}.xml`;
     const jsonPath = `${dir}/${filename}.json`;
 
-    const xml = generateTailoringXml(baseProfileId, newProfileId, newProfileTitle, ruleChanges, valueChanges);
+    const xml = generateTailoringXml(baseProfileId, newProfileId, newProfileTitle, ruleChanges, valueChanges, sdsPath);
     const sidecar = {
         name: newProfileTitle,
         base_profile_id: baseProfileId,
@@ -234,7 +257,7 @@ export async function updateTailoringFile(sidecar, { newProfileTitle, ruleChange
     }
 
     const title = newProfileTitle.trim() || sidecar.name;
-    const xml = generateTailoringXml(sidecar.base_profile_id, sidecar.profile_id, title, ruleChanges, valueChanges);
+    const xml = generateTailoringXml(sidecar.base_profile_id, sidecar.profile_id, title, ruleChanges, valueChanges, sidecar.sds_path);
     const jsonPath = sidecar.path.replace(/\.xml$/, '.json');
     const updatedSidecar = {
         ...sidecar,

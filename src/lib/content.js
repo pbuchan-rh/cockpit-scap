@@ -99,6 +99,32 @@ export async function listUploadedContent() {
     }
 }
 
+/* The scap-security-guide RPM's datastreams ("Included" in the SCAP
+ * Content card), same {path, name, size, mtime} shape as
+ * listUploadedContent(). */
+export async function listIncludedContent(dir) {
+    try {
+        const output = await cockpit.spawn(
+            ['find', dir, '-maxdepth', '1', '-name', '*-ds.xml', '-type', 'f', '-printf', '%f|%s|%T@\n'],
+            { err: 'ignore' }
+        );
+        return output.trim().split('\n')
+                .filter(Boolean)
+                .map(line => {
+                    const [name, size, mtimeEpoch] = line.split('|');
+                    return {
+                        path: `${dir}/${name}`,
+                        name,
+                        size: Number(size),
+                        mtime: new Date(Number(mtimeEpoch) * 1000).toISOString(),
+                    };
+                })
+                .sort((a, b) => a.name.localeCompare(b.name));
+    } catch {
+        return [];
+    }
+}
+
 /* Upload pipeline: sanitize -> hash client-side bytes -> write to a scratch
  * path -> verify the write via checksum (Decision 1: cheaper than a full
  * readback for 20MB+ SDS files) -> validate via `oscap ds sds-validate`
