@@ -261,6 +261,8 @@ what new specs need.
 1. **Puppet.** The setup page offers Bash / Ansible / Puppet for a whole
    profile. The usability review put Puppet on the cut list. Keep it or
    cut it? (Plan assumes: keep as-is, no new Puppet work.)
+   ANSWERED (Peter, re-confirmed 2026-10-15): keep. It is cheap to have and
+   could help a Puppet shop.
 2. **Apply Now timing.** Build V4.5 straight after this, or later? (Plan
    assumes later; the drawer leaves room for it.)
 3. **F4 depth.** Cheap "Other content ▾" menu (planned) or the full PF

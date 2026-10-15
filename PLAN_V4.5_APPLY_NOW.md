@@ -170,3 +170,102 @@ Plan approved, no open questions remaining. Ready for a separate build
 session (scaffolding + component code) whenever Peter wants to schedule it —
 per established practice, planning sessions produce docs only,
 implementation is a distinct, separately-approved step.
+
+## Amendments (2026-10-15): refresh for the V4.6 Remediation Builder
+
+Approved 2026-10-15. Peter delegated the plan review ("if you fully test
+and agree"), and Claude reviewed and agreed this refresh. It overrides the
+matching text above wherever they differ. The 07-15 decisions still stand:
+selective, post-scan only, bash only, syslog + per-scan log, available
+from Scan History.
+
+1. **Where it lives.** It goes in the V4.6 Remediation Builder drawer
+   (`RemediationBuilder.jsx`, the placeholder comment in
+   `.ct-builder-actions`), not `ScanResults.jsx`. Add a danger button,
+   **"Apply now"**, placed first, before Download Bash script / Download
+   Ansible playbook. It is enabled when at least one rule is selected and
+   nothing else is busy.
+2. **ONE confirm dialog, not two gates** (Peter, spec C: "merge the 2
+   Apply confirms into 1"). The script is generated when the dialog opens,
+   so what the user can inspect is exactly what runs. The dialog shows:
+   - A danger warning: the fixes run as root and change this host; some
+     (bootloader, SELinux, kernel arguments, mount options) only take
+     effect after a reboot; fixes are not undone automatically.
+   - The host name, plus the scan the fixes come from, with its date and
+     age (for example "Scan of Oct 14, 6:04 PM (1 day ago)"). A fresh scan
+     reads "just now". The same results screen serves a fresh scan and
+     History → View, so there is no special History mode.
+   - The selected rule titles with their severity.
+   - A collapsed "View script" disclosure holding the full generated
+     script.
+   - Buttons: **Apply** (danger) and Cancel. Apply stays disabled until
+     the script has been generated. A generation error shows inline, with
+     no Apply.
+   If the generated script is empty (`isEmptyFix`), show the existing
+   "Empty remediation" notice and never offer Apply.
+3. **Admin access.** Apply now needs Cockpit administrative access. Without
+   it the button is aria-disabled with the same tooltip pattern as Run Scan
+   (e8f4051), and nothing ever prompts for a password mid-flow.
+4. **Execution survives closing the page.** With a plain `cockpit.spawn`,
+   the process dies when the channel closes (the user navigates away, the
+   tab closes, or the session ends) and leaves a half-applied host.
+   Instead:
+   - Write the script to a root-only temp dir (`makeTmpdir()` pattern).
+   - Run it as a transient unit:
+     `systemd-run --unit=cockpit-scap-remediate-<stamp> --collect
+     --property=Type=oneshot ... bash <script>`, with stdout and stderr
+     going to a root-only output file in the same temp dir.
+   - The UI follows that output file live (`tail -f` via spawn, or polling)
+     and gets the exit code from `systemctl show -p ExecMainStatus` /
+     `Result`, or from a wrapper that writes the status to a file.
+   - When the page loads while a `cockpit-scap-remediate-*` unit is
+     active, show an inline info alert: "A remediation is running on this
+     host (started HH:MM)", with a link that reopens the live output.
+   - Clean up the temp dir at the end, whatever the outcome.
+   - There is no "cancel mid-run" button in v1, because killing a
+     half-applied fix is worse than letting it finish. The dialog says this
+     plainly.
+5. **Running and done states.** Once Apply is pressed, the dialog becomes
+   the progress view: live auto-scrolling output in a `<pre>`, and an
+   elapsed time. The dialog can be closed while the run continues, and the
+   alert in item 4 brings it back. On completion it shows success (exit 0)
+   or failure (exit code), and offers:
+   - **"Rescan to verify"**: starts a new scan with the same content,
+     profile and tailoring as the source scan.
+   - **"Download log"**.
+   - Close.
+   Disable Apply now and Run Scan while a remediation unit is active, and
+   disable Apply now while a scan is running.
+6. **Audit.**
+   - `logger -t cockpit-scap`: one line at start and one at end, giving
+     the user, host, profile, source scan id, rule count, unit name, and at
+     the end the exit code.
+   - Per-run log written AS THE USER (not root) to
+     `~/SCAP/scans/<source-scan>/remediation-<ISO stamp>.log`. It holds the
+     header (user, time, profile, content, tailoring, rule ids), the full
+     script, the full output and the exit code. A new file per run, never
+     overwritten.
+   - Scan History's delete already removes the scan directory, so these
+     logs go with it. The History row shows nothing new in v1.
+7. **Offline remediation is not a separate gap.** Items 1 and 2 plus the
+   07-15 decision 2 already re-apply fixes from a saved scan. Strike the
+   "Offline remediation" line from "Out of scope" above, and update the
+   matching row in WORKBENCH_FEATURES.md. The remaining difference from
+   Workbench: `oscap xccdf remediate` marks rules "fixed" in the ARF, and
+   cockpit-scap uses "Rescan to verify" instead, on purpose.
+8. **Testing (safety).** Click Apply only on the disposable host
+   `scap-apply10.beastmode.localdomain`. The spec must refuse to run unless
+   `COCKPIT_URL`'s host is scap-apply10. Never apply on rhel10cis or
+   scap-test10 (Peter's review VM). Cover:
+   - Happy path on two or three low-risk failing rules (for example a
+     sysctl rule and a banner/login-defs rule). Rescan, then confirm those
+     rules pass.
+   - Empty-fix rule: no Apply offered.
+   - A forced failing script: shows the exit code and still writes the log
+     plus both syslog lines.
+   - Non-admin: the button is disabled.
+   - Reload the page mid-run: the run continues, the alert appears, and
+     the output reattaches.
+   - Apply from History → View of an older scan: the age is shown.
+   - The log file is owned by the user, and the temp dir is gone
+     afterwards.
