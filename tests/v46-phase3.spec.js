@@ -141,7 +141,13 @@ test('drawer: Critical & high preset, counts, group select, search, downloads', 
         expect(dl.filename).toMatch(new RegExp(`-${n}-rules\\.${fixType === 'bash' ? 'sh' : 'yml'}$`));
         if (fixType === 'bash') expect((dl.text.match(/^# BEGIN fix/gm) || []).length).toBe(n);
     }
-    await expect(drawer.getByRole('button', { name: /Apply/ })).toHaveCount(0);
+    // Apply now (V4.6 Apply Now) is the first action, a danger button. This
+    // spec runs on the review host: it is never clicked here (only
+    // v46-apply-now.spec.js, on scap-apply10, may click it).
+    await expect(drawer.getByRole('button', { name: /Apply/ })).toHaveCount(1);
+    const actions = await drawer.locator('.ct-builder-actions button').allInnerTexts();
+    expect(actions.map(a => a.trim())).toEqual(['Apply now', 'Download Bash script', 'Download Ansible playbook']);
+    await expect(drawer.getByRole('button', { name: 'Apply now' })).toHaveClass(/pf-m-danger/);
     await S.closeBuilder(frame);
 });
 
