@@ -37,3 +37,17 @@ export function formatTimestamp(ts) {
     if (!ts) return '—';
     return ts.slice(0, 10) + ' ' + ts.slice(11, 19).replace(/-/g, ':');
 }
+
+/* "just now", "5 minutes ago", "3 hours ago", "1 day ago" for a past time
+ * (ms or anything Date accepts), relative to `now`. */
+export function formatAge(when, now = Date.now()) {
+    const t = new Date(when).getTime();
+    if (isNaN(t)) return '';
+    const min = Math.floor(Math.max(0, now - t) / 60000);
+    if (min < 1) return cockpit.gettext("just now");
+    if (min < 60) return cockpit.format(cockpit.ngettext("$0 minute ago", "$0 minutes ago", min), min);
+    const hours = Math.floor(min / 60);
+    if (hours < 24) return cockpit.format(cockpit.ngettext("$0 hour ago", "$0 hours ago", hours), hours);
+    const days = Math.floor(hours / 24);
+    return cockpit.format(cockpit.ngettext("$0 day ago", "$0 days ago", days), days);
+}
