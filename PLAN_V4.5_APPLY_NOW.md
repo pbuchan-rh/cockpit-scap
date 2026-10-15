@@ -1,8 +1,9 @@
 # V4.5 Scope: Apply Now (online/live in-app remediation)
 
-Status: **planning only — no code written yet.** This document defines scope
-and architecture for the next build session. Do not start implementation
-until this plan has been reviewed and approved.
+Status: **implemented on `v4.6-v3-flow`, 3e664f9..885283d (2026-10-15)**, plus the docs commit that sets this line, per
+the "Amendments (2026-10-15)" section at the end, which overrides the older
+text. Not merged to `rewrite`, no RPM yet. See "Implementation notes" at the
+very end for where the build differs from the sketch.
 
 ## Why
 
@@ -137,8 +138,6 @@ silently.
 - Pre-scan / whole-profile blind apply (workbench's `--remediate` flag) —
   deliberately not restoring this; selective post-scan-only is the safer,
   already-proven-in-old-`main` shape.
-- Offline remediation (re-apply a saved ARF without rescanning) — separate
-  feature, not addressed by this plan.
 - Ansible/puppet execution — download-only for those formats remains
   unchanged; only bash gets an Execute path, matching old `main`.
 - Any `src/` code changes — this session is docs-only.
@@ -269,3 +268,30 @@ from Scan History.
    - Apply from History → View of an older scan: the age is shown.
    - The log file is owned by the user, and the temp dir is gone
      afterwards.
+
+## Implementation notes (2026-10-15, v4.6-v3-flow)
+
+- Code: `src/lib/remediate.js` (runner, unit discovery, result collection),
+  `src/components/ApplyNow.jsx` (the dialog, the page alert,
+  `useRemediationRun()`), the Apply now button in
+  `RemediationBuilder.jsx`, wiring in `app.jsx`. Spec:
+  `tests/v46-apply-now.spec.js`, guarded by `tests/helpers/apply-host.js`
+  (refuses any host but scap-apply10).
+- Item 4, output redirection: `-p StandardOutput=file:<dir>/output.log`
+  fails on RHEL 10.2 (status 209/STDOUT, Permission denied: PID 1 may not
+  open a file in the user_tmp_t dir `sudo mktemp` creates). The runner
+  redirects its own stdout/stderr (`exec >"$dir/output.log" 2>&1`) instead.
+  `--no-block` is added so systemd-run returns at once for a oneshot unit.
+- Item 4, exit status: the runner records it (exit-status file and the
+  log's "Exit code:" line); `systemctl show` is only used to tell running
+  from gone, because `--collect` unloads the unit as soon as it ends.
+- Item 6, the per-run log is written by the unit's runner, not by the
+  page, as the user (`setpriv --reuid/--regid --init-groups`, umask 077,
+  noclobber), so the log and both syslog lines exist even when no page is
+  open at the end. The page reads it back (no superuser). If that write
+  fails, the runner keeps the temp dir and logs that to syslog; the page
+  then shows the output from the temp dir, warns, and removes the dir.
+- Apply now is also disabled, with a tooltip, for a results page whose
+  scan is not in Scan History (the save failed), since the log would have
+  nowhere to go. "Disable Apply now while a scan is running" needs no
+  extra code: the Builder only exists on the results page.
