@@ -312,7 +312,7 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
             <CardHeader className="ct-results-header">
                 <div className="ct-results-heading">
                     <p className="ct-results-label">{_("Host scan results")}</p>
-                    <Title headingLevel="h2" size="xl" className="ct-results-profile">{profileTitle}</Title>
+                    <Title headingLevel="h2" size="xl" className="ct-results-profile" tabIndex={-1}>{profileTitle}</Title>
                     {tailoringName && profileTitle !== tailoringName && (
                         <p className="ct-results-sub">{cockpit.format(_("Tailoring: $0"), tailoringName)}</p>
                     )}

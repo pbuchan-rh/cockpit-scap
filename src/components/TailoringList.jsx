@@ -2,7 +2,7 @@ import cockpit from 'cockpit';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
-import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
@@ -12,6 +12,7 @@ import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/ind
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
 import { downloadFile } from '../lib/download.js';
+import { listFooterText } from '../lib/format.js';
 import { detectContent, sdsDisplayName } from '../lib/oscap.js';
 import { deleteTailoringFile, listTailoringFiles, readTailoringXml, saveUploadedTailoring } from '../lib/tailoring.js';
 import { ContentSelect } from './ContentSelect.jsx';
@@ -190,7 +191,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                             </EmptyState>
                         )
                         : (
-                            <Table aria-label={_("Saved tailoring policies")} variant="compact">
+                            <Table aria-label={_("Saved tailoring policies")} variant="compact" className="ct-table-band">
                                 <Thead>
                                     <Tr>
                                         <Th>{_("Name")}</Th>
@@ -229,8 +230,9 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                                 </Tbody>
                             </Table>
                         )}
-                <p className="ct-disk-usage-total">{cockpit.format(_("Total disk used by tailoring policies: $0"), diskUsage ?? "—")}</p>
             </CardBody>
+            <Divider />
+            <CardFooter className="ct-list-footer">{listFooterText(sidecars.length, diskUsage)}</CardFooter>
 
             {deleteTarget && (
                 <Modal variant="small" isOpen onClose={() => setDeleteTarget(null)}>

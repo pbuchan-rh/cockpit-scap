@@ -231,7 +231,11 @@ test('fix generation errors are shown', async () => {
 
 test('history and tailoring downloads arrive', async () => {
     const row = frame.locator('tbody tr').filter({ hasText: S.TEST_TAILORING_NAME }).first();
-    const dl = await S.expectDownload(page, () => row.getByRole('button', { name: 'Download' }).click(), { binary: true });
+    // Phase 4 (spec F): Download is a menu (HTML report / Results XML / ARF).
+    const dl = await S.expectDownload(page, async () => {
+        await row.getByRole('button', { name: /^Download scan from/ }).click();
+        await frame.getByRole('menuitem', { name: /^Results XML/ }).click();
+    }, { binary: true });
     expect(dl.filename).toMatch(/^scan-results-.*\.xml\.gz$/);
     expect(dl.buffer[0]).toBe(0x1f);
 

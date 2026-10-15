@@ -45,6 +45,8 @@ export const App = () => {
     // a moment after the scan starts, from the same extractProfile() call
     // the results' rule metadata uses.
     const [scanInfo, setScanInfo] = useState(null);
+    // Bumped by history "View": scroll to and focus the results (R3).
+    const [resultsFocusKey, setResultsFocusKey] = useState(0);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -220,7 +222,16 @@ export const App = () => {
         setBuilder(null);
         setTmpdir(null);
         setPhase('results');
+        setResultsFocusKey(k => k + 1);
     }, []);
+
+    useEffect(() => {
+        if (!resultsFocusKey) return;
+        const heading = document.querySelector('[data-ct-results] .ct-results-profile');
+        if (!heading) return;
+        heading.closest('[data-ct-results]').scrollIntoView({ block: 'start', behavior: 'smooth' });
+        heading.focus({ preventScroll: true });
+    }, [resultsFocusKey]);
 
     const handleTailoringSaved = useCallback(() => {
         setTailoringRefreshKey(k => k + 1);

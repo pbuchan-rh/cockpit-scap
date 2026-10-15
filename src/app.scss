@@ -870,7 +870,51 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
-.ct-disk-usage-total {
-    margin-block-start: var(--pf-t--global--spacer--sm);
+// "N items · size" under every list (F5).
+.ct-list-footer {
     color: var(--pf-t--global--text--color--subtle);
+    font-size: var(--pf-t--global--font--size--sm);
+}
+
+// Column header band on the module's tables (spec F: v3's "title bars
+// above the columns"). Tables only; no other header gets a tint.
+.pf-v6-c-table.ct-table-band > .pf-v6-c-table__thead > .pf-v6-c-table__tr > .pf-v6-c-table__th {
+    background: var(--pf-t--global--background--color--secondary--default);
+}
+
+.pf-v6-c-table .ct-num-col {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+}
+
+.ct-cell-subline {
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--subtle);
+    overflow-wrap: anywhere;
+}
+
+.pf-v6-c-table .ct-score-cell {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.ct-score-delta {
+    margin-inline-start: var(--pf-t--global--spacer--xs);
+    font-size: var(--pf-t--global--font--size--sm);
+}
+
+.ct-score-delta-up {
+    color: var(--pf-t--global--text--color--status--success--default);
+}
+
+.ct-score-delta-down {
+    color: var(--pf-t--global--text--color--status--danger--default);
+}
+
+.ct-score-delta-same {
+    color: var(--pf-t--global--text--color--subtle);
+}
+
+.ct-menu-danger .pf-v6-c-menu__item-text {
+    color: var(--pf-t--global--text--color--status--danger--default);
 }
