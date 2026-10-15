@@ -4,7 +4,7 @@
 //     the shell's own pages, outlined cards inside it
 //   - a PF Divider under every card header and above every card footer
 //   - severity group headers: neutral bold text + a readable PF Label
-//   - neutral score tile (Amendment 2): no color by value
+//   - score tile colored by what is failing (Amendment 2, revised), readable
 //   - one filled primary button on the setup screen
 //   - no hard-coded hex colors in app.scss
 const fs = require('fs');
@@ -14,6 +14,9 @@ const { openModuleInShell } = require('./helpers/cockpit');
 const S = require('./helpers/scap');
 
 function rgb(str) {
+    // color-mix() computes to color(srgb r g b [/ a]) with 0..1 channels.
+    const c = str.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)/);
+    if (c) return { r: c[1] * 255, g: c[2] * 255, b: c[3] * 255, a: c[4] === undefined ? 1 : Number(c[4]) };
     const m = str.match(/rgba?\(([^)]+)\)/);
     if (!m) return null;
     const [r, g, b, a = 1] = m[1].split(',').map(Number);
@@ -144,11 +147,14 @@ test.describe.serial('surfaces', () => {
             const tile = await frame.evaluate(() => {
                 const t = document.querySelector('.ct-score-tile');
                 const v = t.querySelector('.ct-score-value');
-                return { tileBg: getComputedStyle(t).backgroundColor, value: getComputedStyle(v).color, body: getComputedStyle(document.body).color, cardBg: getComputedStyle(t.closest('.pf-v6-c-card')).backgroundColor, cls: v.className + ' ' + t.className };
+                const sev = [...document.querySelectorAll('.ct-sev-group-name')].map(n => n.textContent.trim().toLowerCase());
+                return { tileBg: getComputedStyle(t).backgroundColor, value: getComputedStyle(v).color, body: getComputedStyle(document.body).color, status: t.dataset.scoreStatus, sev };
             });
-            expect(tile.value, 'score number uses the regular text color').toBe(tile.body);
-            expect(tile.tileBg, 'score tile is tinted').not.toBe(tile.cardBg);
-            expect(tile.cls).not.toMatch(/green|gold|red|success|warning|danger/);
+            // CIS L1 on this host fails high rules, so the tile is danger.
+            const want = tile.sev.some(n => /critical|high/.test(n)) ? 'danger' : tile.sev.length ? 'warning' : 'success';
+            expect(tile.status, 'score status follows the worst failing severity').toBe(want);
+            expect(tile.value, 'score number carries the status color').not.toBe(tile.body);
+            expect(contrast(rgb(tile.value), rgb(tile.tileBg)), 'score number contrast').toBeGreaterThanOrEqual(3);
             await page.screenshot({ path: path.join(__dirname, 'screenshots', `v46-phase2-${theme.name}.png`), fullPage: true });
             await ctx.close();
         });

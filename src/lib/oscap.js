@@ -226,7 +226,7 @@ const SCOPE_PROFILE_ID = 'xccdf_cockpit-scap_profile_fixscope';
  * instead of 14, faillock deny 3 instead of 5, ...). Verified with oscap
  * 1.4.4 that every variable matches `generate fix --profile <same>` for the
  * same rules (tests/v46-phase1-scoped-fix-values.spec.js). */
-export async function generateScopedFix({ sdsPath, profileId, tailoringPath, allRuleIds }, ruleIds, fixType) {
+export async function generateScopedFix({ sdsPath, profileId, profileTitle, tailoringPath, allRuleIds }, ruleIds, fixType) {
     if (!profileId) throw new Error(_scopeError('the scanned profile is unknown'));
     if (!allRuleIds?.length) throw new Error(_scopeError('the scan results list no rules'));
 
@@ -252,7 +252,12 @@ export async function generateScopedFix({ sdsPath, profileId, tailoringPath, all
         return e;
     };
     const profile = el('Profile', { id: SCOPE_PROFILE_ID, extends: profileId });
-    profile.appendChild(el('title', {}, 'cockpit-scap rule-scoped fix'));
+    // oscap appends a non-override title/description to the parent's
+    // ("RHEL10_CIS2_DMZ_WEBcockpit-scap rule-scoped fix"); override both
+    // so the script header reads cleanly.
+    profile.appendChild(el('title', { override: 'true' }, `${profileTitle || profileId} (selected rules)`));
+    profile.appendChild(el('description', { override: 'true' },
+                           `${ruleIds.length} rule(s) selected in cockpit-scap from ${profileTitle || profileId}, with that profile's values.`));
     const wanted = new Set(ruleIds);
     for (const id of new Set([...allRuleIds, ...ruleIds]))
         profile.appendChild(el('select', { idref: id, selected: wanted.has(id) ? 'true' : 'false' }));

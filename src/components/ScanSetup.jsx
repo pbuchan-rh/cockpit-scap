@@ -381,9 +381,7 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                                                 _("This content is for $0, but this host runs $1"),
                                                 cpeDisplayName(contentCpe), host.prettyName || cpeDisplayName(host.cpe)
                                             )}
-                                        >
-                                            {_("Most rules will not apply to this host, and the score will not mean much. Pick content that matches the host unless you know you need this one.")}
-                                        </Alert>
+                                        />
                                     )}
                                 </FormGroup>
 

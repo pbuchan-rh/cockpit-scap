@@ -293,5 +293,13 @@ override the matching text above.
    bold ... dev looks better". The weight switch and scap-dev-heavy are
    gone.
 
+5. **Score color: by what is failing (revises 2).** Peter: "monotones and
+   grays everywhere im not a fan". Any critical/high failure = danger,
+   only medium/low/unknown = warning, nothing failing = success. Data from
+   the content's own severities, no threshold or stored target, so still
+   opinionless. Passed/failed counts colored; Builder panel brand tint.
+6. **Builder drawer:** plain context header, a divider per rule, only
+   critical/high groups open. Content-mismatch warning: title only.
+
 Reason (1, 2): the module stays stateless (only `~/SCAP` user artifacts) and
 opinionless (the Cockpit ideal: no stored opinion of server state).

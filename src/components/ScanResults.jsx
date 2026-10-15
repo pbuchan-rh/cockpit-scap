@@ -204,8 +204,8 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
         allRuleIds, profileTitle, tailoringName,
     } = result;
     const scope = useMemo(
-        () => ({ sdsPath, profileId: scanProfileId, tailoringPath, allRuleIds }),
-        [sdsPath, scanProfileId, tailoringPath, allRuleIds]
+        () => ({ sdsPath, profileId: scanProfileId, profileTitle, tailoringPath, allRuleIds }),
+        [sdsPath, scanProfileId, profileTitle, tailoringPath, allRuleIds]
     );
 
     const [search, setSearch] = useState('');
@@ -271,6 +271,15 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
 
     const fails = failingRules.filter(r => r.result === 'fail');
     const sevCounts = SEVERITY_ORDER.map(sev => [sev, fails.filter(r => r.severity === sev).length]).filter(([, n]) => n > 0);
+    // Score color comes from what is failing (Amendment 2, revised): the
+    // content's own severities, no threshold or stored target. Any
+    // critical/high failure = danger, only medium/low/unknown = warning,
+    // nothing failing = success.
+    const scoreStatus = scorePercent === null
+        ? null
+        : fails.some(r => isCriticalOrHigh(r.severity))
+            ? 'danger'
+            : fails.length > 0 ? 'warning' : 'success';
     const autoCritHigh = fails.filter(r => isCriticalOrHigh(r.severity) && ruleInfo(r.id, details, ruleMeta).automated).length;
 
     function handleViewReport() {
@@ -326,8 +335,7 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
                 )}
                 <div className="ct-results-zones">
                     <div className="ct-results-zone ct-results-zone-score">
-                        {/* Neutral on purpose (Amendment 2): no good/bad color by value. */}
-                        <span className="ct-score-tile ct-surface-tint">
+                        <span className={`ct-score-tile${scoreStatus ? ` ct-score-${scoreStatus}` : ''}`} data-score-status={scoreStatus || 'none'}>
                             <span className="ct-score-value">
                                 {scorePercent !== null ? `${scorePercent}%` : _("N/A")}
                             </span>
@@ -337,14 +345,20 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
                     <Divider orientation={{ default: 'horizontal', lg: 'vertical' }} className="ct-results-zone-divider" />
                     <div className="ct-results-zone ct-results-zone-summary">
                         <p className="ct-results-summary-line">
-                            {cockpit.format(_("$0 passed · $1 failed · $2 n/a · $3 errors"), pass, fail, notapplicable, errorCount)}
+                            <span className="ct-count-pass">{cockpit.format(_("$0 passed"), pass)}</span>
+                            {' · '}
+                            <span className={fail > 0 ? 'ct-count-fail' : undefined}>{cockpit.format(_("$0 failed"), fail)}</span>
+                            {' · '}
+                            {cockpit.format(_("$0 n/a"), notapplicable)}
+                            {' · '}
+                            <span className={errorCount > 0 ? 'ct-count-fail' : undefined}>{cockpit.format(_("$0 errors"), errorCount)}</span>
                         </p>
                         {notchecked > 0 && (
                             <p className="ct-results-sub">{cockpit.format(cockpit.ngettext("$0 rule not checked", "$0 rules not checked", notchecked), notchecked)}</p>
                         )}
                     </div>
                     <Divider orientation={{ default: 'horizontal', lg: 'vertical' }} className="ct-results-zone-divider" />
-                    <div className="ct-results-zone ct-builder-panel ct-surface-tint ct-surface-accent">
+                    <div className="ct-results-zone ct-builder-panel ct-surface-accent">
                         <Title headingLevel="h3" size="lg">{_("Remediation Builder")}</Title>
                         {sevCounts.length > 0 && (
                             <LabelGroup numLabels={5} aria-label={_("Failing rules by severity")}>

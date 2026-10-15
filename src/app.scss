@@ -152,13 +152,35 @@
     margin: 0;
 }
 
-// Score tile: neutral tint, no color by value (Amendment 2).
+// Score tile: colored by what is failing (Amendment 2, revised), a light
+// status tint mixed from PF status tokens so it follows dark mode.
 .ct-score-tile {
     display: inline-flex;
     flex-direction: column;
     align-items: center;
     gap: var(--pf-t--global--spacer--xs);
     padding: var(--pf-t--global--spacer--md) var(--pf-t--global--spacer--xl);
+    border: var(--pf-t--global--border--width--regular, 1px) solid var(--pf-t--global--border--color--default);
+    border-radius: var(--pf-t--global--border--radius--small);
+}
+
+@each $status in danger, warning, success {
+    .ct-score-#{$status} {
+        background: color-mix(in srgb, var(--pf-t--global--color--status--#{$status}--default) 12%, var(--pf-t--global--background--color--primary--default));
+        border-color: var(--pf-t--global--border--color--status--#{$status}--default);
+
+        .ct-score-value {
+            color: var(--pf-t--global--text--color--status--#{$status}--default);
+        }
+    }
+}
+
+.ct-count-pass {
+    color: var(--pf-t--global--text--color--status--success--default);
+}
+
+.ct-count-fail {
+    color: var(--pf-t--global--text--color--status--danger--default);
 }
 
 .ct-score-value {
@@ -264,8 +286,11 @@
     }
 }
 
-// Remediation Builder panel: tinted surface with the brand accent bar.
+// Remediation Builder panel: light brand tint with the brand accent bar
+// (v3's blue panel), not the neutral gray.
 .ct-builder-panel {
+    background: color-mix(in srgb, var(--pf-t--global--color--brand--default) 7%, var(--pf-t--global--background--color--primary--default));
+    border-radius: var(--pf-t--global--border--radius--small);
     display: flex;
     flex-direction: column;
     gap: var(--pf-t--global--spacer--sm);
@@ -491,9 +516,7 @@
 }
 
 .ct-builder-context {
-    margin-inline: var(--pf-t--global--spacer--lg);
-    margin-block-end: var(--pf-t--global--spacer--md);
-    padding: var(--pf-t--global--spacer--md);
+    padding-block-end: var(--pf-t--global--spacer--md);
 }
 
 .ct-builder-toolbar {
@@ -522,8 +545,14 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
+// One line per rule, divided like the Results rule rows.
 .ct-builder-rule {
-    padding-block: var(--pf-t--global--spacer--xs);
+    padding-block: var(--pf-t--global--spacer--sm);
+    border-block-start: var(--pf-t--global--border--width--divider--default, 1px) solid var(--pf-t--global--border--color--default);
+}
+
+.ct-builder-rule .pf-v6-c-check__description {
+    margin-block-start: 0;
 }
 
 .ct-builder-rule-row {

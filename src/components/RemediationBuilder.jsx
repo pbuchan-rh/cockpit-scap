@@ -85,9 +85,9 @@ export const RemediationBuilder = ({ result, preset, onClose }) => {
         rules: fails.filter(r => (SEVERITY_ORDER.includes(r.severity) ? r.severity : 'unknown') === sev),
     })).filter(g => g.rules.length > 0), [fails]);
 
-    // Open the groups that hold the preset's selection; the rest start
-    // collapsed, as in v3.
-    const [expanded, setExpanded] = useState(() => new Set(groups.filter(g => g.rules.some(r => selected.has(r.id))).map(g => g.key)));
+    // Critical/high groups start open (as on the Results page); the rest
+    // start collapsed with their "n of m selected" count, as in v3.
+    const [expanded, setExpanded] = useState(() => new Set(groups.filter(g => isCriticalOrHigh(g.key)).map(g => g.key)));
     const term = search.trim().toLowerCase();
     const matches = r => !term || infos[r.id].searchText.includes(term);
 
@@ -121,7 +121,7 @@ export const RemediationBuilder = ({ result, preset, onClose }) => {
         setNotice(null);
         try {
             const ids = fails.filter(r => selected.has(r.id)).map(r => r.id);
-            const script = await generateScopedFix({ sdsPath, profileId: scanProfileId, tailoringPath, allRuleIds }, ids, fixType);
+            const script = await generateScopedFix({ sdsPath, profileId: scanProfileId, profileTitle, tailoringPath, allRuleIds }, ids, fixType);
             if (isEmptyFix(script, fixType)) {
                 setNotice(fixType === 'bash'
                     ? _("None of the selected rules has a Bash remediation, so there is nothing to download.")
@@ -147,7 +147,7 @@ export const RemediationBuilder = ({ result, preset, onClose }) => {
                     <DrawerCloseButton onClick={onClose} aria-label={_("Close Remediation Builder")} />
                 </DrawerActions>
             </DrawerHead>
-            <DrawerPanelBody className="ct-builder-context ct-surface-tint">
+            <DrawerPanelBody className="ct-builder-context">
                 <DescriptionList isCompact isHorizontal isFluid columnModifier={{ default: '1Col', md: '2Col' }}>
                     <DescriptionListGroup>
                         <DescriptionListTerm>{_("Profile")}</DescriptionListTerm>
