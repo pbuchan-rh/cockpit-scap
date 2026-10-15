@@ -164,14 +164,14 @@ function formatChangeSummaryText(name, tailorData, ruleEntries, valueEntries) {
         '',
     ];
     if (ruleEntries.length) {
-        lines.push('Rules changed (' + ruleEntries.length + '):');
+        lines.push('Rules modified (' + ruleEntries.length + '):');
         ruleEntries.forEach(({ id, title, severity, enabled }) => {
             lines.push('  ' + (enabled ? '+ ENABLED ' : '- DISABLED') + ' [' + severity.toUpperCase() + '] ' + (title || id));
         });
         lines.push('');
     }
     if (valueEntries.length) {
-        lines.push('Variables changed (' + valueEntries.length + '):');
+        lines.push('Variables modified (' + valueEntries.length + '):');
         valueEntries.forEach(({ id, title, from, to }) => {
             lines.push('  ' + (title || id) + ': ' + from + ' → ' + to);
         });
@@ -303,7 +303,7 @@ function editorState(name, ruleChanges, valueChanges) {
 }
 
 function changeCountText(rules, values) {
-    return cockpit.format(_("$0, $1 changed"),
+    return cockpit.format(_("$0, $1 modified"),
                           cockpit.format(cockpit.ngettext("$0 rule", "$0 rules", rules), rules),
                           cockpit.format(cockpit.ngettext("$0 variable", "$0 variables", values), values));
 }
@@ -809,8 +809,8 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                             <CardBody>
                                 <CollapsibleSection
                                     id="ct-tailor-values-title"
-                                    title={cockpit.format(_("Variables ($0)"), tailorData.values.length)}
-                                    counts={cockpit.format(_("· $0 changed"), modifiedValueCount)}
+                                    title={_("Variables")}
+                                    counts={cockpit.format(_("$0 · $1 modified"), tailorData.values.length, modifiedValueCount)}
                                     isExpanded={valuesOpen} onToggle={setValuesOpen}
                                     headerExtra={
                                         <SearchInput

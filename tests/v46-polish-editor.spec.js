@@ -44,8 +44,8 @@ async function loadNew() {
 
 test('new policy: Variables closed, Rules open, headings carry the counts', async ({ browserName }) => {
     await loadNew();
-    await expect(editor().getByRole('heading', { name: /^Variables \(\d+\) · 0 changed$/ })).toBeVisible();
-    await expect(varsToggle()).toHaveText(/^Variables \(\d+\) · 0 changed$/);
+    await expect(editor().getByRole('heading', { name: /^Variables \d+ · 0 modified$/ })).toBeVisible();
+    await expect(varsToggle()).toHaveText(/^Variables \d+ · 0 modified$/);
     await expect(varsToggle()).toHaveAttribute('aria-expanded', 'false');
     await expect(varGroups().first()).toBeHidden();
     await expect(varsSearch()).toBeVisible();
@@ -148,7 +148,7 @@ test('E1: editing a policy that changes variables opens Variables', async () => 
     await row.getByRole('button', { name: 'Edit' }).click();
     await expect(bar()).toBeVisible({ timeout: 120000 });
     const n = Object.keys(S.SET_VALUES).length;
-    await expect(varsToggle()).toHaveText(new RegExp(`^Variables \\(\\d+\\) · ${n} changed$`));
+    await expect(varsToggle()).toHaveText(new RegExp(`^Variables \\d+ · ${n} modified$`));
     await expect(varsToggle()).toHaveAttribute('aria-expanded', 'true');
     await expect(varGroups().first()).toBeVisible();
     await expect(editor().locator('.ct-tailor-value-modified')).toHaveCount(n);

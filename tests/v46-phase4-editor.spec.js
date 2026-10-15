@@ -68,7 +68,7 @@ test('new policy: sticky action bar, Rules / Variables / Changes sections, label
 
     // Polish E1/E2: Rules and Variables headings are collapsible toggles
     // with their counts; each section still opens with its description.
-    for (const h of [/^Rules \d+ of \d+ selected · 0 modified$/, /^Variables \(\d+\) · 0 changed$/, /^Changes from base profile$/])
+    for (const h of [/^Rules \d+ of \d+ selected · 0 modified$/, /^Variables \d+ · 0 modified$/, /^Changes from base profile$/])
         await expect(editor().getByRole('heading', { name: h })).toBeVisible();
     await expect(editor().locator('.ct-tailor-section-desc').first()).toHaveText('Check or uncheck rules to enable or disable them.');
     await expect(editor().getByRole('heading', { name: 'Changes from base profile' }).locator('xpath=following-sibling::p[1]')).toHaveClass(/ct-tailor-section-desc/);
@@ -98,9 +98,9 @@ test('new policy: sticky action bar, Rules / Variables / Changes sections, label
 
 test('plurals and the two-column changes list', async ({ browserName }) => {
     await toggleFirstRule();
-    await expect(bar().locator('.ct-tailor-change-count')).toHaveText('1 rule, 0 variables changed');
+    await expect(bar().locator('.ct-tailor-change-count')).toHaveText('1 rule, 0 variables modified');
     await changeFirstVariable();
-    await expect(bar().locator('.ct-tailor-change-count')).toHaveText('1 rule, 1 variable changed');
+    await expect(bar().locator('.ct-tailor-change-count')).toHaveText('1 rule, 1 variable modified');
     const text = await editor().innerText();
     expect(text).not.toMatch(/\b1 rules\b/);
     expect(text).not.toMatch(/\b1 variables\b/);
@@ -120,7 +120,7 @@ test('Cancel with unsaved changes asks; Keep editing keeps them; Discard resets'
     let modal = frame.getByRole('dialog');
     await expect(modal).toContainText('Discard unsaved changes?');
     await modal.getByRole('button', { name: 'Keep editing' }).click();
-    await expect(bar()).toContainText('1 rule, 1 variable changed');
+    await expect(bar()).toContainText('1 rule, 1 variable modified');
     await bar().getByRole('button', { name: 'Cancel' }).click();
     modal = frame.getByRole('dialog');
     await modal.getByRole('button', { name: 'Discard changes' }).click();
@@ -148,7 +148,7 @@ test('Save Policy, then Edit: one-line description, Update / Save as New / Cance
     const lines = await desc.locator('.pf-v6-c-expandable-section__content').evaluate(el =>
         Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
     expect(lines).toBeLessThanOrEqual(1);
-    await expect(bar()).toContainText('1 rule, 0 variables changed');
+    await expect(bar()).toContainText('1 rule, 0 variables modified');
     await expect(bar().getByRole('button', { name: 'Update' })).toHaveClass(/pf-m-primary/);
     await expect(bar().getByRole('button', { name: 'Save as New' })).toHaveClass(/pf-m-secondary/);
     // No changes: Cancel leaves edit mode without asking.
@@ -162,7 +162,7 @@ test('Edit, change, Update writes the policy', async () => {
     await row.getByRole('button', { name: 'Edit' }).click();
     await expect(bar()).toBeVisible({ timeout: 120000 });
     await changeFirstVariable();
-    await expect(bar()).toContainText('1 rule, 1 variable changed');
+    await expect(bar()).toContainText('1 rule, 1 variable modified');
     await bar().getByRole('button', { name: 'Update' }).click();
     await expect(editor().getByRole('heading', { name: 'New Tailoring Policy' })).toBeVisible();
     const xml = await hostSpawn(frame, ['sh', '-c', `cat "${home}"/SCAP/tailoring/v46-test-editor-*.xml`]);
