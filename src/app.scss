@@ -803,6 +803,14 @@
     overflow: visible;
 }
 
+// PF draws the card border on ::before (absolute, inset 0, no z-index);
+// the opaque sticky action bar (z-index sm) painted over its left and right
+// edges (Peter 10-15, E4). Lift the border one step above the bar; it is
+// pointer-events none, so nothing under it stops being clickable.
+.pf-v6-c-card.ct-tailor-editor-card::before {
+    z-index: calc(var(--pf-t--global--z-index--sm, 200) + 1);
+}
+
 .ct-tailor-actionbar {
     z-index: var(--pf-t--global--z-index--sm, 200);
     display: flex;
