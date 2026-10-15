@@ -310,12 +310,6 @@ export const App = () => {
                                 </Alert>
                             )}
 
-                            {!adminAllowed && phase === 'setup' && activeTab === 'scan' && (
-                                <Alert variant="info" title={_("Administrative access required")} isInline>
-                                    {_('Running a scan requires root. Unlock "Administrative access" above to continue.')}
-                                </Alert>
-                            )}
-
                             <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)}>
                                 <Tab eventKey="scan" title={<TabTitleText>{_("Host Scan")}</TabTitleText>}>
                                     <div className="ct-tab-body">

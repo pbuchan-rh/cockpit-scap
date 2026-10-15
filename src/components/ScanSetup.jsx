@@ -17,6 +17,7 @@ import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/inde
 import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/index.js";
+import { LockIcon } from "@patternfly/react-icons/dist/esm/icons/lock-icon.js";
 
 import { formatBytes, formatTimestamp } from '../lib/format.js';
 import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
@@ -39,7 +40,6 @@ const FIX_TYPES = [
     { key: 'ansible', label: _("Ansible"), ext: '.yml', mimeType: 'text/yaml', tooltip: _("Ansible playbook for automated configuration management") },
     { key: 'puppet', label: _("Puppet"), ext: '.pp', mimeType: 'text/plain', tooltip: _("Puppet manifest for Puppet-managed infrastructure") },
 ];
-
 
 
 function slugify(text) {
@@ -302,7 +302,22 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                 </Alert>
             )}
             <Card>
-                <CardHeader>
+                {/* Admin notice sits with the scan it gates (Peter 10-15), not
+                    as a page banner above the tabs. Browsing, the guide and
+                    remediation downloads still work without root. */}
+                <CardHeader
+                    actions={adminAllowed
+                        ? undefined
+                        : {
+                            hasNoOffset: true,
+                            actions: (
+                                <span className="ct-admin-needed">
+                                    <LockIcon className="ct-admin-needed-icon" />
+                                    {_("Administrative access required to run a scan")}
+                                </span>
+                            ),
+                        }}
+                >
                     <CardTitle>
                         <Title headingLevel="h2" size="lg">{_("SCAP Security Scan")}</Title>
                     </CardTitle>
@@ -409,13 +424,19 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                 <CardFooter>
                     <Flex flexWrap={{ default: 'wrap' }} spaceItems={{ default: 'spaceItemsSm' }}>
                         <FlexItem>
-                            <Button
-                                variant="primary"
-                                isDisabled={!canScan}
-                                onClick={handleSubmit}
-                            >
-                                {_("Run Scan")}
-                            </Button>
+                            {adminAllowed
+                                ? (
+                                    <Button variant="primary" isDisabled={!canScan} onClick={handleSubmit}>
+                                        {_("Run Scan")}
+                                    </Button>
+                                )
+                                : (
+                                    <Tooltip content={_('Turn on "Administrative access" at the top of the page to run a scan')}>
+                                        <Button variant="primary" isAriaDisabled>
+                                            {_("Run Scan")}
+                                        </Button>
+                                    </Tooltip>
+                                )}
                         </FlexItem>
                         <FlexItem>
                             <Tooltip content={_("Generate and view the full oscap security guide for the selected profile")}>
