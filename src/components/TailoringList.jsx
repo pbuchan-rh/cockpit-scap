@@ -2,7 +2,7 @@ import cockpit from 'cockpit';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
-import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Card, CardBody, CardHeader } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
@@ -11,6 +11,7 @@ import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
+import { ListCardTitle } from './ListCardTitle.jsx';
 import { downloadFile } from '../lib/download.js';
 import { listFooterText } from '../lib/format.js';
 import { detectContent, sdsDisplayName } from '../lib/oscap.js';
@@ -169,11 +170,11 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                     ),
                 }}
             >
-                <CardTitle>
-                    <Title headingLevel="h2" size="lg">{_("Saved Tailoring Policies")}</Title>
-                </CardTitle>
+                <ListCardTitle
+                    title={_("Saved Tailoring Policies")}
+                    count={loading && sidecars.length === 0 ? '' : listFooterText(sidecars.length, diskUsage)}
+                />
             </CardHeader>
-            <Divider />
             <CardBody>
                 {error && <Alert variant="danger" title={_("Error")} isInline>{error}</Alert>}
                 {uploadError && (
@@ -205,7 +206,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                                         <Th>{_("Base Profile")}</Th>
                                         <Th modifier="wrap">{_("Rules Modified")}</Th>
                                         <Th>{_("Created")}</Th>
-                                        <Th screenReaderText={_("Actions")} />
+                                        <Th className="ct-actions-cell">{_("Actions")}</Th>
                                     </Tr>
                                 </Thead>
                                 <Tbody>
@@ -216,7 +217,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                                             <Td dataLabel={_("Base Profile")}>{sc.base_profile_title || sc.base_profile_id}</Td>
                                             <Td dataLabel={_("Rules Modified")}>{sc.rules_modified ?? '—'}</Td>
                                             <Td dataLabel={_("Created")}>{formatCreated(sc.created)}</Td>
-                                            <Td isActionCell className="ct-actions-cell">
+                                            <Td dataLabel={_("Actions")} className="ct-actions-cell">
                                                 <Flex spaceItems={{ default: 'spaceItemsSm' }} flexWrap={{ default: 'nowrap' }}>
                                                     <FlexItem flex={{ default: 'flexNone' }}>
                                                         <Button variant="link" isInline onClick={() => onEdit(sc)}>{_("Edit")}</Button>
@@ -237,8 +238,6 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                             </Table>
                         )}
             </CardBody>
-            <Divider />
-            <CardFooter className="ct-list-footer">{loading && sidecars.length === 0 ? '' : listFooterText(sidecars.length, diskUsage)}</CardFooter>
 
             {pendingTailoring && (
                 <Modal variant="small" isOpen onClose={() => setPendingTailoring(null)}>

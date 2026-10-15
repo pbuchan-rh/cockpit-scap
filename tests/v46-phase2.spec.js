@@ -92,12 +92,16 @@ test.describe.serial('surfaces', () => {
             if (!theme.dark) expect(layers.card).toBe('rgb(255, 255, 255)');
 
             // Every card with a header has a Divider right under it, and every
-            // footer has one right above it.
+            // footer has one right above it. Exception (Peter 2026-10-15): the
+            // list cards (history, policies, content) have no title divider;
+            // their table header band starts right under the title
+            // (v46-phase4-tables covers them).
             const dividerProblems = await frame.evaluate(() => {
                 const bad = [];
                 for (const card of document.querySelectorAll('.pf-v6-c-card')) {
                     if (!card.offsetParent) continue;
                     const header = card.querySelector(':scope > .pf-v6-c-card__header');
+                    if (header?.querySelector('.ct-list-title')) continue;
                     if (header && !header.nextElementSibling?.classList.contains('pf-v6-c-divider'))
                         bad.push('no divider under header: ' + header.innerText.slice(0, 40));
                     const footer = card.querySelector(':scope > .pf-v6-c-card__footer');

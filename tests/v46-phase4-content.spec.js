@@ -116,7 +116,7 @@ test('upload a v46-test datastream, it lists as Uploaded with its version, Delet
     await expect(row.locator('td').nth(0)).toContainText('v46-test-upload-ds');
     await expect(row.locator('td').nth(1)).toHaveText('Uploaded');
     await expect(row.locator('td').nth(2)).toHaveText(/^0\.1\.\d+$/);
-    await expect(contentCard().locator('.ct-list-footer')).toHaveText(new RegExp(`^${rowsBefore + 1} items · \\d+(\\.\\d)? MB$`));
+    await expect(contentCard().locator('.ct-list-count')).toHaveText(new RegExp(`^${rowsBefore + 1} items · \\d+(\\.\\d)? MB$`));
     // ...and is offered by the content pickers.
     await expect(frame.locator('#ct-tailor-content-select option', { hasText: 'v46-test-upload-ds' })).toHaveCount(1);
     await row.getByRole('button', { name: `Delete ${UPLOAD_NAME}` }).click();
@@ -173,10 +173,10 @@ test('F2: no match asks in a small modal; Cancel saves nothing, choosing saves',
 
 test('F5: every list ends in "N items · size"', async () => {
     const re = /^\d+ items? · \d+(\.\d)? (B|KB|MB|GB)$/;
-    await expect(contentCard().locator('.ct-list-footer')).toHaveText(re);
-    await expect(policiesCard().locator('.ct-list-footer')).toHaveText(re);
+    await expect(contentCard().locator('.ct-list-count')).toHaveText(re);
+    await expect(policiesCard().locator('.ct-list-count')).toHaveText(re);
     const n = await policiesCard().locator('tbody tr').count();
-    await expect(policiesCard().locator('.ct-list-footer')).toHaveText(new RegExp(`^${n} item`));
+    await expect(policiesCard().locator('.ct-list-count')).toHaveText(new RegExp(`^${n} item`));
     await frame.getByRole('tab', { name: 'Host Scan' }).click();
-    await expect(frame.locator('.ct-history-card .ct-list-footer')).toHaveText(re);
+    await expect(frame.locator('.ct-history-card .ct-list-count')).toHaveText(re);
 });

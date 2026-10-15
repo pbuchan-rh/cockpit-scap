@@ -964,10 +964,25 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
-// "N items · size" under every list (F5).
-.ct-list-footer {
+// List cards (history, policies, content): "N items · size" beside the
+// title (F5), no footer row and no divider under the title; the table's
+// header band starts right below (Peter 10-15: less vertical chrome).
+.ct-list-title {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--pf-t--global--spacer--md);
+}
+
+.ct-list-count {
     color: var(--pf-t--global--text--color--subtle);
     font-size: var(--pf-t--global--font--size--sm);
+    font-weight: var(--pf-t--global--font--weight--body--default);
+}
+
+.ct-history-card .pf-v6-c-card__body,
+.pf-v6-c-card:has(.ct-list-title) > .pf-v6-c-card__body {
+    padding-block-start: 0;
 }
 
 // Column header band on the module's tables (spec F: v3's "title bars
@@ -1017,14 +1032,14 @@
 // History row actions: View · Download ▾ · ⋮ (Delete) from 992 px; below
 // that View · ⋮ with the downloads inside the kebab, so the row fits.
 @media (width < 992px) {
-    .ct-history-download.ct-history-download {
+    .ct-history-download.ct-history-download,
+    .ct-history-delete.ct-history-delete {
         display: none;
     }
 }
 
 @media (width >= 992px) {
-    // Doubled class: outranks PF's own menu item / divider display.
-    .ct-history-kebab-download.ct-history-kebab-download {
+    .ct-history-kebab.ct-history-kebab {
         display: none;
     }
 }
@@ -1055,4 +1070,9 @@
 
 .ct-admin-needed-icon {
     color: var(--pf-t--global--icon--color--status--warning--default);
+}
+
+// History "Download ▾" link: caret right after the word, not a button gap.
+.ct-history-download .pf-v6-c-button {
+    --pf-v6-c-button--Gap: var(--pf-t--global--spacer--xs);
 }

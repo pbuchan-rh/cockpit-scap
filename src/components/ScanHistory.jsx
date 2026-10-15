@@ -2,14 +2,13 @@ import cockpit from 'cockpit';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
-import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Card, CardBody, CardHeader } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { Dropdown, DropdownItem, DropdownList } from "@patternfly/react-core/dist/esm/components/Dropdown/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
 import { MenuToggle } from "@patternfly/react-core/dist/esm/components/MenuToggle/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
-import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { CaretDownIcon } from "@patternfly/react-icons/dist/esm/icons/caret-down-icon.js";
 import { CaretUpIcon } from "@patternfly/react-icons/dist/esm/icons/caret-up-icon.js";
@@ -17,6 +16,7 @@ import { EllipsisVIcon } from "@patternfly/react-icons/dist/esm/icons/ellipsis-v
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
 import { downloadFile } from '../lib/download.js';
+import { ListCardTitle } from './ListCardTitle.jsx';
 import { formatTimestamp, listFooterText } from '../lib/format.js';
 import { deleteScan, listScans, readSavedScanFiles } from '../lib/scanHistory.js';
 import { slugify } from '../lib/rules.js';
@@ -79,15 +79,19 @@ const RowActions = ({ sc, busy, disabled, onView, onDownload, onDelete }) => {
                     onSelect={() => setDownloadOpen(false)}
                     popperProps={{ position: 'right' }}
                     toggle={ref => (
-                        <MenuToggle
-                            ref={ref} variant="plainText" size="sm"
+                        // A link like View and Delete (Peter 10-15: one
+                        // style per row, like Saved Tailoring Policies).
+                        <Button
+                            ref={ref} variant="link" isInline
                             isDisabled={disabled}
-                            isExpanded={downloadOpen}
+                            isLoading={busy === 'download'}
+                            aria-expanded={downloadOpen}
                             onClick={() => setDownloadOpen(o => !o)}
                             aria-label={cockpit.format(_("Download scan from $0"), when)}
+                            icon={<CaretDownIcon />} iconPosition="end"
                         >
-                            {busy === 'download' ? <Spinner size="sm" aria-label={_("Downloading")} /> : _("Download")}
-                        </MenuToggle>
+                            {_("Download")}
+                        </Button>
                     )}
                 >
                     <DropdownList>
@@ -102,7 +106,17 @@ const RowActions = ({ sc, busy, disabled, onView, onDownload, onDelete }) => {
                     </DropdownList>
                 </Dropdown>
             </FlexItem>
-            <FlexItem>
+            <FlexItem className="ct-history-delete">
+                <Button
+                    variant="link" isInline className="ct-btn-danger-link"
+                    isDisabled={disabled}
+                    aria-label={cockpit.format(_("Delete scan from $0"), when)}
+                    onClick={onDelete}
+                >
+                    {_("Delete")}
+                </Button>
+            </FlexItem>
+            <FlexItem className="ct-history-kebab">
                 <Dropdown
                     isOpen={kebabOpen}
                     onOpenChange={setKebabOpen}
@@ -120,18 +134,13 @@ const RowActions = ({ sc, busy, disabled, onView, onDownload, onDelete }) => {
                     )}
                 >
                     <DropdownList>
-                        {/* Below 992 px the Download menu folds in here (the
-                            row would not fit its card otherwise). */}
-                        <DropdownItem value="html" className="ct-history-kebab-download" onClick={() => onDownload('html')}>
-                            {_("Download HTML report")}
-                        </DropdownItem>
-                        <DropdownItem value="xml" className="ct-history-kebab-download" onClick={() => onDownload('xml')}>
-                            {_("Download results XML")}
-                        </DropdownItem>
-                        <DropdownItem value="arf" className="ct-history-kebab-download" onClick={() => onDownload('arf')}>
-                            {_("Download ARF")}
-                        </DropdownItem>
-                        <Divider component="li" className="ct-history-kebab-download" />
+                        {/* Only below 992 px, where View · Download · Delete
+                            do not fit the card: everything but View folds in
+                            here. */}
+                        <DropdownItem value="html" onClick={() => onDownload('html')}>{_("Download HTML report")}</DropdownItem>
+                        <DropdownItem value="xml" onClick={() => onDownload('xml')}>{_("Download results XML")}</DropdownItem>
+                        <DropdownItem value="arf" onClick={() => onDownload('arf')}>{_("Download ARF")}</DropdownItem>
+                        <Divider component="li" />
                         <DropdownItem value="delete" className="ct-menu-danger" onClick={onDelete}>{_("Delete")}</DropdownItem>
                     </DropdownList>
                 </Dropdown>
@@ -209,11 +218,11 @@ export const ScanHistory = ({ refreshKey, onView, onChanged, diskUsage }) => {
     return (
         <Card className="ct-history-card">
             <CardHeader>
-                <CardTitle>
-                    <Title headingLevel="h2" size="lg">{_("Scan History")}</Title>
-                </CardTitle>
+                <ListCardTitle
+                    title={_("Scan History")}
+                    count={loading && scans.length === 0 ? '' : listFooterText(scans.length, diskUsage)}
+                />
             </CardHeader>
-            <Divider />
             <CardBody>
                 {error && (
                     <Alert
@@ -278,8 +287,6 @@ export const ScanHistory = ({ refreshKey, onView, onChanged, diskUsage }) => {
                             </Table>
                         )}
             </CardBody>
-            <Divider />
-            <CardFooter className="ct-list-footer">{loading && scans.length === 0 ? '' : listFooterText(scans.length, diskUsage)}</CardFooter>
 
             {deleteTarget && (
                 <Modal variant="small" isOpen onClose={() => setDeleteTarget(null)}>

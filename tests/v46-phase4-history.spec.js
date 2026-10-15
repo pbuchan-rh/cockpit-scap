@@ -111,11 +111,20 @@ test('Download menu: HTML report, results XML, ARF arrive', async () => {
     expect(arf.buffer[0]).toBe(0x1f);
 });
 
-test('Delete sits in a kebab and confirms', async () => {
+test('Delete is a visible red link next to Download and confirms', async () => {
     const r = row(OTHER);
-    await expect(r.getByRole('button', { name: 'Delete' })).toHaveCount(0);
-    await r.getByRole('button', { name: /^More actions for the scan from/ }).click();
-    await frame.getByRole('menuitem', { name: 'Delete' }).click();
+    // Peter 10-15: no kebab on wide screens; one link style per row.
+    await expect(r.getByRole('button', { name: /^More actions for the scan from/ })).toBeHidden();
+    const del = r.getByRole('button', { name: /^Delete scan from/ });
+    await expect(del).toBeVisible();
+    const colors = await r.evaluate(tr => {
+        const btns = [...tr.querySelectorAll('.ct-actions-cell button')].filter(b => b.offsetParent);
+        return btns.map(b => [b.textContent.trim(), getComputedStyle(b).color]);
+    });
+    expect(colors.map(c => c[0])).toEqual(['View', 'Download', 'Delete']);
+    expect(colors[0][1]).toBe(colors[1][1]);
+    expect(colors[2][1]).not.toBe(colors[0][1]);
+    await del.click();
     const modal = frame.getByRole('dialog');
     await expect(modal).toContainText('Delete the scan from 2099-01-02');
     await modal.getByRole('button', { name: 'Delete' }).click();
@@ -123,8 +132,8 @@ test('Delete sits in a kebab and confirms', async () => {
     expect((await S.snapshotScans(frame)).includes(OTHER)).toBe(false);
 });
 
-test('footer: N items · size', async () => {
-    const footer = frame.locator('.ct-history-card .ct-list-footer');
+test('title count: N items · size', async () => {
+    const footer = frame.locator('.ct-history-card .ct-list-count');
     await expect(footer).toHaveText(/^\d+ items? · \d+(\.\d)? (B|KB|MB|GB)$/);
     await expect.poll(async () => {
         const n = await frame.locator('.ct-history-card tbody tr').count();

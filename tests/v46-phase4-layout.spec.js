@@ -105,17 +105,27 @@ for (const vp of VIEWPORTS) {
             const card = frame.locator('.ct-history-card');
             await card.scrollIntoViewIfNeeded();
             const row = card.locator('tbody tr').first();
-            // Below 992 px the downloads live in the row's kebab.
+            // Below 992 px Download and Delete live in the row's kebab.
             const wide = await frame.evaluate(() => document.documentElement.clientWidth >= 992);
             const kebab = row.getByRole('button', { name: /^More actions/ });
             await check('history', browserName, [
-                row.getByRole('button', { name: 'View', exact: true }), kebab,
-                ...(wide ? [row.getByRole('button', { name: /^Download scan from/ })] : []),
+                row.getByRole('button', { name: 'View', exact: true }), ...(wide ? [] : [kebab]),
             ]);
-            if (!wide) await expect(row.getByRole('button', { name: /^Download scan from/ })).toBeHidden();
+            if (wide) {
+                // View · Download · Delete as links, no kebab.
+                await expect(kebab).toBeHidden();
+                await check('history-links', browserName, [
+                    row.getByRole('button', { name: /^Download scan from/ }),
+                    row.getByRole('button', { name: /^Delete scan from/ }),
+                ]);
+                return;
+            }
+            await expect(row.getByRole('button', { name: /^Download scan from/ })).toBeHidden();
+            await expect(row.getByRole('button', { name: /^Delete scan from/ })).toBeHidden();
             await kebab.click();
             const items = (await frame.getByRole('menuitem').filter({ visible: true }).allInnerTexts()).map(t => t.trim());
-            expect(items).toEqual(wide ? ['Delete'] : ['Download HTML report', 'Download results XML', 'Download ARF', 'Delete']);
+            expect(items).toEqual(['Download HTML report', 'Download results XML', 'Download ARF', 'Delete']);
+            await page.waitForTimeout(500); // PF menu fade-in, for the screenshot
             await check('history-kebab', browserName, [frame.getByRole('menuitem', { name: 'Delete' })]);
             await page.keyboard.press('Escape');
         });

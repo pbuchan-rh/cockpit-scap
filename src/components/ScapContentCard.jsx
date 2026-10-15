@@ -2,7 +2,7 @@ import cockpit from 'cockpit';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
-import { Card, CardBody, CardFooter, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
+import { Card, CardBody, CardHeader } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
@@ -10,6 +10,7 @@ import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/inde
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
+import { ListCardTitle } from './ListCardTitle.jsx';
 import {
     checkUploadSize, deleteUploadedContent, listIncludedContent, listUploadedContent, sanitizeFilename,
     statExistingContent, uploadContent,
@@ -156,11 +157,12 @@ export const ScapContentCard = ({ refreshKey, onChanged }) => {
                     ),
                 }}
             >
-                <CardTitle>
-                    <Title headingLevel="h2" size="lg" className="ct-scap-content-title" tabIndex={-1}>{_("SCAP Content")}</Title>
-                </CardTitle>
+                <ListCardTitle
+                    title={_("SCAP Content")}
+                    titleProps={{ className: 'ct-scap-content-title', tabIndex: -1 }}
+                    count={loading ? '' : listFooterText(rows.length, totalBytes)}
+                />
             </CardHeader>
-            <Divider />
             <CardBody>
                 {error && <Alert variant="danger" title={_("Error")} isInline>{error}</Alert>}
                 {uploadError && (
@@ -235,8 +237,6 @@ export const ScapContentCard = ({ refreshKey, onChanged }) => {
                             </Table>
                         )}
             </CardBody>
-            <Divider />
-            <CardFooter className="ct-list-footer">{loading ? '' : listFooterText(rows.length, totalBytes)}</CardFooter>
 
             {pendingUpload && (
                 <Modal variant="small" isOpen onClose={() => setPendingUpload(null)}>
