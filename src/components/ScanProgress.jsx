@@ -45,7 +45,7 @@ const ResultIcon = ({ result }) => {
     return <BanIcon className="ct-feed-icon ct-feed-icon-other" />;
 };
 
-function formatClock(seconds) {
+export function formatClock(seconds) {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     // ${n}: a bare "$0s" would be read as a placeholder named "0s".

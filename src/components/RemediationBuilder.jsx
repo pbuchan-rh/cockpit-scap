@@ -12,6 +12,7 @@ import { ExpandableSection } from "@patternfly/react-core/dist/esm/components/Ex
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { SearchInput } from "@patternfly/react-core/dist/esm/components/SearchInput/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
+import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/index.js";
 
 import { downloadFile } from '../lib/download.js';
 import { generateScopedFix, isEmptyFix, sdsDisplayName } from '../lib/oscap.js';
@@ -70,7 +71,7 @@ const BuilderRule = ({ rule, info, checked, onToggle }) => {
  * click from the saved scan (lib/oscap.js generateScopedFix, with the
  * scanned profile's values), never pre-generated, so every saved scan can
  * be remediated (C§1d). */
-export const RemediationBuilder = ({ result, preset, onClose }) => {
+export const RemediationBuilder = ({ result, preset, onClose, adminAllowed, remediationRunning, onApplyNow }) => {
     const { failingRules, details, ruleMeta, sdsPath, tailoringPath, scanProfileId, allRuleIds, profileTitle, scorePercent, fail, header } = result;
     const fails = useMemo(() => failingRules.filter(r => r.result === 'fail'), [failingRules]);
     const infos = useMemo(() => Object.fromEntries(fails.map(r => [r.id, ruleInfo(r.id, details, ruleMeta)])), [fails, details, ruleMeta]);
@@ -136,6 +137,33 @@ export const RemediationBuilder = ({ result, preset, onClose }) => {
             setBusy(null);
         }
     }
+
+    /* Apply now (PLAN_V4.5_APPLY_NOW.md amendments): hands the selection
+     * to app.jsx, which opens the one confirm dialog (ApplyNow.jsx). */
+    function applyNow() {
+        const ids = fails.filter(r => selected.has(r.id)).map(r => r.id);
+        onApplyNow({
+            scope: { sdsPath, profileId: scanProfileId, profileTitle, tailoringPath, allRuleIds },
+            rules: ids.map(id => ({ id, title: infos[id].title, severity: fails.find(r => r.id === id).severity })),
+            scanDir: result.scanDir,
+            scanId: result.scanId,
+            scanStartTime: header?.startTime ?? null,
+            sdsPath,
+            scanProfileId,
+            baseProfileId: result.profileId,
+            profileTitle,
+            tailoringPath: tailoringPath || null,
+            tailoringName: result.tailoringName || null,
+        });
+    }
+
+    // Why Apply now is unavailable, shown as its tooltip (the Run Scan
+    // pattern, e8f4051); null when only the selection or a busy download
+    // keeps it disabled.
+    let applyBlocked = null;
+    if (!adminAllowed) applyBlocked = _('Turn on "Administrative access" at the top of the page to apply fixes');
+    else if (remediationRunning) applyBlocked = _("A remediation is already running on this host");
+    else if (!result.scanDir) applyBlocked = _("This scan is not in Scan History, so the remediation log would have nowhere to go");
 
     const scanned = header?.startTime ? new Date(header.startTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 
@@ -249,9 +277,22 @@ export const RemediationBuilder = ({ result, preset, onClose }) => {
                     </Alert>
                 )}
                 <div className="ct-builder-actions">
-                    {/* Apply Now goes here (PLAN_V4.5_APPLY_NOW.md, separate
-                        approval): one danger button, ONE confirm dialog with
-                        warning + rule list + View script. Not built in V4.6. */}
+                    {applyBlocked
+                        ? (
+                            <Tooltip content={applyBlocked}>
+                                <Button variant="danger" isAriaDisabled className="ct-builder-apply">
+                                    {_("Apply now")}
+                                </Button>
+                            </Tooltip>
+                        )
+                        : (
+                            <Button
+                                variant="danger" className="ct-builder-apply" isDisabled={!!busy || selected.size === 0}
+                                onClick={applyNow}
+                            >
+                                {_("Apply now")}
+                            </Button>
+                        )}
                     <Button
                         variant="secondary" isLoading={busy === 'bash'} isDisabled={!!busy || selected.size === 0}
                         onClick={() => download('bash')}

@@ -1151,3 +1151,65 @@
 .ct-history-download .pf-v6-c-button {
     --pf-v6-c-button--Gap: var(--pf-t--global--spacer--xs);
 }
+
+// Apply now (ApplyNow.jsx): page alert, the one confirm/progress dialog.
+.ct-remediation-alert {
+    margin-block-end: var(--pf-t--global--spacer--md);
+}
+
+.ct-apply-modal .pf-v6-c-modal-box__body > * + * {
+    margin-block-start: var(--pf-t--global--spacer--md);
+}
+
+.ct-apply-warning p + p {
+    margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.ct-apply-rules {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-block-size: 12rem;
+    overflow-y: auto;
+}
+
+.ct-apply-rule {
+    display: flex;
+    align-items: baseline;
+    gap: var(--pf-t--global--spacer--sm);
+    padding-block: var(--pf-t--global--spacer--xs);
+}
+
+.ct-apply-rule .pf-v6-c-label {
+    flex: 0 0 auto;
+}
+
+.ct-apply-generating,
+.ct-apply-status {
+    display: flex;
+    align-items: center;
+    gap: var(--pf-t--global--spacer--sm);
+}
+
+.ct-apply-note {
+    color: var(--pf-t--global--text--color--subtle);
+    font-size: var(--pf-t--global--font--size--sm);
+}
+
+.ct-apply-log-path {
+    word-break: break-all;
+}
+
+.ct-apply-pre {
+    font-family: var(--pf-t--global--font--family--mono);
+    font-size: var(--pf-t--global--font--size--sm);
+    color: var(--pf-t--global--text--color--regular);
+    background: var(--pf-t--global--background--color--secondary--default);
+    border-radius: var(--pf-t--global--border--radius--small);
+    padding: var(--pf-t--global--spacer--sm);
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-block-size: 22rem;
+    overflow-y: auto;
+}

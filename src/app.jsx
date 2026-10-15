@@ -14,6 +14,7 @@ import { ScanSetup } from './components/ScanSetup.jsx';
 import { ScanProgress } from './components/ScanProgress.jsx';
 import { ScanResults } from './components/ScanResults.jsx';
 import { RemediationBuilder } from './components/RemediationBuilder.jsx';
+import { ApplyNowDialog, RemediationAlert, useRemediationRun } from './components/ApplyNow.jsx';
 import { ScapContentCard } from './components/ScapContentCard.jsx';
 import { ScanHistory } from './components/ScanHistory.jsx';
 import { TailoringEditor } from './components/TailoringEditor.jsx';
@@ -47,6 +48,20 @@ export const App = () => {
     const [scanInfo, setScanInfo] = useState(null);
     // Bumped by history "View": scroll to and focus the results (R3).
     const [resultsFocusKey, setResultsFocusKey] = useState(0);
+    // Apply now: the confirm request ({ source }) while the dialog asks,
+    // the run (useRemediationRun) once started, and whether the dialog is
+    // showing that run (closed while it runs -> RemediationAlert instead).
+    const remediation = useRemediationRun();
+    const [applyRequest, setApplyRequest] = useState(null);
+    const [showRun, setShowRun] = useState(false);
+    const [hostname, setHostname] = useState('');
+    const remediationRunning = remediation.run?.status === 'running';
+
+    useEffect(() => {
+        cockpit.spawn(['hostname'], { err: 'ignore' })
+                .then(out => setHostname(out.trim()))
+                .catch(() => {});
+    }, []);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -141,8 +156,9 @@ export const App = () => {
             }
             const parsed = parseResults(files.resultsXml);
 
+            let saved = null;
             try {
-                await saveScan({
+                saved = await saveScan({
                     profileId: config.profile,
                     profileTitle: config.tailoringName || extracted?.profile?.title || config.profile,
                     baseProfileId: config.baseProfileId,
@@ -171,6 +187,9 @@ export const App = () => {
                 tailoringPath: config.tailoring,
                 profileTitle: config.tailoringName || extracted?.profile?.title || config.profile,
                 tailoringName: config.tailoringName || null,
+                // Where Apply now keeps its per-run log (none if the save failed).
+                scanDir: saved?.dir ?? null,
+                scanId: saved?.timestamp ?? null,
             });
             setPhase('results');
         } catch (ex) {
@@ -218,6 +237,8 @@ export const App = () => {
             tailoringPath: manifest.tailoring_path || null,
             profileTitle: manifest.profile_title || manifest.profile_id,
             tailoringName: manifest.tailoring_file || null,
+            scanDir: manifest.dir,
+            scanId: manifest.timestamp,
         });
         setBuilder(null);
         setTmpdir(null);
@@ -270,8 +291,44 @@ export const App = () => {
         setBuilder(b => ({ preset, key: (b?.key ?? 0) + 1 }));
     }, []);
 
+    const handleApplyNow = useCallback(source => {
+        setApplyRequest({ source: { ...source, host: hostname } });
+    }, [hostname]);
+
+    const handleStartRemediation = useCallback(async (source, script) => {
+        await remediation.start(source, script);
+        setShowRun(true);
+        setApplyRequest(null);
+    }, [remediation]);
+
+    const handleCloseApply = useCallback(() => {
+        setApplyRequest(null);
+        setShowRun(false);
+        // A finished run whose dialog is closed is done with.
+        if (remediation.run?.status === 'done') remediation.dismiss();
+    }, [remediation]);
+
+    // "Rescan to verify": the source scan's content, profile and tailoring.
+    const handleRescan = useCallback(meta => {
+        setShowRun(false);
+        remediation.dismiss();
+        setActiveTab('scan');
+        handleScan({
+            content: meta.sdsPath,
+            profile: meta.scanProfileId,
+            tailoring: meta.tailoringPath || null,
+            tailoringName: meta.tailoringName || null,
+            baseProfileId: meta.baseProfileId || meta.scanProfileId,
+        });
+    }, [remediation, handleScan]);
+
     const builderPanel = builder && scanResult && phase === 'results'
-        ? <RemediationBuilder key={builder.key} result={scanResult} preset={builder.preset} onClose={() => setBuilder(null)} />
+        ? (
+            <RemediationBuilder
+                key={builder.key} result={scanResult} preset={builder.preset} onClose={() => setBuilder(null)}
+                adminAllowed={adminAllowed} remediationRunning={remediationRunning} onApplyNow={handleApplyNow}
+            />
+        )
         : null;
 
     return (
@@ -310,12 +367,33 @@ export const App = () => {
                                 </Alert>
                             )}
 
+                            {!showRun && (
+                                <RemediationAlert
+                                    run={remediation.run}
+                                    onView={() => setShowRun(true)}
+                                    onDismiss={remediation.dismiss}
+                                />
+                            )}
+
+                            {(applyRequest || (showRun && remediation.run)) && (
+                                <ApplyNowDialog
+                                    request={applyRequest}
+                                    run={showRun ? remediation.run : null}
+                                    adminAllowed={adminAllowed}
+                                    scanRunning={phase === 'running'}
+                                    onStart={handleStartRemediation}
+                                    onClose={handleCloseApply}
+                                    onRescan={handleRescan}
+                                />
+                            )}
+
                             <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)}>
                                 <Tab eventKey="scan" title={<TabTitleText>{_("Host Scan")}</TabTitleText>}>
                                     <div className="ct-tab-body">
                                         {phase === 'setup' && (
                                             <ScanSetup
                                     adminAllowed={adminAllowed} onScan={handleScan}
+                                    remediationRunning={remediationRunning}
                                     tailoringRefreshKey={tailoringRefreshKey}
                                     contentRefreshKey={contentRefreshKey}
                                     onContentChanged={handleContentChanged}

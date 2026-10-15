@@ -48,7 +48,7 @@ function slugify(text) {
             .replace(/^-+|-+$/g, '');
 }
 
-export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRefreshKey, onContentChanged, onManageContent }) => {
+export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringRefreshKey, contentRefreshKey, onContentChanged, onManageContent }) => {
     const [contentList, setContentList] = useState([]);
     const [content, setContent] = useState('');
     const [manualPath, setManualPath] = useState(false);
@@ -135,7 +135,7 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
     );
     const selectedTailoring = tailoringForContent.find(sc => sc.path === tailoringSelection) ?? null;
 
-    const canScan = adminAllowed && content && (selectedTailoring || profile) && !loadingProfiles;
+    const canScan = adminAllowed && !remediationRunning && content && (selectedTailoring || profile) && !loadingProfiles;
     // View Compliance Guide / Download Remediation read only world-readable
     // static SCAP content (and, optionally, the user's own tailoring file) —
     // neither needs superuser, so unlike canScan above, this is deliberately
@@ -424,14 +424,18 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
                 <CardFooter>
                     <Flex flexWrap={{ default: 'wrap' }} spaceItems={{ default: 'spaceItemsSm' }}>
                         <FlexItem>
-                            {adminAllowed
+                            {adminAllowed && !remediationRunning
                                 ? (
                                     <Button variant="primary" isDisabled={!canScan} onClick={handleSubmit}>
                                         {_("Run Scan")}
                                     </Button>
                                 )
                                 : (
-                                    <Tooltip content={_('Turn on "Administrative access" at the top of the page to run a scan')}>
+                                    <Tooltip
+                                        content={adminAllowed
+                                            ? _("A remediation is running on this host. Scan when it has finished.")
+                                            : _('Turn on "Administrative access" at the top of the page to run a scan')}
+                                    >
                                         <Button variant="primary" isAriaDisabled>
                                             {_("Run Scan")}
                                         </Button>
