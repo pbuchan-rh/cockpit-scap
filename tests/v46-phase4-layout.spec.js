@@ -144,8 +144,10 @@ for (const vp of VIEWPORTS) {
                 bar.getByRole('textbox', { name: 'Policy name' }), bar.getByRole('button', { name: 'Save Policy' }),
                 bar.getByRole('button', { name: 'Cancel' }), frame.getByRole('textbox', { name: 'Search rules' }),
             ]);
+            // Variables starts closed (polish E1): open it, then scroll to it.
+            await frame.locator('#ct-tailor-values-title-toggle').click();
             await frame.locator('#ct-tailor-values-title').evaluate(el => el.scrollIntoView({ block: 'start' }));
-            await check('editor-variables', browserName, [bar.getByRole('button', { name: 'Cancel' })]);
+            await check('editor-variables', browserName, [bar.getByRole('button', { name: 'Cancel' }), frame.getByRole('textbox', { name: 'Search variables' })]);
             await bar.getByRole('button', { name: 'Cancel' }).click();
         });
     });

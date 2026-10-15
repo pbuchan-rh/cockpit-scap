@@ -852,6 +852,52 @@
     font-size: var(--pf-t--global--font--size--sm);
 }
 
+// Collapsible Rules / Variables headers (Peter 10-15, E1/E2): a PF
+// ExpandableSection toggle dressed as the section heading (regular text,
+// Title lg size) with its counts in subtle text beside it.
+.ct-tailor-collapsible > .ct-tailor-section-head {
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.ct-tailor-section-toggle {
+    min-inline-size: 0;
+
+    .pf-v6-c-expandable-section__toggle {
+        margin: 0;
+    }
+
+    .pf-v6-c-button {
+        --pf-v6-c-button--m-link--Color: var(--pf-t--global--text--color--regular);
+        --pf-v6-c-button--m-link--hover--Color: var(--pf-t--global--text--color--regular);
+        --pf-v6-c-button--m-link--m-clicked--Color: var(--pf-t--global--text--color--regular);
+        --pf-v6-c-button--PaddingInlineStart: 0;
+
+        text-align: start;
+    }
+}
+
+.ct-tailor-section-title {
+    font-family: var(--pf-t--global--font--family--heading);
+    font-size: var(--pf-t--global--font--size--heading--sm);
+    font-weight: var(--pf-t--global--font--weight--heading--default);
+}
+
+.ct-tailor-section-counts {
+    color: var(--pf-t--global--text--color--subtle);
+    font-size: var(--pf-t--global--font--size--sm);
+    font-weight: var(--pf-t--global--font--weight--body--default);
+    margin-inline-start: var(--pf-t--global--spacer--xs);
+}
+
+.ct-tailor-section-lead {
+    margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.ct-tailor-values-search {
+    flex: 0 1 20rem;
+}
+
 .ct-filter-label {
     font-size: var(--pf-t--global--font--size--sm);
     color: var(--pf-t--global--text--color--subtle);

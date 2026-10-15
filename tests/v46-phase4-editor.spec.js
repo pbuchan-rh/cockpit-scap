@@ -44,6 +44,9 @@ async function toggleFirstRule(term = 'aide') {
 }
 
 async function changeFirstVariable() {
+    // Polish E1: Variables may start closed.
+    const toggle = editor().locator('#ct-tailor-values-title-toggle');
+    if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
     const ctl = editor().locator('.ct-tailor-values-grid').locator('select, input')
             .first();
     if (await ctl.evaluate(e => e.tagName) === 'SELECT') {
@@ -63,16 +66,20 @@ test('new policy: sticky action bar, Rules / Variables / Changes sections, label
     await expect(bar().getByRole('button', { name: 'Cancel' })).toHaveClass(/pf-m-link/);
     await expect(editor().getByRole('button', { name: 'Update' })).toHaveCount(0);
 
-    for (const h of [/^Rules$/, /^Variables \(\d+\)$/, /^Changes from base profile$/]) {
-        const head = editor().getByRole('heading', { name: h });
-        await expect(head).toBeVisible();
-        await expect(head.locator('xpath=following-sibling::p[1]')).toHaveClass(/ct-tailor-section-desc/);
-    }
+    // Polish E1/E2: Rules and Variables headings are collapsible toggles
+    // with their counts; each section still opens with its description.
+    for (const h of [/^Rules \d+ of \d+ selected · 0 modified$/, /^Variables \(\d+\) · 0 changed$/, /^Changes from base profile$/])
+        await expect(editor().getByRole('heading', { name: h })).toBeVisible();
+    await expect(editor().locator('.ct-tailor-section-desc').first()).toHaveText('Check or uncheck rules to enable or disable them.');
+    await expect(editor().getByRole('heading', { name: 'Changes from base profile' }).locator('xpath=following-sibling::p[1]')).toHaveClass(/ct-tailor-section-desc/);
     await expect(editor().locator('.ct-filter-label')).toHaveText(['Show:', 'Severity:']);
     await expect(editor().getByRole('group', { name: 'Show:' })).toBeVisible();
     await expect(editor().getByRole('group', { name: 'Severity:' })).toBeVisible();
-    // Variables is a section with inputs, not a blue disclosure link.
-    await expect(editor().getByRole('button', { name: /^Variables/ })).toHaveCount(0);
+    // Variables: a collapsible section (polish E1), closed for a new policy;
+    // its inputs show once opened.
+    const varToggle = editor().getByRole('button', { name: /^Variables \(\d+\)/ });
+    await expect(varToggle).toHaveAttribute('aria-expanded', 'false');
+    await varToggle.click();
     await expect(editor().locator('.ct-tailor-values-grid .pf-v6-c-form__group').first()).toBeVisible();
     // Sections are divided.
     expect(await editor().locator(':scope > .pf-v6-c-divider').count()).toBeGreaterThanOrEqual(3);

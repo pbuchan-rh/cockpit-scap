@@ -4,7 +4,7 @@ import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
-import { ExpandableSection, ExpandableSectionVariant } from "@patternfly/react-core/dist/esm/components/ExpandableSection/index.js";
+import { ExpandableSection, ExpandableSectionToggle, ExpandableSectionVariant } from "@patternfly/react-core/dist/esm/components/ExpandableSection/index.js";
 import { Form, FormGroup } from "@patternfly/react-core/dist/esm/components/Form/index.js";
 import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
@@ -179,6 +179,33 @@ function formatChangeSummaryText(name, tailorData, ruleEntries, valueEntries) {
     return lines.join('\n');
 }
 
+/* Collapsible editor section (Peter 10-15, E1/E2): the heading is a PF
+ * ExpandableSection toggle (same chevron as the rule groups) with the
+ * section's counts beside it; `headerExtra` sits on the right of the
+ * header row and stays usable while the section is closed. */
+const CollapsibleSection = ({ id, title, counts, isExpanded, onToggle, headerExtra, children }) => (
+    <section className="ct-tailor-section ct-tailor-collapsible" aria-labelledby={`${id}-toggle`}>
+        <div className="ct-tailor-section-head">
+            <ExpandableSectionToggle
+                id={id} className="ct-tailor-section-toggle" toggleWrapper="h3"
+                toggleId={`${id}-toggle`} contentId={`${id}-content`}
+                isExpanded={isExpanded} onToggle={onToggle} isDetached
+            >
+                <span className="ct-tailor-section-title">{title}</span>
+                {' '}
+                <span className="ct-tailor-section-counts">{counts}</span>
+            </ExpandableSectionToggle>
+            {headerExtra}
+        </div>
+        <ExpandableSection
+            isDetached toggleId={`${id}-toggle`} contentId={`${id}-content`}
+            isExpanded={isExpanded} className="ct-tailor-section-body"
+        >
+            {children}
+        </ExpandableSection>
+    </section>
+);
+
 /* "Changes from base profile" (v3 Deviations): two columns, Rules |
  * Variables, with Copy summary. Always shown in the editor so the section
  * structure stays put; says so when nothing changed. */
@@ -308,6 +335,10 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
     // value it resets to is unchanged.
     const [formResetKey, setFormResetKey] = useState(0);
     const [valueSearch, setValueSearch] = useState('');
+    // Rules open, Variables closed unless the loaded policy changes
+    // variables (Peter 10-15, E1/E2).
+    const [rulesOpen, setRulesOpen] = useState(true);
+    const [valuesOpen, setValuesOpen] = useState(false);
     const [confirmCancel, setConfirmCancel] = useState(false);
     // What the editor started from (loaded policy, or an empty new one),
     // so Cancel only asks when something actually changed.
@@ -406,6 +437,8 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                     if (cancelled) return;
                     setRuleChanges(changes.ruleChanges);
                     setValueChanges(changes.valueChanges);
+                    setRulesOpen(true);
+                    setValuesOpen(Object.keys(changes.valueChanges).length > 0);
                     savedStateRef.current = editorState(editingSidecar.name, changes.ruleChanges, changes.valueChanges);
                     setTailorData(data);
                     setLoadingTree(false);
@@ -435,6 +468,8 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
         setLoadError(null);
         setRuleChanges({});
         setValueChanges({});
+        setRulesOpen(true);
+        setValuesOpen(false);
         savedStateRef.current = editorState('', {}, {});
         extractProfile(profileId, content)
                 .then(data => {
@@ -543,6 +578,11 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
         } finally {
             setSaving(false);
         }
+    }
+
+    function onValueSearch(v) {
+        setValueSearch(v);
+        if (v.trim()) setValuesOpen(true);
     }
 
     function expandAll() { setDefaultAllExpanded(true); setTreeKey(k => k + 1) }
@@ -712,17 +752,12 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                     </div>
 
                     <CardBody>
-                        <section className="ct-tailor-section" aria-labelledby="ct-tailor-rules-title">
-                            <div className="ct-tailor-section-head">
-                                <div>
-                                    <Title headingLevel="h3" size="lg" id="ct-tailor-rules-title">{_("Rules")}</Title>
-                                    <p className="ct-tailor-section-desc">
-                                        {_("Check or uncheck rules to enable or disable them.")}
-                                        {' '}
-                                        {cockpit.format(_("$0 of $1 selected."), selectedCount, allRules.length)}
-                                    </p>
-                                </div>
-                            </div>
+                        <CollapsibleSection
+                            id="ct-tailor-rules-title" title={_("Rules")}
+                            counts={cockpit.format(_("$0 of $1 selected · $2 modified"), selectedCount, allRules.length, modifiedRuleCount)}
+                            isExpanded={rulesOpen} onToggle={setRulesOpen}
+                        >
+                            <p className="ct-tailor-section-desc ct-tailor-section-lead">{_("Check or uncheck rules to enable or disable them.")}</p>
                             <div className="ct-tailor-filter-bar">
                                 <SearchInput
                                     className="ct-tailor-search"
@@ -765,32 +800,30 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                         />
                                     )}
                             </div>
-                        </section>
+                        </CollapsibleSection>
                     </CardBody>
 
                     {tailorData.values && tailorData.values.length > 0 && (
                         <>
                             <Divider />
                             <CardBody>
-                                <section className="ct-tailor-section" aria-labelledby="ct-tailor-values-title">
-                                    <div className="ct-tailor-section-head">
-                                        <div>
-                                            <Title headingLevel="h3" size="lg" id="ct-tailor-values-title">
-                                                {cockpit.format(_("Variables ($0)"), tailorData.values.length)}
-                                            </Title>
-                                            <p className="ct-tailor-section-desc">{_("Adjust variable values to customize profile behavior.")}</p>
-                                        </div>
-                                    </div>
-                                    <div className="ct-tailor-filter-bar">
+                                <CollapsibleSection
+                                    id="ct-tailor-values-title"
+                                    title={cockpit.format(_("Variables ($0)"), tailorData.values.length)}
+                                    counts={cockpit.format(_("· $0 changed"), modifiedValueCount)}
+                                    isExpanded={valuesOpen} onToggle={setValuesOpen}
+                                    headerExtra={
                                         <SearchInput
-                                            className="ct-tailor-search"
+                                            className="ct-tailor-search ct-tailor-values-search"
                                             placeholder={_("Search variables…")}
                                             aria-label={_("Search variables")}
                                             value={valueSearch}
-                                            onChange={(_e, v) => setValueSearch(v)}
+                                            onChange={(_e, v) => onValueSearch(v)}
                                             onClear={() => setValueSearch('')}
                                         />
-                                    </div>
+                                    }
+                                >
+                                    <p className="ct-tailor-section-desc ct-tailor-section-lead">{_("Adjust variable values to customize profile behavior.")}</p>
                                     <div className="ct-tailor-values-box">
                                         {visibleValues.length === 0 && <p className="ct-tailor-section-desc">{_("No variables match.")}</p>}
                                         <div className="ct-tailor-values-grid">
@@ -828,7 +861,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                             })}
                                         </div>
                                     </div>
-                                </section>
+                                </CollapsibleSection>
                             </CardBody>
                         </>
                     )}
