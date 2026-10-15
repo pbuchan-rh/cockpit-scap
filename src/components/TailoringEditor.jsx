@@ -4,7 +4,7 @@ import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
-import { ExpandableSection } from "@patternfly/react-core/dist/esm/components/ExpandableSection/index.js";
+import { ExpandableSection, ExpandableSectionVariant } from "@patternfly/react-core/dist/esm/components/ExpandableSection/index.js";
 import { Form, FormGroup } from "@patternfly/react-core/dist/esm/components/Form/index.js";
 import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
@@ -16,6 +16,7 @@ import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js
 import { ToggleGroup, ToggleGroupItem } from "@patternfly/react-core/dist/esm/components/ToggleGroup/index.js";
 import { TreeView } from "@patternfly/react-core/dist/esm/components/TreeView/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
+import { ArrowRightIcon } from "@patternfly/react-icons/dist/esm/icons/arrow-right-icon.js";
 
 import { formatBytes, formatTimestamp } from '../lib/format.js';
 import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
@@ -133,8 +134,8 @@ function buildGroupItem(group, filters, ruleChanges, ruleById) {
         children,
         hasBadge: true,
         customBadgeContent: modified > 0
-            ? cockpit.format(_("$0 rules · $1 modified"), total, modified)
-            : cockpit.format(_("$0 rules"), total),
+            ? cockpit.format(_("$0 · $1 modified"), cockpit.format(cockpit.ngettext("$0 rule", "$0 rules", total), total), modified)
+            : cockpit.format(cockpit.ngettext("$0 rule", "$0 rules", total), total),
         badgeProps: { isRead: modified === 0 },
     };
 }
@@ -178,6 +179,9 @@ function formatChangeSummaryText(name, tailorData, ruleEntries, valueEntries) {
     return lines.join('\n');
 }
 
+/* "Changes from base profile" (v3 Deviations): two columns, Rules |
+ * Variables, with Copy summary. Always shown in the editor so the section
+ * structure stays put; says so when nothing changed. */
 const ChangeSummaryPanel = ({ name, tailorData, ruleChanges, valueChanges }) => {
     const [copied, setCopied] = useState(false);
 
@@ -200,7 +204,6 @@ const ChangeSummaryPanel = ({ name, tailorData, ruleChanges, valueChanges }) => 
     }, [tailorData, valueChanges]);
 
     const total = ruleEntries.length + valueEntries.length;
-    if (total === 0) return null;
 
     function handleExport() {
         const text = formatChangeSummaryText(name, tailorData, ruleEntries, valueEntries);
@@ -212,51 +215,71 @@ const ChangeSummaryPanel = ({ name, tailorData, ruleChanges, valueChanges }) => 
     }
 
     return (
-        <div className="ct-tailor-summary">
-            <Flex alignItems={{ default: 'alignItemsCenter' }} justifyContent={{ default: 'justifyContentSpaceBetween' }}>
-                <FlexItem>
-                    <Title headingLevel="h3" size="md">
-                        {cockpit.format(_("Changes from base profile ($0)"), total)}
-                    </Title>
-                </FlexItem>
-                <FlexItem>
+        <section className="ct-tailor-section ct-tailor-summary" aria-labelledby="ct-tailor-changes-title">
+            <div className="ct-tailor-section-head">
+                <div>
+                    <Title headingLevel="h3" size="lg" id="ct-tailor-changes-title">{_("Changes from base profile")}</Title>
+                    <p className="ct-tailor-section-desc">
+                        {total === 0 ? _("No changes from the base profile yet.") : changeCountText(ruleEntries.length, valueEntries.length)}
+                    </p>
+                </div>
+                {total > 0 && (
                     <Button variant="secondary" size="sm" onClick={handleExport}>
-                        {copied ? _("✓ Copied") : _("Copy Summary")}
+                        {copied ? _("✓ Copied") : _("Copy summary")}
                     </Button>
-                </FlexItem>
-            </Flex>
-            {ruleEntries.length > 0 && (
-                <div className="ct-tailor-summary-section">
-                    <p className="ct-tailor-summary-section-title">
-                        {cockpit.format(_("Rules changed ($0)"), ruleEntries.length)}
-                    </p>
-                    {ruleEntries.map(r => (
-                        <div key={r.id} className="ct-tailor-sum-row">
-                            <span className={r.enabled ? "ct-tailor-sum-enabled" : "ct-tailor-sum-disabled"}>
-                                {r.enabled ? _("Enabled") : _("Disabled")}
-                            </span>
-                            <Label color={SEVERITY_COLOR[r.severity] ?? 'grey'} isCompact>{r.severity}</Label>
-                            <span className="ct-tailor-sum-title">{r.title || r.id}</span>
-                        </div>
-                    ))}
+                )}
+            </div>
+            {total > 0 && (
+                <div className="ct-tailor-summary-cols">
+                    <div className="ct-tailor-summary-col">
+                        <p className="ct-tailor-summary-section-title">
+                            {cockpit.format(_("Rules ($0)"), ruleEntries.length)}
+                        </p>
+                        {ruleEntries.length === 0
+                            ? <p className="ct-tailor-section-desc">{_("No rule changes.")}</p>
+                            : ruleEntries.map(r => (
+                                <div key={r.id} className="ct-tailor-sum-row">
+                                    <span className={r.enabled ? "ct-tailor-sum-enabled" : "ct-tailor-sum-disabled"}>
+                                        {r.enabled ? _("Enabled") : _("Disabled")}
+                                    </span>
+                                    <Label color={SEVERITY_COLOR[r.severity] ?? 'grey'} isCompact>{r.severity}</Label>
+                                    <span className="ct-tailor-sum-title">{r.title || r.id}</span>
+                                </div>
+                            ))}
+                    </div>
+                    <div className="ct-tailor-summary-col">
+                        <p className="ct-tailor-summary-section-title">
+                            {cockpit.format(_("Variables ($0)"), valueEntries.length)}
+                        </p>
+                        {valueEntries.length === 0
+                            ? <p className="ct-tailor-section-desc">{_("No variable changes.")}</p>
+                            : valueEntries.map(v => (
+                                <div key={v.id} className="ct-tailor-sum-row">
+                                    <span className="ct-tailor-sum-title">{v.title || v.id}</span>
+                                    <span className="ct-tailor-sum-val-change">
+                                        {v.from} <ArrowRightIcon className="ct-tailor-sum-arrow" aria-label={_("changed to")} /> {v.to}
+                                    </span>
+                                </div>
+                            ))}
+                    </div>
                 </div>
             )}
-            {valueEntries.length > 0 && (
-                <div className="ct-tailor-summary-section">
-                    <p className="ct-tailor-summary-section-title">
-                        {cockpit.format(_("Variables changed ($0)"), valueEntries.length)}
-                    </p>
-                    {valueEntries.map(v => (
-                        <div key={v.id} className="ct-tailor-sum-row">
-                            <span className="ct-tailor-sum-title">{v.title || v.id}</span>
-                            <span className="ct-tailor-sum-val-change">{v.from} &rarr; {v.to}</span>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
+        </section>
     );
 };
+
+// Order-independent snapshot of name + changes, for the dirty check.
+function editorState(name, ruleChanges, valueChanges) {
+    const sorted = obj => Object.keys(obj).sort()
+            .map(k => [k, obj[k]]);
+    return JSON.stringify([name.trim(), sorted(ruleChanges), sorted(valueChanges)]);
+}
+
+function changeCountText(rules, values) {
+    return cockpit.format(_("$0, $1 changed"),
+                          cockpit.format(cockpit.ngettext("$0 rule", "$0 rules", rules), rules),
+                          cockpit.format(cockpit.ngettext("$0 variable", "$0 variables", values), values));
+}
 
 export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, contentRefreshKey, onContentChanged, onManageContent }) => {
     const [contentList, setContentList] = useState([]);
@@ -284,6 +307,11 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
     // Bumped by resetForm so the profile list reloads even when the content
     // value it resets to is unchanged.
     const [formResetKey, setFormResetKey] = useState(0);
+    const [valueSearch, setValueSearch] = useState('');
+    const [confirmCancel, setConfirmCancel] = useState(false);
+    // What the editor started from (loaded policy, or an empty new one),
+    // so Cancel only asks when something actually changed.
+    const savedStateRef = useRef(null);
 
     const isEditing = !!editingSidecar;
 
@@ -378,6 +406,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                     if (cancelled) return;
                     setRuleChanges(changes.ruleChanges);
                     setValueChanges(changes.valueChanges);
+                    savedStateRef.current = editorState(editingSidecar.name, changes.ruleChanges, changes.valueChanges);
                     setTailorData(data);
                     setLoadingTree(false);
                 })
@@ -406,6 +435,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
         setLoadError(null);
         setRuleChanges({});
         setValueChanges({});
+        savedStateRef.current = editorState('', {}, {});
         extractProfile(profileId, content)
                 .then(data => {
                     setTailorData(data);
@@ -446,8 +476,24 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
         setRuleChanges({});
         setValueChanges({});
         setSearch('');
+        setValueSearch('');
         setSeverityFilter('all');
         setStatusFilter('all');
+        savedStateRef.current = null;
+    }
+
+    const isDirty = !!tailorData && !!savedStateRef.current &&
+        editorState(name, ruleChanges, valueChanges) !== savedStateRef.current;
+
+    function doCancel() {
+        setConfirmCancel(false);
+        resetForm();
+        if (isEditing) onCancelEdit();
+    }
+
+    function handleCancel() {
+        if (isDirty) setConfirmCancel(true);
+        else doCancel();
     }
 
     async function handleSave() {
@@ -521,8 +567,16 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
         if (rule) toggleRule(rule, event.target.checked);
     }
 
+    const valueTerm = valueSearch.trim().toLowerCase();
+    const visibleValues = (tailorData?.values || [])
+            .filter(v => !valueTerm || (v.title || v.id).toLowerCase().includes(valueTerm) || v.id.toLowerCase().includes(valueTerm));
+    const selectedCount = allRules.filter(r => (r.id in ruleChanges ? ruleChanges[r.id] : r.selected)).length;
+    const baseTitle = isEditing
+        ? (editingSidecar.base_profile_title || editingSidecar.base_profile_id)
+        : (profiles.find(p => p.id === profileId)?.title || profileId);
+
     return (
-        <Card>
+        <Card className="ct-tailor-editor-card">
             <CardHeader>
                 <CardTitle>
                     <Title headingLevel="h2" size="lg">
@@ -544,204 +598,267 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                     <Alert variant="danger" title={_("Failed to load profile")} isInline>{loadError}</Alert>
                 )}
 
-                <div className="ct-two-col-form">
-                    <div className="ct-form-col">
-                        <Form className="ct-tailor-form">
-                            {isEditing
-                                ? (
-                                    <FormGroup label={_("Base profile")} fieldId="ct-tailor-base-readonly">
-                                        <p>{editingSidecar.base_profile_title || editingSidecar.base_profile_id} — {sdsDisplayName(editingSidecar.sds_path)}</p>
-                                        <Button variant="link" isInline onClick={() => { resetForm(); onCancelEdit() }}>
-                                            {_("Cancel editing / start a new policy")}
-                                        </Button>
-                                    </FormGroup>
-                                )
-                                : (
-                                    <>
-                                        <FormGroup label={_("Content file")} fieldId="ct-tailor-content-select">
-                                            {uploadError && (
-                                                <Alert
-                                                    variant="danger" title={_("Upload failed")} isInline
-                                                    actionClose={<Button variant="plain" onClick={() => setUploadError(null)}>×</Button>}
-                                                >
-                                                    {uploadError}
-                                                </Alert>
-                                            )}
-                                            <ContentSelect
-                                                id="ct-tailor-content-select"
-                                                value={content}
-                                                onChange={(_e, v) => setContent(v)}
-                                                contentList={contentList}
-                                                emptyLabel={_("Select content…")}
-                                            />
-                                            <OtherContentMenu
-                                                id="ct-tailor-other-content"
-                                                onUpload={handleUploadClick}
-                                                uploading={uploading}
-                                                onManage={onManageContent}
-                                            />
-                                            <input
-                                                ref={fileInputRef} type="file" accept=".xml" hidden
-                                                onChange={handleFileChosen}
-                                            />
-                                        </FormGroup>
-                                        <FormGroup label={_("Base profile")} fieldId="ct-tailor-profile-select">
-                                            <FormSelect
-                                                id="ct-tailor-profile-select" value={profileId}
-                                                onChange={(_e, v) => setProfileId(v)}
-                                                isDisabled={!content || profiles.length === 0}
+                {isEditing
+                    ? (
+                        <div className="ct-tailor-base">
+                            <p>
+                                <span className="ct-tailor-base-label">{_("Base profile")}</span>
+                                {baseTitle} — {sdsDisplayName(editingSidecar.sds_path)}
+                            </p>
+                            {tailorData?.profile?.description && (
+                                <ExpandableSection
+                                    variant={ExpandableSectionVariant.truncate}
+                                    truncateMaxLines={1}
+                                    toggleTextCollapsed={_("Show more")}
+                                    toggleTextExpanded={_("Show less")}
+                                    className="ct-tailor-base-desc"
+                                >
+                                    {tailorData.profile.description}
+                                </ExpandableSection>
+                            )}
+                        </div>
+                    )
+                    : (
+                        <div className="ct-two-col-form">
+                            <div className="ct-form-col">
+                                <Form className="ct-tailor-form">
+                                    <FormGroup label={_("Content file")} fieldId="ct-tailor-content-select">
+                                        {uploadError && (
+                                            <Alert
+                                                variant="danger" title={_("Upload failed")} isInline
+                                                actionClose={<Button variant="plain" onClick={() => setUploadError(null)}>×</Button>}
                                             >
-                                                {profiles.length === 0 && (
-                                                    <FormSelectOption value="" label={_("Select content first")} isDisabled />
-                                                )}
-                                                {profiles.map(p => (
-                                                    <FormSelectOption key={p.id} value={p.id} label={p.title || p.id} />
-                                                ))}
-                                            </FormSelect>
-                                        </FormGroup>
-                                        <Button
-                                            variant="secondary" isDisabled={!profileId || !content}
-                                            isLoading={loadingTree} onClick={handleLoad}
+                                                {uploadError}
+                                            </Alert>
+                                        )}
+                                        <ContentSelect
+                                            id="ct-tailor-content-select"
+                                            value={content}
+                                            onChange={(_e, v) => setContent(v)}
+                                            contentList={contentList}
+                                            emptyLabel={_("Select content…")}
+                                        />
+                                        <OtherContentMenu
+                                            id="ct-tailor-other-content"
+                                            onUpload={handleUploadClick}
+                                            uploading={uploading}
+                                            onManage={onManageContent}
+                                        />
+                                        <input
+                                            ref={fileInputRef} type="file" accept=".xml" hidden
+                                            onChange={handleFileChosen}
+                                        />
+                                    </FormGroup>
+                                    <FormGroup label={_("Base profile")} fieldId="ct-tailor-profile-select">
+                                        <FormSelect
+                                            id="ct-tailor-profile-select" value={profileId}
+                                            onChange={(_e, v) => setProfileId(v)}
+                                            isDisabled={!content || profiles.length === 0}
                                         >
-                                            {_("Load Rules")}
-                                        </Button>
-                                    </>
-                                )}
-                        </Form>
-                    </div>
-                    <ProfileDescriptionPanel
-                        profileId={isEditing ? editingSidecar.base_profile_id : profileId}
-                        sdsPath={isEditing ? editingSidecar.sds_path : content}
-                        preloaded={isEditing ? tailorData?.profile : null}
-                    />
-                </div>
+                                            {profiles.length === 0 && (
+                                                <FormSelectOption value="" label={_("Select content first")} isDisabled />
+                                            )}
+                                            {profiles.map(p => (
+                                                <FormSelectOption key={p.id} value={p.id} label={p.title || p.id} />
+                                            ))}
+                                        </FormSelect>
+                                    </FormGroup>
+                                    <Button
+                                        variant="secondary" isDisabled={!profileId || !content}
+                                        isLoading={loadingTree} onClick={handleLoad}
+                                    >
+                                        {_("Load Rules")}
+                                    </Button>
+                                </Form>
+                            </div>
+                            <ProfileDescriptionPanel profileId={profileId} sdsPath={content} />
+                        </div>
+                    )}
 
                 {loadingTree && !tailorData && (
                     <div className="ct-tailor-loading">
                         <Spinner size="md" aria-label={_("Loading profile")} />
                     </div>
                 )}
+            </CardBody>
 
-                {tailorData && (
-                    <>
-                        <FormGroup label={_("Policy name")} fieldId="ct-tailor-name-input" className="ct-tailor-name-group">
+            {tailorData && (
+                <>
+                    {/* Sticky action bar (spec E): name · changes · actions. */}
+                    <div className="ct-tailor-actionbar" data-ct-tailor-actionbar="">
+                        <FormGroup label={_("Policy name")} fieldId="ct-tailor-name-input" className="ct-tailor-actionbar-name">
                             <TextInput id="ct-tailor-name-input" value={name} onChange={(_e, v) => setName(v)} />
                         </FormGroup>
-
-                        <div className="ct-tailor-filter-bar">
-                            <SearchInput
-                                placeholder={_("Search rules…")}
-                                value={search}
-                                onChange={(_e, v) => setSearch(v)}
-                                onClear={() => setSearch('')}
-                            />
-                            <ToggleGroup aria-label={_("Filter by status")}>
-                                <ToggleGroupItem text={_("All")} isSelected={statusFilter === 'all'} onChange={() => setStatusFilter('all')} />
-                                <ToggleGroupItem text={_("Disabled")} isSelected={statusFilter === 'disabled'} onChange={() => setStatusFilter('disabled')} />
-                                <ToggleGroupItem text={_("Modified")} isSelected={statusFilter === 'modified'} onChange={() => setStatusFilter('modified')} />
-                            </ToggleGroup>
-                            <ToggleGroup aria-label={_("Filter by severity")}>
-                                <ToggleGroupItem text={_("All")} isSelected={severityFilter === 'all'} onChange={() => setSeverityFilter('all')} />
-                                <ToggleGroupItem text={_("High")} isSelected={severityFilter === 'high'} onChange={() => setSeverityFilter('high')} />
-                                <ToggleGroupItem text={_("Medium")} isSelected={severityFilter === 'medium'} onChange={() => setSeverityFilter('medium')} />
-                                <ToggleGroupItem text={_("Low")} isSelected={severityFilter === 'low'} onChange={() => setSeverityFilter('low')} />
-                            </ToggleGroup>
-                            <Button variant="link" isInline onClick={expandAll}>{_("Expand all")}</Button>
-                            <Button variant="link" isInline onClick={collapseAll}>{_("Collapse all")}</Button>
-                        </div>
-
-                        <p className="ct-tailor-summary-hint">
+                        <span className="ct-tailor-change-count" aria-live="polite">
                             {modifiedRuleCount + modifiedValueCount === 0
-                                ? _("No changes from the base profile yet.")
-                                : cockpit.format(_("$0 rules, $1 variables changed from the base profile."), modifiedRuleCount, modifiedValueCount)}
-                        </p>
-
-                        <div className="ct-tailor-tree">
-                            {allRules.length === 0
-                                ? <p>{_("This profile has no rules.")}</p>
-                                : (
-                                    <TreeView
-                                        key={treeKey}
-                                        data={treeItems}
-                                        aria-label={_("Rule tree")}
-                                        hasGuides
-                                        defaultAllExpanded={isSearching ? true : defaultAllExpanded}
-                                        allExpanded={isSearching ? true : undefined}
-                                        onCheck={handleCheck}
-                                    />
-                                )}
-                        </div>
-
-                        {tailorData.values && tailorData.values.length > 0 && (
-                            <ExpandableSection
-                                toggleText={cockpit.format(_("Variables ($0)"), tailorData.values.length)}
-                                className="ct-tailor-values-section"
+                                ? _("No changes yet")
+                                : changeCountText(modifiedRuleCount, modifiedValueCount)}
+                        </span>
+                        <div className="ct-tailor-actionbar-buttons">
+                            {isEditing && (
+                                <Button variant="primary" isLoading={saving} isDisabled={saving || !name.trim()} onClick={handleSave}>
+                                    {_("Update")}
+                                </Button>
+                            )}
+                            <Button
+                                variant={isEditing ? "secondary" : "primary"}
+                                isLoading={saving} isDisabled={saving || !name.trim()}
+                                onClick={isEditing ? handleSaveAsNew : handleSave}
                             >
-                                <div className="ct-tailor-values-grid">
-                                    {tailorData.values.map(val => {
-                                        const isModified = val.id in valueChanges;
-                                        const baseValue = val.current || val.default || '';
-                                        const activeValue = isModified ? valueChanges[val.id] : baseValue;
-                                        return (
-                                            <FormGroup
-                                                key={val.id} label={val.title || val.id}
-                                                fieldId={`ct-tailor-value-${val.id}`}
-                                                className={isModified ? "ct-tailor-value-modified" : ""}
-                                            >
-                                                {val.options && val.options.length > 0
-                                                    ? (
-                                                        <FormSelect
-                                                            id={`ct-tailor-value-${val.id}`}
-                                                            value={activeValue}
-                                                            onChange={(_e, v) => updateValue(val, v)}
-                                                        >
-                                                            {val.options.map(opt => (
-                                                                <FormSelectOption key={opt.selector || opt.value} value={opt.value} label={opt.selector === opt.value ? opt.value : `${opt.selector}: ${opt.value}`} />
-                                                            ))}
-                                                        </FormSelect>
-                                                    )
-                                                    : (
-                                                        <TextInput
-                                                            id={`ct-tailor-value-${val.id}`}
-                                                            value={activeValue}
-                                                            onChange={(_e, v) => updateValue(val, v)}
-                                                        />
-                                                    )}
-                                            </FormGroup>
-                                        );
-                                    })}
-                                </div>
-                            </ExpandableSection>
-                        )}
+                                {isEditing ? _("Save as New") : _("Save Policy")}
+                            </Button>
+                            <Button variant="link" isDisabled={saving} onClick={handleCancel}>{_("Cancel")}</Button>
+                        </div>
+                    </div>
 
+                    <CardBody>
+                        <section className="ct-tailor-section" aria-labelledby="ct-tailor-rules-title">
+                            <div className="ct-tailor-section-head">
+                                <div>
+                                    <Title headingLevel="h3" size="lg" id="ct-tailor-rules-title">{_("Rules")}</Title>
+                                    <p className="ct-tailor-section-desc">
+                                        {_("Check or uncheck rules to enable or disable them.")}
+                                        {' '}
+                                        {cockpit.format(_("$0 of $1 selected."), selectedCount, allRules.length)}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="ct-tailor-filter-bar">
+                                <SearchInput
+                                    className="ct-tailor-search"
+                                    placeholder={_("Search rules…")}
+                                    aria-label={_("Search rules")}
+                                    value={search}
+                                    onChange={(_e, v) => setSearch(v)}
+                                    onClear={() => setSearch('')}
+                                />
+                                <span className="ct-filter-label" id="ct-tailor-show-label">{_("Show:")}</span>
+                                <ToggleGroup aria-labelledby="ct-tailor-show-label">
+                                    <ToggleGroupItem text={_("All")} isSelected={statusFilter === 'all'} onChange={() => setStatusFilter('all')} />
+                                    <ToggleGroupItem text={_("Disabled")} isSelected={statusFilter === 'disabled'} onChange={() => setStatusFilter('disabled')} />
+                                    <ToggleGroupItem text={_("Modified")} isSelected={statusFilter === 'modified'} onChange={() => setStatusFilter('modified')} />
+                                </ToggleGroup>
+                                <span className="ct-filter-label" id="ct-tailor-severity-label">{_("Severity:")}</span>
+                                <ToggleGroup aria-labelledby="ct-tailor-severity-label">
+                                    <ToggleGroupItem text={_("All")} isSelected={severityFilter === 'all'} onChange={() => setSeverityFilter('all')} />
+                                    <ToggleGroupItem text={_("High")} isSelected={severityFilter === 'high'} onChange={() => setSeverityFilter('high')} />
+                                    <ToggleGroupItem text={_("Medium")} isSelected={severityFilter === 'medium'} onChange={() => setSeverityFilter('medium')} />
+                                    <ToggleGroupItem text={_("Low")} isSelected={severityFilter === 'low'} onChange={() => setSeverityFilter('low')} />
+                                </ToggleGroup>
+                                <span className="ct-tailor-tree-links">
+                                    <Button variant="link" isInline onClick={expandAll}>{_("Expand all")}</Button>
+                                    <Button variant="link" isInline onClick={collapseAll}>{_("Collapse all")}</Button>
+                                </span>
+                            </div>
+                            <div className="ct-tailor-tree">
+                                {allRules.length === 0
+                                    ? <p>{_("This profile has no rules.")}</p>
+                                    : (
+                                        <TreeView
+                                            key={treeKey}
+                                            data={treeItems}
+                                            aria-label={_("Rule tree")}
+                                            hasGuides
+                                            defaultAllExpanded={isSearching ? true : defaultAllExpanded}
+                                            allExpanded={isSearching ? true : undefined}
+                                            onCheck={handleCheck}
+                                        />
+                                    )}
+                            </div>
+                        </section>
+                    </CardBody>
+
+                    {tailorData.values && tailorData.values.length > 0 && (
+                        <>
+                            <Divider />
+                            <CardBody>
+                                <section className="ct-tailor-section" aria-labelledby="ct-tailor-values-title">
+                                    <div className="ct-tailor-section-head">
+                                        <div>
+                                            <Title headingLevel="h3" size="lg" id="ct-tailor-values-title">
+                                                {cockpit.format(_("Variables ($0)"), tailorData.values.length)}
+                                            </Title>
+                                            <p className="ct-tailor-section-desc">{_("Adjust variable values to customize profile behavior.")}</p>
+                                        </div>
+                                    </div>
+                                    <div className="ct-tailor-filter-bar">
+                                        <SearchInput
+                                            className="ct-tailor-search"
+                                            placeholder={_("Search variables…")}
+                                            aria-label={_("Search variables")}
+                                            value={valueSearch}
+                                            onChange={(_e, v) => setValueSearch(v)}
+                                            onClear={() => setValueSearch('')}
+                                        />
+                                    </div>
+                                    <div className="ct-tailor-values-box">
+                                        {visibleValues.length === 0 && <p className="ct-tailor-section-desc">{_("No variables match.")}</p>}
+                                        <div className="ct-tailor-values-grid">
+                                            {visibleValues.map(val => {
+                                                const isModified = val.id in valueChanges;
+                                                const baseValue = val.current || val.default || '';
+                                                const activeValue = isModified ? valueChanges[val.id] : baseValue;
+                                                return (
+                                                    <FormGroup
+                                                        key={val.id} label={val.title || val.id}
+                                                        fieldId={`ct-tailor-value-${val.id}`}
+                                                        className={isModified ? "ct-tailor-value-modified" : ""}
+                                                    >
+                                                        {val.options && val.options.length > 0
+                                                            ? (
+                                                                <FormSelect
+                                                                    id={`ct-tailor-value-${val.id}`}
+                                                                    value={activeValue}
+                                                                    onChange={(_e, v) => updateValue(val, v)}
+                                                                >
+                                                                    {val.options.map(opt => (
+                                                                        <FormSelectOption key={opt.selector || opt.value} value={opt.value} label={opt.selector === opt.value ? opt.value : `${opt.selector}: ${opt.value}`} />
+                                                                    ))}
+                                                                </FormSelect>
+                                                            )
+                                                            : (
+                                                                <TextInput
+                                                                    id={`ct-tailor-value-${val.id}`}
+                                                                    value={activeValue}
+                                                                    onChange={(_e, v) => updateValue(val, v)}
+                                                                />
+                                                            )}
+                                                    </FormGroup>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </section>
+                            </CardBody>
+                        </>
+                    )}
+
+                    <Divider />
+                    <CardBody>
                         <ChangeSummaryPanel
                             name={name}
                             tailorData={tailorData}
                             ruleChanges={ruleChanges}
                             valueChanges={valueChanges}
                         />
+                    </CardBody>
+                </>
+            )}
 
-                        <Flex spaceItems={{ default: 'spaceItemsSm' }} className="ct-tailor-save-actions">
-                            {isEditing && (
-                                <FlexItem>
-                                    <Button variant="primary" isLoading={saving} isDisabled={saving || !name.trim()} onClick={handleSave}>
-                                        {_("Update")}
-                                    </Button>
-                                </FlexItem>
-                            )}
-                            <FlexItem>
-                                <Button
-                                    variant={isEditing ? "secondary" : "primary"}
-                                    isLoading={saving} isDisabled={saving || !name.trim()}
-                                    onClick={isEditing ? handleSaveAsNew : handleSave}
-                                >
-                                    {isEditing ? _("Save as New") : _("Save Policy")}
-                                </Button>
-                            </FlexItem>
-                        </Flex>
-                    </>
-                )}
-            </CardBody>
+            {confirmCancel && (
+                <Modal variant="small" isOpen onClose={() => setConfirmCancel(false)}>
+                    <ModalHeader title={_("Discard unsaved changes?")} />
+                    <ModalBody>
+                        {isEditing
+                            ? cockpit.format(_("Your changes to \"$0\" have not been saved and will be lost."), editingSidecar.name)
+                            : _("This new policy has not been saved and will be lost.")}
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button variant="danger" onClick={doCancel}>{_("Discard changes")}</Button>
+                        <Button variant="link" onClick={() => setConfirmCancel(false)}>{_("Keep editing")}</Button>
+                    </ModalFooter>
+                </Modal>
+            )}
 
             {pendingUpload && (
                 <Modal variant="small" isOpen onClose={() => setPendingUpload(null)}>

@@ -11,6 +11,8 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-co
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
+import { CaretDownIcon } from "@patternfly/react-icons/dist/esm/icons/caret-down-icon.js";
+import { CaretUpIcon } from "@patternfly/react-icons/dist/esm/icons/caret-up-icon.js";
 import { EllipsisVIcon } from "@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon.js";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
@@ -51,7 +53,10 @@ const ScoreDelta = ({ delta }) => {
             className={`ct-score-delta ${up ? 'ct-score-delta-up' : 'ct-score-delta-down'}`}
             title={_("Change since the previous scan of this profile")}
         >
-            {up ? '▲' : '▼'} {Math.abs(delta)}
+            {up
+                ? <CaretUpIcon aria-label={_("up")} className="ct-score-delta-icon" />
+                : <CaretDownIcon aria-label={_("down")} className="ct-score-delta-icon" />}
+            {Math.abs(delta)}
         </span>
     );
 };
@@ -262,7 +267,7 @@ export const ScanHistory = ({ refreshKey, onView, onChanged, diskUsage }) => {
                         )}
             </CardBody>
             <Divider />
-            <CardFooter className="ct-list-footer">{listFooterText(scans.length, diskUsage)}</CardFooter>
+            <CardFooter className="ct-list-footer">{loading && scans.length === 0 ? '' : listFooterText(scans.length, diskUsage)}</CardFooter>
 
             {deleteTarget && (
                 <Modal variant="small" isOpen onClose={() => setDeleteTarget(null)}>

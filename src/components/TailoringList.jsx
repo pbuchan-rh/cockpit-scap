@@ -185,7 +185,8 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                     </Alert>
                 )}
 
-                {loading
+                {/* Spinner on the first load only; a refresh keeps the rows. */}
+                {loading && sidecars.length === 0
                     ? <Spinner size="md" aria-label={_("Loading tailoring policies")} />
                     : sidecars.length === 0
                         ? (
@@ -202,7 +203,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                                         <Th>{_("Name")}</Th>
                                         <Th>{_("Content")}</Th>
                                         <Th>{_("Base Profile")}</Th>
-                                        <Th>{_("Rules Modified")}</Th>
+                                        <Th modifier="wrap">{_("Rules Modified")}</Th>
                                         <Th>{_("Created")}</Th>
                                         <Th screenReaderText={_("Actions")} />
                                     </Tr>
@@ -237,7 +238,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                         )}
             </CardBody>
             <Divider />
-            <CardFooter className="ct-list-footer">{listFooterText(sidecars.length, diskUsage)}</CardFooter>
+            <CardFooter className="ct-list-footer">{loading && sidecars.length === 0 ? '' : listFooterText(sidecars.length, diskUsage)}</CardFooter>
 
             {pendingTailoring && (
                 <Modal variant="small" isOpen onClose={() => setPendingTailoring(null)}>

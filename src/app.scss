@@ -753,10 +753,6 @@
     margin-block-end: var(--pf-t--global--spacer--md);
 }
 
-.ct-tailor-name-group {
-    max-inline-size: 30rem;
-    margin-block: var(--pf-t--global--spacer--md);
-}
 
 .ct-tailor-loading {
     padding-block: var(--pf-t--global--spacer--lg);
@@ -772,10 +768,106 @@
     margin-block-end: var(--pf-t--global--spacer--sm);
 }
 
-.ct-tailor-summary-hint {
+
+// Sticky action bar (spec E): policy name · change count · Update /
+// Save as New / Cancel, pinned while the rules scroll by. PF cards are
+// overflow: auto, which would make the card (not the page) the bar's
+// scroll container, so this card lets content overflow.
+.pf-v6-c-card.ct-tailor-editor-card {
+    overflow: visible;
+}
+
+.ct-tailor-actionbar {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: var(--pf-t--global--z-index--sm, 200);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--md);
+    padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--lg);
+    background: var(--pf-t--global--background--color--primary--default);
+    border-block: var(--pf-t--global--border--width--regular, 1px) solid var(--pf-t--global--border--color--default);
+}
+
+.ct-tailor-actionbar-name {
+    flex: 1 1 16rem;
+    max-inline-size: 28rem;
+}
+
+.ct-tailor-change-count {
+    padding-block-end: var(--pf-t--global--spacer--sm);
+    color: var(--pf-t--global--text--color--subtle);
+    font-size: var(--pf-t--global--font--size--sm);
+}
+
+.ct-tailor-actionbar-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--pf-t--global--spacer--sm);
+    margin-inline-start: auto;
+}
+
+// Rules / Variables / Changes sections: heading, one-line description.
+// Scrolled-to sections stop below the sticky bar, not under it.
+.ct-tailor-section {
+    scroll-margin-block-start: 6rem;
+}
+
+.ct-tailor-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--pf-t--global--spacer--md);
+    margin-block-end: var(--pf-t--global--spacer--sm);
+}
+
+.ct-tailor-section-desc {
+    color: var(--pf-t--global--text--color--subtle);
+    font-size: var(--pf-t--global--font--size--sm);
+}
+
+.ct-filter-label {
     font-size: var(--pf-t--global--font--size--sm);
     color: var(--pf-t--global--text--color--subtle);
-    margin-block-end: var(--pf-t--global--spacer--sm);
+    margin-inline-start: var(--pf-t--global--spacer--sm);
+}
+
+.ct-tailor-search {
+    flex: 1 1 14rem;
+    max-inline-size: 24rem;
+}
+
+.ct-tailor-tree-links {
+    display: inline-flex;
+    gap: var(--pf-t--global--spacer--md);
+    margin-inline-start: auto;
+}
+
+.ct-tailor-base {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pf-t--global--spacer--xs);
+}
+
+.ct-tailor-base-label {
+    font-weight: var(--pf-t--global--font--weight--body--bold);
+    margin-inline-end: var(--pf-t--global--spacer--sm);
+}
+
+.ct-tailor-base-desc {
+    color: var(--pf-t--global--text--color--subtle);
+}
+
+.ct-tailor-values-box {
+    max-block-size: 28rem;
+    overflow-y: auto;
+}
+
+.ct-tailor-summary-cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: var(--pf-t--global--spacer--lg);
 }
 
 // Rule tree — PatternFly TreeView, scrollable within a bordered frame.
@@ -816,22 +908,8 @@
     font-weight: bold;
 }
 
-.ct-tailor-save-actions {
-    margin-block-start: var(--pf-t--global--spacer--md);
-}
 
-// Change-summary panel — diff-style list of rule/value deltas from the
-// base profile, with a clipboard-copy export action.
-.ct-tailor-summary {
-    margin-block-start: var(--pf-t--global--spacer--md);
-    padding: var(--pf-t--global--spacer--md);
-    border: 1px solid var(--pf-t--global--border--color--default);
-    border-radius: var(--pf-t--global--border--radius--sm);
-}
 
-.ct-tailor-summary-section {
-    margin-block-start: var(--pf-t--global--spacer--sm);
-}
 
 .ct-tailor-summary-section-title {
     font-weight: var(--pf-t--global--font--weight--body--bold);
@@ -864,6 +942,10 @@
 
 .ct-tailor-sum-title {
     flex: 1;
+}
+
+.ct-tailor-sum-arrow {
+    vertical-align: middle;
 }
 
 .ct-tailor-sum-val-change {
@@ -901,6 +983,11 @@
 .ct-score-delta {
     margin-inline-start: var(--pf-t--global--spacer--xs);
     font-size: var(--pf-t--global--font--size--sm);
+}
+
+.ct-score-delta-icon {
+    margin-inline-end: 0.125em;
+    vertical-align: -0.125em;
 }
 
 .ct-score-delta-up {

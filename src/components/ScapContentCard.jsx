@@ -172,7 +172,7 @@ export const ScapContentCard = ({ refreshKey, onChanged }) => {
                     </Alert>
                 )}
 
-                {loading
+                {loading && rows.length === 0
                     ? <Spinner size="md" aria-label={_("Loading SCAP content")} />
                     : rows.length === 0
                         ? (
@@ -236,7 +236,7 @@ export const ScapContentCard = ({ refreshKey, onChanged }) => {
                         )}
             </CardBody>
             <Divider />
-            <CardFooter className="ct-list-footer">{listFooterText(rows.length, totalBytes)}</CardFooter>
+            <CardFooter className="ct-list-footer">{loading ? '' : listFooterText(rows.length, totalBytes)}</CardFooter>
 
             {pendingUpload && (
                 <Modal variant="small" isOpen onClose={() => setPendingUpload(null)}>

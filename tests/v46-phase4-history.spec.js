@@ -77,7 +77,8 @@ test('columns, header band, plain numbers, labeled Actions', async () => {
 test('profile with tailoring subline; score delta only vs same profile and tailoring', async () => {
     await expect(row(OTHER).locator('.ct-cell-subline')).toHaveCount(0); // name == title: no duplicate
     await expect(row(mine).locator('.ct-cell-subline')).toHaveCount(0);
-    await expect(row(NEWER).locator('.ct-score-delta')).toHaveText('▲ 10');
+    await expect(row(NEWER).locator('.ct-score-delta')).toHaveText('10');
+    await expect(row(NEWER).locator('.ct-score-delta svg[aria-label="up"]')).toHaveCount(1);
     await expect(row(NEWER).locator('.ct-score-delta')).toHaveClass(/ct-score-delta-up/);
     await expect(row(OTHER).locator('.ct-score-delta')).toHaveCount(0);
 });
