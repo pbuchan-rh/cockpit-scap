@@ -83,29 +83,25 @@ test('Manage content opens the SCAP Content card on the Policy Tailoring tab', a
     await page.keyboard.press('Escape');
 });
 
-test('SCAP Content: one table, Included SSG row with RPM and benchmark version, no Delete', async () => {
+test('SCAP Content: one table, Installed SSG row with benchmark version, no Delete', async () => {
     await expect(contentCard().getByRole('heading', { name: 'SCAP Content' })).toBeVisible();
     const heads = (await contentTable().locator('thead th').allInnerTexts()).map(h => h.trim());
     expect(heads).toEqual(['Name', 'Source', 'Version', 'Size', 'Added', 'Actions']);
-    const rpm = (await hostSpawn(frame, ['rpm', '-q', '--qf', '%{VERSION}', 'scap-security-guide'])).trim();
     const ssg = contentTable().locator('tbody tr').filter({ hasText: 'ssg-rhel10-ds.xml' });
     await expect(ssg).toHaveCount(1);
     await expect(ssg.locator('td').nth(0)).toContainText('Red Hat Enterprise Linux 10');
-    await expect(ssg.locator('td').nth(1)).toContainText('Included');
-    // Source reads just "Included"; the package + version is its tooltip.
-    await expect(ssg.locator('td').nth(1)).toHaveText('Included');
+    // Source reads just "Installed" (Peter 10-15, C2): plain text, no
+    // subline, no tooltip, no dotted underline.
     const source = ssg.locator('td').nth(1);
+    await expect(source).toHaveText('Installed');
+    await expect(contentTable()).not.toContainText('Included');
     await expect(source.locator('.ct-cell-subline')).toHaveCount(0);
-    await ssg.locator('.ct-included-source').hover();
-    await expect(frame.getByRole('tooltip')).toHaveText(`Installed by the scap-security-guide ${rpm} package; updated with dnf`);
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: `tests/test-results/v46-polish/content-included-tooltip-${test.info().project.name}.png` });
-    await page.mouse.move(0, 0);
+    await expect(source.locator('[tabindex]')).toHaveCount(0);
+    expect(await source.evaluate(td => getComputedStyle(td).textDecorationLine)).toBe('none');
+    await source.hover();
+    await page.waitForTimeout(800);
     await expect(frame.getByRole('tooltip')).toHaveCount(0);
-    // Keyboard users reach it too.
-    await ssg.locator('.ct-included-source').focus();
-    await expect(frame.getByRole('tooltip')).toContainText(`scap-security-guide ${rpm} package`);
-    await ssg.locator('.ct-included-source').blur();
+    await page.mouse.move(0, 0);
     await expect(ssg.locator('td').nth(2)).toHaveText(/^0\.1\.\d+$/);
     await expect(ssg.locator('td').nth(3)).toHaveText(/^\d+(\.\d)? MB$/);
     await expect(ssg.getByRole('button')).toHaveCount(0);

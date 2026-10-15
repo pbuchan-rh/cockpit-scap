@@ -99,7 +99,7 @@ export async function listUploadedContent() {
     }
 }
 
-/* The scap-security-guide RPM's datastreams ("Included" in the SCAP
+/* The scap-security-guide RPM's datastreams ("Installed" in the SCAP
  * Content card), same {path, name, size, mtime} shape as
  * listUploadedContent(). */
 export async function listIncludedContent(dir) {

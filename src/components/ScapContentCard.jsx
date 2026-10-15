@@ -8,7 +8,6 @@ import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/comp
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
-import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/index.js";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
 import { ListCardTitle } from './ListCardTitle.jsx';
@@ -17,13 +16,13 @@ import {
     statExistingContent, uploadContent,
 } from '../lib/content.js';
 import { formatBytes, formatTimestamp, listFooterText } from '../lib/format.js';
-import { SYSTEM_CONTENT_DIR, getContentVersion, getSsgPackageVersion, sdsDisplayName } from '../lib/oscap.js';
+import { SYSTEM_CONTENT_DIR, getContentVersion, sdsDisplayName } from '../lib/oscap.js';
 
 const _ = cockpit.gettext;
 
 async function loadContent() {
-    const [included, uploaded, ssgVersion] = await Promise.all([
-        listIncludedContent(SYSTEM_CONTENT_DIR), listUploadedContent(), getSsgPackageVersion(),
+    const [included, uploaded] = await Promise.all([
+        listIncludedContent(SYSTEM_CONTENT_DIR), listUploadedContent(),
     ]);
     const rows = [
         ...included.map(c => ({ ...c, source: 'system' })),
@@ -31,11 +30,11 @@ async function loadContent() {
     ];
     // grep -m1 per file: a few ms each, never `oscap info`.
     const versions = await Promise.all(rows.map(r => getContentVersion(r.path)));
-    return { rows: rows.map((r, i) => ({ ...r, version: versions[i] })), ssgVersion };
+    return rows.map((r, i) => ({ ...r, version: versions[i] }));
 }
 
 /* "SCAP Content" (G1): every datastream on the host in one table.
- * Included rows come from the scap-security-guide RPM
+ * Installed rows come from the scap-security-guide RPM
  * (/usr/share/xml/scap/ssg/content, no Delete); Uploaded rows are the
  * user's ~/SCAP/content (Delete). Not "SSG Content": uploads can be any
  * vendor's SCAP content. Owns the Upload entry point; the content pickers'
@@ -43,7 +42,6 @@ async function loadContent() {
  * their "Manage content" item brings this card into view. */
 export const ScapContentCard = ({ refreshKey, onChanged }) => {
     const [rows, setRows] = useState([]);
-    const [ssgVersion, setSsgVersion] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [uploading, setUploading] = useState(false);
@@ -54,19 +52,15 @@ export const ScapContentCard = ({ refreshKey, onChanged }) => {
     const fileInputRef = useRef(null);
 
     function reload() {
-        return loadContent().then(({ rows, ssgVersion }) => {
-            setRows(rows);
-            setSsgVersion(ssgVersion);
-        });
+        return loadContent().then(setRows);
     }
 
     useEffect(() => {
         let cancelled = false;
         loadContent()
-                .then(({ rows, ssgVersion }) => {
+                .then(rows => {
                     if (cancelled) return;
                     setRows(rows);
-                    setSsgVersion(ssgVersion);
                     setLoading(false);
                 })
                 .catch(ex => { if (!cancelled) { setError(ex.message || String(ex)); setLoading(false) } });
@@ -205,20 +199,9 @@ export const ScapContentCard = ({ refreshKey, onChanged }) => {
                                                 <div className="ct-cell-subline">{item.name}</div>
                                             </Td>
                                             <Td dataLabel={_("Source")}>
-                                                {/* The package version is the Version column's
-                                                    value again, so it lives in a tooltip, not a
-                                                    second line (Peter 10-15). */}
-                                                {item.source === 'system'
-                                                    ? (
-                                                        <Tooltip
-                                                            content={ssgVersion
-                                                                ? cockpit.format(_("Installed by the scap-security-guide $0 package; updated with dnf"), ssgVersion)
-                                                                : _("Installed by the scap-security-guide package; updated with dnf")}
-                                                        >
-                                                            <span className="ct-included-source" tabIndex={0}>{_("Included")}</span>
-                                                        </Tooltip>
-                                                    )
-                                                    : _("Uploaded")}
+                                                {/* Plain "Installed": the Version column already
+                                                    shows the scap-security-guide version (Peter 10-15, C2). */}
+                                                {item.source === 'system' ? _("Installed") : _("Uploaded")}
                                             </Td>
                                             <Td dataLabel={_("Version")}>{item.version || '—'}</Td>
                                             <Td dataLabel={_("Size")} className="ct-num-col">{formatBytes(item.size)}</Td>

@@ -1151,11 +1151,3 @@
 .ct-history-download .pf-v6-c-button {
     --pf-v6-c-button--Gap: var(--pf-t--global--spacer--xs);
 }
-
-// "Included" carries the package tooltip (Peter 10-15, C1); a dotted
-// underline says there is more on hover or focus.
-.ct-included-source {
-    text-decoration: underline dotted;
-    text-underline-offset: 0.2em;
-    cursor: help;
-}

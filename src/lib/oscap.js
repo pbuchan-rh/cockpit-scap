@@ -80,17 +80,6 @@ export async function getContentVersion(sdsPath) {
     }
 }
 
-/* Version of the installed scap-security-guide RPM (the "Included"
- * content), or null when it is not installed. */
-export async function getSsgPackageVersion() {
-    try {
-        const out = await cockpit.spawn(['rpm', '-q', '--qf', '%{VERSION}', 'scap-security-guide'], { err: 'ignore' });
-        return out.trim() || null;
-    } catch {
-        return null;
-    }
-}
-
 export const SYSTEM_CONTENT_DIR = SSG_CONTENT_DIR;
 
 /* Default content for this host: the SSG datastream matching the OS major
