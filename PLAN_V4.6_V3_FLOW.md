@@ -283,6 +283,15 @@ override the matching text above.
    the cut compliance-threshold opinion coming back; the number speaks for
    itself. Severity colors on rule groups are fine (they are the content's
    data).
+3. **Layout: native white container (supersedes spec D's "gray page as
+   the panel ... no card outlines").** Peter at the checkpoint: the page
+   not being in a container "doesn't follow cockpitisms". Cockpit 356's
+   own pages sit in one white main container with the tabs inside, cards
+   outlined (Overview). Restored; dividers and tinted surfaces stay. The
+   house rule in ~/Projects/cockpit/CLAUDE.md was wrong and is fixed.
+4. **Text weight: PF default.** Peter: the v3-weight copy is "too big and
+   bold ... dev looks better". The weight switch and scap-dev-heavy are
+   gone.
 
-Reason: the module stays stateless (only `~/SCAP` user artifacts) and
+Reason (1, 2): the module stays stateless (only `~/SCAP` user artifacts) and
 opinionless (the Cockpit ideal: no stored opinion of server state).

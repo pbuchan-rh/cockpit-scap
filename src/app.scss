@@ -6,23 +6,14 @@
     flex-direction: column;
 }
 
-// House single-panel layout (~/Projects/cockpit/CLAUDE.md, R5): the gray
-// page background IS the panel and white cards float on it. PF's default
-// paints the main container and section white (box inside box), so both go
-// transparent, and cards lose their outline: the gray around them already
-// separates them. Borders contain, dividers organize (spec D): structure
-// inside a card comes from PF <Divider>s, not card outlines.
-.pf-v6-c-page__main-container {
-    --pf-v6-c-page__main-container--BackgroundColor: transparent;
-    --pf-v6-c-page__main-container--BorderColor: transparent;
-}
-
-.pf-v6-c-page__main-section {
-    --pf-v6-c-page__main-section--BackgroundColor: transparent;
-}
-
+// Native Cockpit layout (~/Projects/cockpit/CLAUDE.md, Layout Pattern):
+// the module sits in PF's one white main container on the gray shell, like
+// Overview/Services/Networking. Cards inside it keep an outline (Overview
+// style); --border--color--default has a dark-theme value (--100 does not).
+// Borders contain, dividers organize (spec D): structure inside a card comes
+// from PF <Divider>s and tinted surfaces.
 .pf-v6-c-card {
-    --pf-v6-c-card--BorderColor: transparent;
+    --pf-v6-c-card--BorderColor: var(--pf-t--global--border--color--default);
 }
 
 // A <Divider> sits between header, body and footer of every card.
@@ -49,22 +40,6 @@
     border-inline-start: var(--pf-t--global--border--width--extra-strong, 3px) solid var(--pf-t--global--color--brand--default);
     border-start-start-radius: 0;
     border-end-start-radius: 0;
-}
-
-// TEXT WEIGHT A/B (CHECKPOINT): the only weight override, one class on
-// <html>. tools/deploy-dev-copies.sh sets it in the scap-dev-heavy copy
-// only; PF defaults otherwise. v3 weight = 16 px body text and bold card
-// titles, current tab, buttons and form labels (main style.css).
-:root.ct-weight-v3 {
-    --pf-t--global--font--size--body--default: var(--pf-t--global--font--size--md);
-
-    .pf-v6-c-card__title-text,
-    .pf-v6-c-tabs__item.pf-m-current .pf-v6-c-tabs__item-text,
-    .pf-v6-c-button,
-    .pf-v6-c-form__label-text,
-    .pf-v6-c-expandable-section__toggle-text {
-        font-weight: var(--pf-t--global--font--weight--400);
-    }
 }
 
 .pf-v6-c-card .pf-v6-c-card__body {

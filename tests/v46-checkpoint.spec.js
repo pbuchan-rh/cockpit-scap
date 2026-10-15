@@ -1,12 +1,12 @@
-// V4.6 CHECKPOINT: both dev copies load inside the Cockpit shell next to
-// the RPM's /scap, with the right sidebar label and text weight, and the
-// RPM page itself still loads.
+// V4.6 CHECKPOINT: the dev copy loads inside the Cockpit shell next to the
+// RPM's /scap, with its sidebar label, PF default text weight and the
+// native white page container with outlined cards; the RPM page itself
+// still loads.
 const { test, expect } = require('@playwright/test');
 const { openModuleInShell } = require('./helpers/cockpit');
 
 const COPIES = [
-    { path: '/scap-dev', label: 'SCAP Security (dev)', heavy: false },
-    { path: '/scap-dev-heavy', label: 'SCAP Security (dev, v3 weight)', heavy: true },
+    { path: '/scap-dev', label: 'SCAP Security (dev)' },
 ];
 
 for (const c of COPIES) {
@@ -15,18 +15,13 @@ for (const c of COPIES) {
         await expect(page.locator('#host-apps').getByRole('link', { name: c.label, exact: true })).toBeVisible();
         await expect(frame.getByRole('button', { name: 'Run Scan' })).toBeVisible();
         const m = await frame.evaluate(() => ({
-            cls: document.documentElement.className,
             size: getComputedStyle(document.body).fontSize,
-            btn: getComputedStyle(document.querySelector('.pf-v6-c-button')).fontWeight,
+            container: getComputedStyle(document.querySelector('.pf-v6-c-page__main-container')).backgroundColor,
+            card: getComputedStyle(document.querySelector('.pf-v6-c-card'), '::before').borderTopColor,
         }));
-        if (c.heavy) {
-            expect(m.cls).toContain('ct-weight-v3');
-            expect(m.size).toBe('16px');
-            expect(Number(m.btn)).toBeGreaterThanOrEqual(700);
-        } else {
-            expect(m.cls).not.toContain('ct-weight-v3');
-            expect(m.size).toBe('14px');
-        }
+        expect(m.size).toBe('14px');
+        expect(m.container).not.toBe('rgba(0, 0, 0, 0)');
+        expect(m.card).not.toBe('rgba(0, 0, 0, 0)');
     });
 }
 

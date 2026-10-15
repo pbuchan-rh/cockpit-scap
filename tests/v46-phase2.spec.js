@@ -1,7 +1,7 @@
 // V4.6 Phase 2 (visual surfaces and dividers, spec D), INSIDE the Cockpit
 // shell, in light, OS dark, and Cockpit Session -> Style: Dark (light OS).
-//   - house single-panel layout: transparent main container + section, gray
-//     page as the panel, white (card-colored) cards with no outline
+//   - native Cockpit layout (Amendment 3): opaque white main container like
+//     the shell's own pages, outlined cards inside it
 //   - a PF Divider under every card header and above every card footer
 //   - severity group headers: neutral bold text + a readable PF Label
 //   - neutral score tile (Amendment 2): no color by value
@@ -82,10 +82,9 @@ test.describe.serial('surfaces', () => {
                     cardOutline: getComputedStyle(card, '::before').borderTopColor,
                 };
             });
-            expect(rgb(layers.container).a).toBe(0);
-            expect(rgb(layers.containerBorder).a).toBe(0);
-            expect(rgb(layers.section).a).toBe(0);
-            expect(rgb(layers.cardOutline).a).toBe(0);
+            expect(rgb(layers.container).a).toBe(1);
+            expect(rgb(layers.cardOutline).a).toBeGreaterThan(0);
+            if (!theme.dark) expect(layers.container).toBe('rgb(255, 255, 255)');
             expect(layers.card).not.toBe(layers.body);
             if (!theme.dark) expect(layers.card).toBe('rgb(255, 255, 255)');
 
