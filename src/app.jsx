@@ -8,7 +8,7 @@ import { Tab, Tabs, TabTitleText } from "@patternfly/react-core/dist/esm/compone
 
 import { makeTmpdir, startScan, readResults, cleanupTmpdir } from './lib/oscap.js';
 import { groupReferences, parseResults } from './lib/results.js';
-import { extractProfile, flattenProfileRules, getTailoringDiskUsage } from './lib/tailoring.js';
+import { extractProfile, flattenProfileRules, getTailoringDiskUsage, parseTailoringXml, readTailoringXml } from './lib/tailoring.js';
 import { saveScan, readSavedScanFiles, getScanHistoryDiskUsage } from './lib/scanHistory.js';
 import { ScanSetup } from './components/ScanSetup.jsx';
 import { ScanProgress } from './components/ScanProgress.jsx';
@@ -40,6 +40,11 @@ export const App = () => {
     // Remediation Builder drawer: null when closed, else { preset, key }
     // (key remounts it so each open starts from its preset selection).
     const [builder, setBuilder] = useState(null);
+    // Running view: { config, startedAt, total, titles } for the scan in
+    // flight. total (rules the profile/tailoring selects) and titles arrive
+    // a moment after the scan starts, from the same extractProfile() call
+    // the results' rule metadata uses.
+    const [scanInfo, setScanInfo] = useState(null);
 
     useEffect(() => {
         if (typeof cockpit.permission !== 'function') return;
@@ -66,7 +71,29 @@ export const App = () => {
     const handleScan = useCallback(async (config) => {
         setError(null);
         setOutput([]);
+        const startedAt = Date.now();
+        setScanInfo({ config, startedAt, total: null, titles: null });
         setPhase('running');
+
+        // Started alongside the scan: gives the running view its total and
+        // rule titles, and the results their rule metadata.
+        const extractedPromise = extractProfile(config.baseProfileId, config.content)
+                .catch(ex => {
+                    console.error('Failed to load rule metadata for scan results:', ex.message || ex);
+                    return null;
+                });
+        const tailoringChanges = config.tailoring
+            ? readTailoringXml(config.tailoring).then(parseTailoringXml)
+                    .catch(() => null)
+            : Promise.resolve(null);
+        Promise.all([extractedPromise, tailoringChanges]).then(([extracted, changes]) => {
+            if (!extracted) return;
+            const rules = flattenProfileRules(extracted);
+            const ruleChanges = changes?.ruleChanges || {};
+            const total = rules.filter(r => (r.id in ruleChanges ? ruleChanges[r.id] : r.selected)).length;
+            const titles = Object.fromEntries(rules.map(r => [r.id, r.title]));
+            setScanInfo(s => (s && s.startedAt === startedAt ? { ...s, total: total || null, titles } : s));
+        });
 
         let dir = null;
         try {
@@ -96,14 +123,7 @@ export const App = () => {
             setScanProc(null);
             console.debug('Scan finished, hasFindings:', hasFindings);
 
-            const [files, extracted] = await Promise.all([
-                readResults(dir),
-                extractProfile(config.baseProfileId, config.content)
-                        .catch(ex => {
-                            console.error('Failed to load rule metadata for scan results:', ex.message || ex);
-                            return null;
-                        }),
-            ]);
+            const [files, extracted] = await Promise.all([readResults(dir), extractedPromise]);
             const ruleMeta = {};
             if (extracted) {
                 flattenProfileRules(extracted).forEach(r => {
@@ -287,7 +307,7 @@ export const App = () => {
                                         )}
 
                                         {phase === 'running' && (
-                                            <ScanProgress output={output} onCancel={handleCancel} />
+                                            <ScanProgress output={output} info={scanInfo} onCancel={handleCancel} />
                                         )}
 
                                         {phase === 'results' && (

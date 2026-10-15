@@ -174,6 +174,9 @@ export const ScanSetup = ({ adminAllowed, onScan, tailoringRefreshKey, contentRe
             tailoring: selectedTailoring ? selectedTailoring.path : null,
             tailoringName: selectedTailoring ? selectedTailoring.name : null,
             baseProfileId: selectedTailoring ? selectedTailoring.base_profile_id : profile,
+            baseProfileTitle: (selectedTailoring
+                ? (profiles.find(p => p.id === selectedTailoring.base_profile_id)?.title || selectedTailoring.base_profile_title)
+                : profiles.find(p => p.id === profile)?.title) || null,
         });
     }
 

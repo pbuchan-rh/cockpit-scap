@@ -33,23 +33,65 @@ export async function detectContent() {
     ];
 }
 
-/* Consolidates three previously copy-pasted sdsDisplayName() implementations
- * (ScanSetup.jsx, TailoringEditor.jsx, TailoringList.jsx). SSG's
- * ssg-<id>-ds.xml stripping only makes sense for system content; uploaded
- * files just lose their .xml extension. `source` is optional — call sites
- * that only have a bare path (e.g. a saved tailoring sidecar's sds_path,
- * with no {path,source} object available) fall back to detecting system
- * content by its fixed install-path prefix. */
+// Friendly names for SSG datastreams (v3 index.js SDS_DISPLAY_NAMES).
+const SDS_DISPLAY_NAMES = {
+    'ssg-fedora-ds.xml': 'Fedora',
+    'ssg-ol8-ds.xml': 'Oracle Linux 8',
+    'ssg-ol9-ds.xml': 'Oracle Linux 9',
+    'ssg-ubuntu2204-ds.xml': 'Ubuntu 22.04',
+    'ssg-ubuntu2404-ds.xml': 'Ubuntu 24.04',
+};
+
+/* "Red Hat Enterprise Linux 10" for ssg-rhel10-ds.xml, wherever it lives
+ * (an uploaded ssg-rhel9-ds.xml gets the friendly name too; the pickers
+ * group by source, and lists show the file name as a subline). Other SSG
+ * names lose their ssg-/-ds.xml decoration; any other upload just loses
+ * .xml. `source` is optional: a bare path (e.g. a tailoring sidecar's
+ * sds_path) is system content when it is under the SSG install dir. */
 export function sdsDisplayName(path, source) {
     if (!path) return '—';
     const name = path.split('/').pop() ?? path;
+    const rhel = name.match(/^ssg-rhel(\d+)-ds\.xml$/);
+    if (rhel) return `Red Hat Enterprise Linux ${rhel[1]}`;
+    if (SDS_DISPLAY_NAMES[name]) return SDS_DISPLAY_NAMES[name];
     const src = source ?? (path.startsWith(SSG_CONTENT_DIR + '/') ? 'system' : 'uploaded');
-    if (src === 'system') {
+    if (src === 'system' || /^ssg-.*-ds\.xml$/.test(name)) {
         return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '')
                 .replace(/-/g, ' ');
     }
     return name.replace(/\.xml$/, '');
 }
+
+export function contentFileName(path) {
+    return (path || '').split('/').pop();
+}
+
+/* The Benchmark's own version ("0.1.81" for SSG). grep -m1 stops at the
+ * first hit near the top of the file: ~2 ms on a 27 MB datastream, where
+ * `oscap info` would parse the whole thing. null when the content does not
+ * use the xccdf-1.2 prefix (non-SSG content) or the read fails. */
+export async function getContentVersion(sdsPath) {
+    try {
+        const out = await cockpit.spawn(['grep', '-m1', '-o', '<xccdf-1.2:version[^<]*<', sdsPath], { err: 'ignore' });
+        const m = out.match(/>([^<]*)</);
+        return m ? m[1].trim() || null : null;
+    } catch {
+        return null;
+    }
+}
+
+/* Version of the installed scap-security-guide RPM (the "Included"
+ * content), or null when it is not installed. */
+export async function getSsgPackageVersion() {
+    try {
+        const out = await cockpit.spawn(['rpm', '-q', '--qf', '%{VERSION}', 'scap-security-guide'], { err: 'ignore' });
+        return out.trim() || null;
+    } catch {
+        return null;
+    }
+}
+
+export const SYSTEM_CONTENT_DIR = SSG_CONTENT_DIR;
 
 /* Default content for this host: the SSG datastream matching the OS major
  * version, else any datastream for the OS id, else the first one found.
@@ -146,8 +188,12 @@ export async function makeTmpdir() {
     return output.trim();
 }
 
+/* `--progress` (as v3) makes oscap print one "<rule id>:<result>" line per
+ * evaluated rule instead of its verbose per-rule blocks; the running view
+ * parses those lines (parseProgressLine) for the bar, tiles and feed, and
+ * shows them raw behind "Show oscap output". */
 export function startScan(config, tmpdir, onOutput) {
-    const args = ['oscap', 'xccdf', 'eval'];
+    const args = ['oscap', 'xccdf', 'eval', '--progress'];
     if (config.tailoring) args.push('--tailoring-file', config.tailoring);
     args.push('--profile', config.profile);
     args.push('--results', `${tmpdir}/results.xml`);
@@ -164,6 +210,14 @@ export function startScan(config, tmpdir, onOutput) {
         for (const line of lines) onOutput(line);
     });
     return proc;
+}
+
+const PROGRESS_RE = /^(xccdf_\S+):(pass|fail|error|unknown|notchecked|notapplicable|notselected|informational|fixed)$/;
+
+/* {id, result} for one `oscap --progress` line, else null. */
+export function parseProgressLine(line) {
+    const m = line.trim().match(PROGRESS_RE);
+    return m ? { id: m[1], result: m[2] } : null;
 }
 
 export async function readResults(tmpdir) {
