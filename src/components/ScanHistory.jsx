@@ -97,12 +97,7 @@ const RowActions = ({ sc, busy, disabled, onView, onDownload, onDelete }) => {
                     <DropdownList>
                         <DropdownItem value="html" onClick={() => onDownload('html')}>{_("HTML report")}</DropdownItem>
                         <DropdownItem value="xml" onClick={() => onDownload('xml')}>{_("Results XML")}</DropdownItem>
-                        <DropdownItem
-                            value="arf" onClick={() => onDownload('arf')}
-                            description={_("Asset Reporting Format: results, OVAL data and asset identity")}
-                        >
-                            {_("ARF")}
-                        </DropdownItem>
+                        <DropdownItem value="arf" onClick={() => onDownload('arf')}>{_("ARF")}</DropdownItem>
                     </DropdownList>
                 </Dropdown>
             </FlexItem>

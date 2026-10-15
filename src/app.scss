@@ -305,14 +305,6 @@
     }
 }
 
-.ct-count-pass {
-    color: var(--pf-t--global--text--color--status--success--default);
-}
-
-.ct-count-fail {
-    color: var(--pf-t--global--text--color--status--danger--default);
-}
-
 .ct-score-value {
     font-size: var(--pf-t--global--font--size--4xl);
     font-weight: var(--pf-t--global--font--weight--heading--bold, 700);
@@ -367,11 +359,13 @@
     white-space: nowrap;
 }
 
-// Three zones in one row, divided: score | summary | builder panel.
-// Stacked (horizontal dividers) below the lg breakpoint.
+// Three zones, divided: score | counts | builder panel (Peter 10-15).
+// Phone: stacked. From md: score + counts side by side, the builder full
+// width under them. From xl (1200 px, a 1440 px window with the shell
+// sidebar): three equal thirds.
 .ct-results-zones {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--pf-t--global--spacer--md);
     padding-block: var(--pf-t--global--spacer--sm);
 }
@@ -384,35 +378,53 @@
 .ct-results-zone-summary {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-}
-
-.ct-results-zone-score {
     align-items: center;
+    justify-content: center;
+    gap: var(--pf-t--global--spacer--sm);
 }
 
-.ct-results-summary-line {
-    font-size: var(--pf-t--global--font--size--md);
-    font-variant-numeric: tabular-nums;
-    margin: 0;
+// Score tile scaled to its zone rather than a small badge.
+.ct-results-zone-score .ct-score-tile {
+    inline-size: min(100%, 14rem);
+    padding: var(--pf-t--global--spacer--lg) var(--pf-t--global--spacer--md);
+
+    .ct-score-value {
+        font-size: calc(var(--pf-t--global--font--size--4xl) * 1.5);
+    }
 }
 
-@media (width >= 992px) {
+// The running view's tiles, sized for a third rather than the progress row.
+.ct-results-zone-summary {
+    .ct-live-tiles {
+        flex: none;
+        align-self: stretch;
+    }
+
+    .ct-results-other-counts {
+        margin: 0;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+@media (width >= 768px) {
     .ct-results-zones {
-        flex-direction: row;
-        align-items: stretch;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     }
 
-    .ct-results-zone-score {
-        flex: 0 0 auto;
-    }
-
-    .ct-results-zone-summary {
-        flex: 1 1 0;
-    }
-
+    .ct-results-zone-divider-builder,
     .ct-builder-panel {
-        flex: 0 1 26rem;
+        grid-column: 1 / -1;
+    }
+}
+
+@media (width >= 1200px) {
+    .ct-results-zones {
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+
+    .ct-results-zone-divider-builder,
+    .ct-builder-panel {
+        grid-column: auto;
     }
 }
 
@@ -423,8 +435,9 @@
     border-radius: var(--pf-t--global--border--radius--small);
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: var(--pf-t--global--spacer--sm);
-    padding: var(--pf-t--global--spacer--md) var(--pf-t--global--spacer--lg);
+    padding: var(--pf-t--global--spacer--md);
 }
 
 .ct-builder-actions {

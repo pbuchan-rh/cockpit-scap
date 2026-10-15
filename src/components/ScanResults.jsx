@@ -333,6 +333,9 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
                         {actionError}
                     </Alert>
                 )}
+                {/* Equal thirds (Peter 10-15): score | counts | Builder,
+                    divided. Below 1200 px the Builder drops under score +
+                    counts; on a phone everything stacks. */}
                 <div className="ct-results-zones">
                     <div className="ct-results-zone ct-results-zone-score">
                         <span className={`ct-score-tile${scoreStatus ? ` ct-score-${scoreStatus}` : ''}`} data-score-status={scoreStatus || 'none'}>
@@ -342,22 +345,34 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
                             <span className="ct-score-caption">{_("Score")}</span>
                         </span>
                     </div>
-                    <Divider orientation={{ default: 'horizontal', lg: 'vertical' }} className="ct-results-zone-divider" />
+                    <Divider orientation={{ default: 'horizontal', md: 'vertical' }} className="ct-results-zone-divider" />
                     <div className="ct-results-zone ct-results-zone-summary">
-                        <p className="ct-results-summary-line">
-                            <span className="ct-count-pass">{cockpit.format(_("$0 passed"), pass)}</span>
-                            {' · '}
-                            <span className={fail > 0 ? 'ct-count-fail' : undefined}>{cockpit.format(_("$0 failed"), fail)}</span>
-                            {' · '}
-                            {cockpit.format(_("$0 n/a"), notapplicable)}
-                            {' · '}
-                            <span className={errorCount > 0 ? 'ct-count-fail' : undefined}>{cockpit.format(_("$0 errors"), errorCount)}</span>
+                        {/* The running view's tiles, final counts. */}
+                        <div className="ct-live-tiles">
+                            <div className="ct-live-tile ct-live-tile-pass">
+                                <span className="ct-live-tile-num" data-ct-count="pass">{pass}</span>
+                                <span className="ct-live-tile-label">{_("Passed")}</span>
+                            </div>
+                            <div className="ct-live-tile ct-live-tile-fail">
+                                <span className="ct-live-tile-num" data-ct-count="fail">{fail}</span>
+                                <span className="ct-live-tile-label">{_("Failed")}</span>
+                            </div>
+                            <div className="ct-live-tile ct-live-tile-error">
+                                <span className="ct-live-tile-num" data-ct-count="error">{errorCount}</span>
+                                <span className="ct-live-tile-label">{_("Errors")}</span>
+                            </div>
+                        </div>
+                        <p className="ct-results-sub ct-results-other-counts">
+                            <span data-ct-count="notapplicable">{cockpit.format(_("$0 n/a"), notapplicable)}</span>
+                            {notchecked > 0 && (
+                                <>
+                                    {' · '}
+                                    <span data-ct-count="notchecked">{cockpit.format(_("$0 not checked"), notchecked)}</span>
+                                </>
+                            )}
                         </p>
-                        {notchecked > 0 && (
-                            <p className="ct-results-sub">{cockpit.format(cockpit.ngettext("$0 rule not checked", "$0 rules not checked", notchecked), notchecked)}</p>
-                        )}
                     </div>
-                    <Divider orientation={{ default: 'horizontal', lg: 'vertical' }} className="ct-results-zone-divider" />
+                    <Divider orientation={{ default: 'horizontal', xl: 'vertical' }} className="ct-results-zone-divider ct-results-zone-divider-builder" />
                     <div className="ct-results-zone ct-builder-panel ct-surface-accent">
                         <Title headingLevel="h3" size="lg">{_("Remediation Builder")}</Title>
                         {sevCounts.length > 0 && (
@@ -374,15 +389,16 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
                                 ? _("No failing rules to remediate.")
                                 : cockpit.format(cockpit.ngettext("$0 critical/high rule can be auto-remediated", "$0 critical/high rules can be auto-remediated", autoCritHigh), autoCritHigh)}
                         </p>
+                        {/* Small buttons: both fit one line in a third at 1440 px. */}
                         <div className="ct-builder-actions">
                             <Button
-                                variant="primary" isDisabled={!sdsPath || autoCritHigh === 0}
+                                variant="primary" size="sm" isDisabled={!sdsPath || autoCritHigh === 0}
                                 onClick={() => onOpenBuilder('critical')}
                             >
                                 {cockpit.format(_("Critical & high ($0)"), autoCritHigh)}
                             </Button>
                             <Button
-                                variant="secondary" isDisabled={!sdsPath || fails.length === 0}
+                                variant="secondary" size="sm" isDisabled={!sdsPath || fails.length === 0}
                                 onClick={() => onOpenBuilder('all')}
                             >
                                 {cockpit.format(_("All failures ($0)"), fails.length)}
@@ -458,12 +474,7 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
                     <DropdownList>
                         <DropdownItem value="html" onClick={() => handleDownload('html')}>{_("HTML report")}</DropdownItem>
                         <DropdownItem value="xml" onClick={() => handleDownload('xml')}>{_("Results XML")}</DropdownItem>
-                        <DropdownItem
-                            value="arf" onClick={() => handleDownload('arf')}
-                            description={_("Asset Reporting Format: results, OVAL data and asset identity")}
-                        >
-                            {_("ARF")}
-                        </DropdownItem>
+                        <DropdownItem value="arf" onClick={() => handleDownload('arf')}>{_("ARF")}</DropdownItem>
                     </DropdownList>
                 </Dropdown>
                 <Button variant="secondary" className="ct-results-close" onClick={onClose}>{_("Close")}</Button>

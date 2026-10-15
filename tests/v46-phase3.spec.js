@@ -34,11 +34,13 @@ test('header: label, profile, date; duration and content + SSG version', async (
     await expect(header.locator('.ct-results-meta')).toContainText(/SSG \d+\.\d+\.\d+/);
 });
 
-test('three zones: score | summary | builder panel, divided; one primary', async () => {
+test('three zones: score | count tiles | builder panel, divided; one primary', async () => {
     const results = frame.locator('[data-ct-results]');
     const zones = results.locator('.ct-results-zones');
     await expect(zones.locator('.ct-score-tile')).toContainText('%');
-    await expect(zones.locator('.ct-results-summary-line')).toHaveText(/^\d+ passed · \d+ failed · \d+ n\/a · \d+ errors$/);
+    // Polish R1: the running view's PASSED / FAILED / ERRORS tiles, n/a under them.
+    await expect(zones.locator('.ct-results-zone-summary .ct-live-tile-label')).toHaveText(['Passed', 'Failed', 'Errors']);
+    await expect(zones.locator('.ct-results-other-counts')).toHaveText(/^\d+ n\/a( · \d+ not checked)?$/);
     await expect(zones.locator('> .pf-v6-c-divider')).toHaveCount(2);
     const panel = zones.locator('.ct-builder-panel');
     await expect(panel).toContainText('Remediation Builder');
