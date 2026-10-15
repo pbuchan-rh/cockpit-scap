@@ -72,7 +72,7 @@ const RowActions = ({ sc, busy, disabled, onView, onDownload, onDelete }) => {
                     {_("View")}
                 </Button>
             </FlexItem>
-            <FlexItem>
+            <FlexItem className="ct-history-download">
                 <Dropdown
                     isOpen={downloadOpen}
                     onOpenChange={setDownloadOpen}
@@ -120,6 +120,18 @@ const RowActions = ({ sc, busy, disabled, onView, onDownload, onDelete }) => {
                     )}
                 >
                     <DropdownList>
+                        {/* Below 992 px the Download menu folds in here (the
+                            row would not fit its card otherwise). */}
+                        <DropdownItem value="html" className="ct-history-kebab-download" onClick={() => onDownload('html')}>
+                            {_("Download HTML report")}
+                        </DropdownItem>
+                        <DropdownItem value="xml" className="ct-history-kebab-download" onClick={() => onDownload('xml')}>
+                            {_("Download results XML")}
+                        </DropdownItem>
+                        <DropdownItem value="arf" className="ct-history-kebab-download" onClick={() => onDownload('arf')}>
+                            {_("Download ARF")}
+                        </DropdownItem>
+                        <Divider component="li" className="ct-history-kebab-download" />
                         <DropdownItem value="delete" className="ct-menu-danger" onClick={onDelete}>{_("Delete")}</DropdownItem>
                     </DropdownList>
                 </Dropdown>
@@ -238,7 +250,7 @@ export const ScanHistory = ({ refreshKey, onView, onChanged, diskUsage }) => {
                                 <Tbody>
                                     {scans.map(sc => (
                                         <Tr key={sc.dir}>
-                                            <Td dataLabel={_("Date")}>{formatTimestamp(sc.timestamp)}</Td>
+                                            <Td dataLabel={_("Date")} className="ct-date-cell">{formatTimestamp(sc.timestamp)}</Td>
                                             <Td dataLabel={_("Profile")} visibility={WIDE}>
                                                 <div>{sc.profile_title || sc.profile_id}</div>
                                                 {sc.tailoring_file && sc.tailoring_file !== sc.profile_title && (

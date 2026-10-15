@@ -124,10 +124,6 @@
     max-inline-size: 40rem;
 }
 
-.ct-path-toggle {
-    margin-block-start: var(--pf-t--global--spacer--xs);
-}
-
 .ct-tailoring-path-input {
     margin-block-start: var(--pf-t--global--spacer--xs);
 }
@@ -622,6 +618,15 @@
     margin-inline-start: auto;
 }
 
+// Phone width: the footer buttons wrap instead of truncating "Download".
+.ct-results-footer {
+    flex-wrap: wrap;
+
+    > * {
+        flex-shrink: 0;
+    }
+}
+
 // ---- Remediation Builder drawer (spec C) ---------------------------------
 
 // The drawer wraps the whole Page so its panel is viewport-high and scrolls
@@ -778,8 +783,6 @@
 }
 
 .ct-tailor-actionbar {
-    position: sticky;
-    inset-block-start: 0;
     z-index: var(--pf-t--global--z-index--sm, 200);
     display: flex;
     flex-wrap: wrap;
@@ -788,6 +791,15 @@
     padding: var(--pf-t--global--spacer--sm) var(--pf-t--global--spacer--lg);
     background: var(--pf-t--global--background--color--primary--default);
     border-block: var(--pf-t--global--border--width--regular, 1px) solid var(--pf-t--global--border--color--default);
+}
+
+// Sticky from tablet width up; on a phone the wrapped bar would cover a
+// third of the screen.
+@media (width >= 768px) {
+    .ct-tailor-actionbar {
+        position: sticky;
+        inset-block-start: 0;
+    }
 }
 
 .ct-tailor-actionbar-name {
@@ -1000,6 +1012,27 @@
 
 .ct-score-delta-same {
     color: var(--pf-t--global--text--color--subtle);
+}
+
+// History row actions: View · Download ▾ · ⋮ (Delete) from 992 px; below
+// that View · ⋮ with the downloads inside the kebab, so the row fits.
+@media (width < 992px) {
+    .ct-history-download.ct-history-download {
+        display: none;
+    }
+}
+
+@media (width >= 992px) {
+    // Doubled class: outranks PF's own menu item / divider display.
+    .ct-history-kebab-download.ct-history-kebab-download {
+        display: none;
+    }
+}
+
+@media (width >= 768px) {
+    .pf-v6-c-table .ct-date-cell {
+        white-space: nowrap;
+    }
 }
 
 .ct-menu-danger .pf-v6-c-menu__item-text {

@@ -76,23 +76,34 @@ async function requestAdmin(page) {
         '#super-user-indicator button',
         'button:has-text("Turn on administrative access")',
     ];
-    for (const sel of shellSelectors) {
-        const el = page.locator(sel).first();
-        // Use waitFor (not isVisible) — isVisible is immediate and ignores the timeout option
-        const visible = await el.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
-        if (visible) {
+    const limited = page.locator('a:has-text("Limited access"), button:has-text("Limited access")');
+    // Retried: the switch dialog can be slow to show its password field,
+    // and a missed prompt used to leave the session silently limited.
+    for (let attempt = 0; attempt < 3; attempt++) {
+        let clicked = false;
+        for (const sel of shellSelectors) {
+            const el = page.locator(sel).first();
+            // Use waitFor (not isVisible) — isVisible is immediate and ignores the timeout option
+            const visible = await el.waitFor({ state: 'visible', timeout: attempt ? 2000 : 5000 }).then(() => true)
+                    .catch(() => false);
+            if (!visible) continue;
             await el.click();
+            clicked = true;
             // Password prompt (passwordless sudo completes quickly or without prompt)
             const pwField = page.locator('input[type="password"]').last();
-            if (await pwField.isVisible({ timeout: 3000 }).catch(() => false)) {
+            if (await pwField.waitFor({ state: 'visible', timeout: 5000 }).then(() => true)
+                    .catch(() => false)) {
                 await pwField.fill(COCKPIT_PASS);
                 await page.keyboard.press('Enter');
             }
-            // Wait for elevation to confirm — "Limited access" disappears when admin is granted
-            await page.locator('a:has-text("Limited access"), button:has-text("Limited access")')
-                .waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {});
             break;
         }
+        if (!clicked) return; // already administrative (no "Limited access" control)
+        // "Limited access" disappears when admin is granted
+        if (await limited.waitFor({ state: 'hidden', timeout: 15000 }).then(() => true)
+                .catch(() => false))
+            return;
+        await page.keyboard.press('Escape').catch(() => {});
     }
 }
 

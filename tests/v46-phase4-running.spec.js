@@ -98,7 +98,7 @@ test('running view: context, bar moves, tiles count up, feed follows / pauses / 
     }).toBe(true);
     await running.getByText('Failed only').click();
 
-    await page.screenshot({ path: `tests/screenshots/v46-phase4/running-1280x800@125-${browserName}.png` });
+    await page.screenshot({ path: `tests/test-results/v46-phase4/running-1280x800@125-${browserName}.png` });
 
     // Raw oscap output behind its expander.
     await running.getByRole('button', { name: 'Show oscap output' }).click();

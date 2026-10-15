@@ -22,5 +22,5 @@ test('sticky probe', async ({ browser, browserName }) => {
     await page.mouse.wheel(0, 800);
     await page.waitForTimeout(800);
     console.log('after wheel', await top(), await frame.evaluate(() => document.querySelector('.pf-v6-c-page__main').scrollTop));
-    await page.screenshot({ path: `tests/screenshots/v46-phase4/sticky-probe-${browserName}.png` });
+    await page.screenshot({ path: `tests/test-results/v46-phase4/sticky-probe-${browserName}.png` });
 });

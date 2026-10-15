@@ -86,7 +86,7 @@ test('new policy: sticky action bar, Rules / Variables / Changes sections, label
     const scrolled = await frame.evaluate(() => document.querySelector('.pf-v6-c-page__main').scrollTop);
     expect(scrolled).toBeGreaterThan(400);
     await expect(bar()).toBeInViewport();
-    await page.screenshot({ path: `tests/screenshots/v46-phase4/editor-sticky-${browserName}.png` });
+    await page.screenshot({ path: `tests/test-results/v46-phase4/editor-sticky-${browserName}.png` });
 });
 
 test('plurals and the two-column changes list', async ({ browserName }) => {
@@ -105,7 +105,7 @@ test('plurals and the two-column changes list', async ({ browserName }) => {
     const border = await summary.evaluate(el => getComputedStyle(el).borderTopWidth);
     expect(border).toBe('0px');
     await summary.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: `tests/screenshots/v46-phase4/editor-changes-${browserName}.png` });
+    await page.screenshot({ path: `tests/test-results/v46-phase4/editor-changes-${browserName}.png` });
 });
 
 test('Cancel with unsaved changes asks; Keep editing keeps them; Discard resets', async () => {
