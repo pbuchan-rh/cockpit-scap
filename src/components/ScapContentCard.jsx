@@ -8,6 +8,7 @@ import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/comp
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
+import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/index.js";
 import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/esm/components/Table/index.js";
 
 import { ListCardTitle } from './ListCardTitle.jsx';
@@ -204,16 +205,18 @@ export const ScapContentCard = ({ refreshKey, onChanged }) => {
                                                 <div className="ct-cell-subline">{item.name}</div>
                                             </Td>
                                             <Td dataLabel={_("Source")}>
+                                                {/* The package version is the Version column's
+                                                    value again, so it lives in a tooltip, not a
+                                                    second line (Peter 10-15). */}
                                                 {item.source === 'system'
                                                     ? (
-                                                        <>
-                                                            <div>{_("Included")}</div>
-                                                            {ssgVersion && (
-                                                                <div className="ct-cell-subline">
-                                                                    {cockpit.format(_("scap-security-guide $0"), ssgVersion)}
-                                                                </div>
-                                                            )}
-                                                        </>
+                                                        <Tooltip
+                                                            content={ssgVersion
+                                                                ? cockpit.format(_("Installed by the scap-security-guide $0 package; updated with dnf"), ssgVersion)
+                                                                : _("Installed by the scap-security-guide package; updated with dnf")}
+                                                        >
+                                                            <span className="ct-included-source" tabIndex={0}>{_("Included")}</span>
+                                                        </Tooltip>
                                                     )
                                                     : _("Uploaded")}
                                             </Td>
