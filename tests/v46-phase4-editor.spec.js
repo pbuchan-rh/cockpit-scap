@@ -77,7 +77,7 @@ test('new policy: sticky action bar, Rules / Variables / Changes sections, label
     await expect(editor().getByRole('group', { name: 'Severity:' })).toBeVisible();
     // Variables: a collapsible section (polish E1), closed for a new policy;
     // its inputs show once opened.
-    const varToggle = editor().getByRole('button', { name: /^Variables \(\d+\)/ });
+    const varToggle = editor().getByRole('button', { name: /^Variables \d+ · \d+ modified$/ });
     await expect(varToggle).toHaveAttribute('aria-expanded', 'false');
     await varToggle.click();
     await expect(editor().locator('.ct-tailor-values-grid .pf-v6-c-form__group').first()).toBeVisible();
