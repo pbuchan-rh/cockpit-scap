@@ -436,13 +436,21 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    // Content centered like the score and count tiles beside it (Peter 10-15, R2).
+    align-items: center;
+    text-align: center;
     gap: var(--pf-t--global--spacer--sm);
     padding: var(--pf-t--global--spacer--md);
+
+    .pf-v6-c-label-group__list {
+        justify-content: center;
+    }
 }
 
 .ct-builder-actions {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: var(--pf-t--global--spacer--sm);
 }
 
