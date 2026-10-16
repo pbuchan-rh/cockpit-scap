@@ -1,6 +1,6 @@
 // Safety guard for every spec that can click "Apply now" / "Apply" (fixes run
-// as root and change the host). Those specs may only ever run against the
-// disposable host scap-apply10. Call requireApplyHost() at the top of the
+// as root and change the host) or that removes/installs packages. Those
+// specs may only ever run against the disposable host scap-apply10. Call requireApplyHost() at the top of the
 // spec file, so a wrong COCKPIT_URL (including the tests/.env default) makes
 // the whole file fail before a browser starts.
 const { execFileSync } = require('child_process');
@@ -20,7 +20,7 @@ function applyHost() {
 function requireApplyHost() {
     const host = applyHost();
     if (!host.startsWith(APPLY_HOST_PREFIX))
-        throw new Error(`REFUSING TO RUN: this spec applies fixes as root and may only target ${APPLY_HOST_PREFIX}*, ` +
+        throw new Error(`REFUSING TO RUN: this spec changes the host as root (applies fixes or removes packages) and may only target ${APPLY_HOST_PREFIX}*, ` +
             `but COCKPIT_URL's host is "${host || '(unset)'}".`);
     return host;
 }
@@ -32,4 +32,11 @@ function sshApplyHost(command) {
     return execFileSync('ssh', ['-o', 'BatchMode=yes', `${user}@${host}`, command], { encoding: 'utf8' });
 }
 
-module.exports = { APPLY_HOST_PREFIX, requireApplyHost, sshApplyHost };
+/* Copies a file from the apply host to this machine (as COCKPIT_USER). */
+function scpFromApplyHost(remotePath, localPath) {
+    const host = requireApplyHost();
+    const user = process.env.COCKPIT_USER || 'pbuchan';
+    execFileSync('scp', ['-q', '-o', 'BatchMode=yes', `${user}@${host}:${remotePath}`, localPath]);
+}
+
+module.exports = { APPLY_HOST_PREFIX, requireApplyHost, sshApplyHost, scpFromApplyHost };
