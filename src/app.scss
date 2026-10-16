@@ -158,10 +158,12 @@
 
 // Install command in the "not installed" / "no content" EmptyStates.
 .ct-install-command {
-    max-inline-size: 36rem;
-    margin-inline: auto;
     margin-block-start: var(--pf-t--global--spacer--sm);
-    text-align: start;
+
+    // One line: the command must not break at its hyphens.
+    .pf-v6-c-clipboard-copy__text {
+        white-space: nowrap;
+    }
 }
 
 // Running view (spec A): context | live tiles, then the rule feed.

@@ -90,7 +90,7 @@ export const MissingPackagesCard = ({
             <Divider />
             <CardBody>
                 {children}
-                <EmptyState titleText={emptyTitle} headingLevel="h3" icon={CubesIcon} variant="sm">
+                <EmptyState titleText={emptyTitle} headingLevel="h3" icon={CubesIcon} variant="lg">
                     <EmptyStateBody>
                         <Content component="p">{description}</Content>
                         <Content component="p">
@@ -98,12 +98,14 @@ export const MissingPackagesCard = ({
                                 ? _("Use Install above, or run this command on the host:")
                                 : _("To install, run this command on the host:")}
                         </Content>
-                        <ClipboardCopy
-                            isReadOnly hoverTip={_("Copy")} clickTip={_("Copied")}
-                            className="ct-install-command"
-                        >
-                            {command}
-                        </ClipboardCopy>
+                        <div className="ct-install-command">
+                            <ClipboardCopy
+                                variant="inline-compact" isCode
+                                hoverTip={_("Copy")} clickTip={_("Copied")}
+                            >
+                                {command}
+                            </ClipboardCopy>
+                        </div>
                     </EmptyStateBody>
                 </EmptyState>
             </CardBody>
