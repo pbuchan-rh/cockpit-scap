@@ -161,6 +161,46 @@ async function checkRunRecord(scanTs, exitCode, ruleIds) {
     return { log, text, unit };
 }
 
+/* Puts the POOL's rules back to failing, so the spec can run again and
+ * again on the same host (step 3, scope D): removes what their fixes
+ * wrote (sysctl and coredump drop-ins, the CIS /etc/issue banner,
+ * login.defs PASS_MAX_DAYS), sets the sysctl runtime values back to the
+ * RHEL defaults and re-reads the vendor sysctl config. Then a targeted
+ * oscap eval of the pool proves they fail. scap-apply10 only
+ * (sshApplyHost refuses any other host). Returns the failing pool rules. */
+const SYSCTL_DEFAULTS = {
+    'kernel.dmesg_restrict': 0,
+    'kernel.yama.ptrace_scope': 0,
+    'net.ipv4.icmp_ignore_bogus_error_responses': 1,
+    'net.ipv4.icmp_echo_ignore_broadcasts': 1,
+    'net.ipv4.conf.all.log_martians': 0,
+    'net.ipv4.conf.default.log_martians': 0,
+    'net.ipv4.tcp_syncookies': 1,
+    'kernel.randomize_va_space': 2,
+    'net.ipv4.conf.all.secure_redirects': 1,
+    'net.ipv4.conf.default.secure_redirects': 1,
+    'net.ipv4.conf.all.accept_redirects': 1,
+    'net.ipv4.conf.default.accept_redirects': 1,
+    'net.ipv6.conf.all.accept_redirects': 1,
+    'net.ipv6.conf.default.accept_redirects': 1,
+};
+function resetPool() {
+    const dropins = POOL.filter(r => r.startsWith('sysctl_')).map(r => `/etc/sysctl.d/${r.slice(7)}.conf`);
+    const sets = Object.entries(SYSCTL_DEFAULTS).map(([k, v]) => `sysctl -q -w ${k}=${v}`)
+            .join('; ');
+    sshApplyHost(`sudo -n sh -c '
+set -e
+rm -f ${dropins.join(' ')} /etc/systemd/coredump.conf.d/complianceascode_hardening.conf
+printf "%s\\n" "\\S" "Kernel \\r on \\m" "" > /etc/issue
+sed -i "s/^PASS_MAX_DAYS.*/PASS_MAX_DAYS\t99999/" /etc/login.defs
+${sets}
+sysctl -q --system >/dev/null
+'`);
+    const rules = POOL.map(r => `--rule ${S.RULE}${r}`).join(' ');
+    const out = sshApplyHost(`sudo -n oscap xccdf eval --progress --profile ${S.PROFILE_L1} ${rules} ${S.DS} 2>/dev/null || true`);
+    return POOL.filter(r => new RegExp(`^${S.RULE}${r}:fail$`, 'm').test(out));
+}
+
 async function waitDone(title) {
     await expect(modal().locator('.pf-v6-c-modal-box__title')).toContainText(title, { timeout: 240000 });
 }
@@ -172,6 +212,9 @@ test.beforeAll(async ({ browser }) => {
     before = await S.snapshotScans(frame);
     tmpBefore = await S.snapshotTmp(frame);
     expect(remediationUnits(), 'no remediation unit left from an earlier run').toEqual([]);
+    const failing = resetPool();
+    console.log(`pool reset: ${failing.length}/${POOL.length} pool rules fail: ${failing.join(' ')}`);
+    expect(failing.length, 'pool rules failing after the reset').toBeGreaterThanOrEqual(2);
     // The v46-test content copy with the slow and the failing fix.
     testDs = `${home}/SCAP/content/${TEST_DS_NAME}`;
     sshApplyHost(`mkdir -p ~/SCAP/content && python3 -I - ${S.DS} ${testDs} <<'PY'
@@ -206,11 +249,14 @@ test('happy path: confirm dialog, live run, success, log + syslog, rescan proves
     const targets = (await failingInBuilder(POOL)).slice(0, 2);
     expect(targets.length, 'two low-risk rules still failing (rebuild scap-apply10 when the pool is used up)').toBe(2);
     await selectOnly(targets);
-    // Apply now is first, a danger button, before the two downloads.
+    // Apply now is first, before the two downloads. It only opens the
+    // confirm dialog, so it is secondary (house rule); the dialog's own
+    // Apply is the danger button.
     const actions = await drawer().locator('.ct-builder-actions button')
             .allInnerTexts();
     expect(actions.map(a => a.trim())).toEqual(['Apply now', 'Download Bash script', 'Download Ansible playbook']);
-    await expect(applyNowButton()).toHaveClass(/pf-m-danger/);
+    await expect(applyNowButton()).toHaveClass(/pf-m-secondary/);
+    await expect(applyNowButton()).not.toHaveClass(/pf-m-danger/);
     await expect(applyNowButton()).toBeEnabled();
     await shot('builder-apply-now-admin', info);
 
@@ -229,6 +275,7 @@ test('happy path: confirm dialog, live run, success, log + syslog, rescan proves
             .allInnerTexts()) expect(['Critical', 'High', 'Medium', 'Low', 'Unknown']).toContain(r.trim());
     const apply = modal().getByRole('button', { name: 'Apply', exact: true });
     await expect(apply).toBeEnabled({ timeout: 60000 });
+    await expect(apply).toHaveClass(/pf-m-danger/);
     await expect(modal().locator('.ct-apply-script')).toBeHidden(); // collapsed
     await shot('confirm-collapsed', info);
     await modal().getByRole('button', { name: 'View script' })
