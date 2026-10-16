@@ -153,6 +153,42 @@ export function cpeDisplayName(cpe) {
     return version ? `${name} ${version}` : name;
 }
 
+/* Whether the OpenSCAP scanner is installed (no superuser, a few ms).
+ * Spawning a program that is not on PATH fails with problem "not-found";
+ * any other failure means oscap exists but complained, which the callers
+ * report where it happens. */
+export async function isOscapInstalled() {
+    try {
+        await cockpit.spawn(['oscap', '--version'], { err: 'ignore' });
+        return true;
+    } catch (ex) {
+        return !(ex.problem === 'not-found' || ex.exit_status === 127);
+    }
+}
+
+/* Cheap check of a typed content path before oscap reads it:
+ * { kind: 'file' | 'directory' | 'missing' | 'other' | 'error', message }.
+ * stat -L follows a symlink to what it points at. */
+export async function statContentPath(path) {
+    try {
+        const type = (await cockpit.spawn(['stat', '-L', '-c', '%F', '--', path], { err: 'message' })).trim();
+        if (type === 'directory') return { kind: 'directory' };
+        if (type.startsWith('regular')) return { kind: 'file' }; // "regular file" / "regular empty file"
+        return { kind: 'other', message: type };
+    } catch (ex) {
+        const message = ex.message || String(ex);
+        if (/No such file|Not a directory/i.test(message)) return { kind: 'missing' };
+        return { kind: 'error', message };
+    }
+}
+
+/* oscap's error text without its source locations
+ * ("[/builddir/build/BUILD/openscap-1.4.4/src/source/oscap_source.c:298]"). */
+export function stripOscapNoise(message) {
+    return (message || '').replace(/\s*\[[^\]\s]*\.[ch]:\d+\]/g, '')
+            .trim();
+}
+
 export async function getProfiles(sdsPath) {
     const output = await cockpit.spawn(['oscap', 'info', sdsPath], { err: 'message' });
     const profiles = [];

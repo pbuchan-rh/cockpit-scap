@@ -6,7 +6,7 @@ import { Drawer, DrawerContent, DrawerContentBody } from "@patternfly/react-core
 import { Page, PageSection } from "@patternfly/react-core/dist/esm/components/Page/index.js";
 import { Tab, Tabs, TabTitleText } from "@patternfly/react-core/dist/esm/components/Tabs/index.js";
 
-import { makeTmpdir, startScan, readResults, cleanupTmpdir } from './lib/oscap.js';
+import { isOscapInstalled, makeTmpdir, startScan, readResults, cleanupTmpdir } from './lib/oscap.js';
 import { groupReferences, parseResults } from './lib/results.js';
 import { extractProfile, flattenProfileRules, getTailoringDiskUsage, parseTailoringXml, readTailoringXml } from './lib/tailoring.js';
 import { saveScan, readSavedScanFiles, getScanHistoryDiskUsage } from './lib/scanHistory.js';
@@ -15,6 +15,7 @@ import { ScanProgress } from './components/ScanProgress.jsx';
 import { ScanResults } from './components/ScanResults.jsx';
 import { RemediationBuilder } from './components/RemediationBuilder.jsx';
 import { ApplyNowDialog, RemediationAlert, useRemediationRun } from './components/ApplyNow.jsx';
+import { OscapMissingCard } from './components/MissingPackages.jsx';
 import { ScapContentCard } from './components/ScapContentCard.jsx';
 import { ScanHistory } from './components/ScanHistory.jsx';
 import { TailoringEditor } from './components/TailoringEditor.jsx';
@@ -56,6 +57,17 @@ export const App = () => {
     const [showRun, setShowRun] = useState(false);
     const [hostname, setHostname] = useState('');
     const remediationRunning = remediation.run?.status === 'running';
+    // Is the scanner installed? null while checking. Without it, Host Scan
+    // and Policy Tailoring show an install EmptyState instead of their
+    // forms; History, policies and content (all under ~/SCAP) still render.
+    const [oscapInstalled, setOscapInstalled] = useState(null);
+    const [prereqKey, setPrereqKey] = useState(0);
+
+    useEffect(() => {
+        let cancelled = false;
+        isOscapInstalled().then(found => { if (!cancelled) setOscapInstalled(found) });
+        return () => { cancelled = true };
+    }, [prereqKey]);
 
     useEffect(() => {
         cockpit.spawn(['hostname'], { err: 'ignore' })
@@ -271,6 +283,13 @@ export const App = () => {
         setContentRefreshKey(k => k + 1);
     }, []);
 
+    // After an install from the page: detect the scanner and content again,
+    // no reload needed.
+    const handlePackagesInstalled = useCallback(() => {
+        setPrereqKey(k => k + 1);
+        setContentRefreshKey(k => k + 1);
+    }, []);
+
     // "Other content ▾" → Manage content: the SCAP Content card on the
     // Policy Tailoring tab, scrolled into view and focused.
     const [contentFocusKey, setContentFocusKey] = useState(0);
@@ -390,7 +409,16 @@ export const App = () => {
                             <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)}>
                                 <Tab eventKey="scan" title={<TabTitleText>{_("Host Scan")}</TabTitleText>}>
                                     <div className="ct-tab-body">
-                                        {phase === 'setup' && (
+                                        {phase === 'setup' && oscapInstalled === false && (
+                                            <OscapMissingCard
+                                    id="ct-scan-oscap-missing"
+                                    cardTitle={_("SCAP Security Scan")}
+                                    adminAllowed={adminAllowed}
+                                    onInstalled={handlePackagesInstalled}
+                                            />
+                                        )}
+
+                                        {phase === 'setup' && oscapInstalled && (
                                             <ScanSetup
                                     adminAllowed={adminAllowed} onScan={handleScan}
                                     remediationRunning={remediationRunning}
@@ -398,6 +426,7 @@ export const App = () => {
                                     contentRefreshKey={contentRefreshKey}
                                     onContentChanged={handleContentChanged}
                                     onManageContent={handleManageContent}
+                                    onPackagesInstalled={handlePackagesInstalled}
                                             />
                                         )}
 
@@ -424,14 +453,24 @@ export const App = () => {
                                 </Tab>
                                 <Tab eventKey="tailoring" title={<TabTitleText>{_("Policy Tailoring")}</TabTitleText>}>
                                     <div className="ct-tab-body ct-tailoring-tab">
-                                        <TailoringEditor
+                                        {oscapInstalled === false && (
+                                            <OscapMissingCard
+                                    id="ct-tailor-oscap-missing"
+                                    cardTitle={_("New Tailoring Policy")}
+                                    adminAllowed={adminAllowed}
+                                    onInstalled={handlePackagesInstalled}
+                                            />
+                                        )}
+                                        {oscapInstalled && (
+                                            <TailoringEditor
                                 editingSidecar={editingSidecar}
                                 onSaved={handleTailoringSaved}
                                 onCancelEdit={() => setEditingSidecar(null)}
                                 contentRefreshKey={contentRefreshKey}
                                 onContentChanged={handleContentChanged}
                                 onManageContent={handleManageContent}
-                                        />
+                                            />
+                                        )}
                                         <TailoringList
                                 refreshKey={tailoringRefreshKey}
                                 onEdit={setEditingSidecar}

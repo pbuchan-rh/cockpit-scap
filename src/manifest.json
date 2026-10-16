@@ -5,10 +5,6 @@
 
     "content-security-policy": "style-src 'self' 'unsafe-inline'",
 
-    "conditions": [
-        { "path-exists": "/usr/bin/oscap" }
-    ],
-
     "tools": {
         "index": {
             "label": "SCAP Security",
