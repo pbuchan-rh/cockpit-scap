@@ -15,6 +15,10 @@ export const ProfileDescriptionPanel = ({ profileId, sdsPath, preloaded }) => {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        // Reset first: a stale description (or a spinner left by a fetch
+        // cancelled mid-flight) must not outlive its profile.
+        setFetched(null);
+        setLoading(false);
         if (preloaded || !profileId || !sdsPath) return;
         let cancelled = false;
         setLoading(true);

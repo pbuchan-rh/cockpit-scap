@@ -128,10 +128,40 @@
     margin-block-start: var(--pf-t--global--spacer--xs);
 }
 
-.ct-field-error {
-    color: var(--pf-t--global--color--status--danger--default);
-    font-size: var(--pf-t--global--font--size--sm);
+// Content file field error (S2): oscap's own text behind "Details".
+.ct-content-error-details {
     margin-block-start: var(--pf-t--global--spacer--xs);
+}
+
+.ct-content-error-text {
+    font-size: var(--pf-t--global--font--size--sm);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--pf-t--global--text--color--subtle);
+}
+
+// Setup footer (S2): Run Scan, View Compliance Guide and Download
+// Remediation are disabled the same way, PF's own grey. The house rule
+// above keeps disabled secondary buttons blue, which made View Compliance
+// Guide the odd one out next to the primary and the split toggle.
+.ct-setup-footer .pf-v6-c-button.pf-m-secondary:disabled,
+.ct-setup-footer .pf-v6-c-button.pf-m-secondary.pf-m-disabled {
+    color: var(--pf-t--global--text--color--on-disabled);
+    background: var(--pf-t--global--background--color--disabled--default);
+    opacity: 1;
+}
+
+.ct-setup-footer .pf-v6-c-button.pf-m-secondary:disabled::after,
+.ct-setup-footer .pf-v6-c-button.pf-m-secondary.pf-m-disabled::after {
+    border-color: transparent;
+}
+
+// Install command in the "not installed" / "no content" EmptyStates.
+.ct-install-command {
+    max-inline-size: 36rem;
+    margin-inline: auto;
+    margin-block-start: var(--pf-t--global--spacer--sm);
+    text-align: start;
 }
 
 // Running view (spec A): context | live tiles, then the rule feed.

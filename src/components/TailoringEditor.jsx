@@ -20,12 +20,12 @@ import { ArrowRightIcon } from "@patternfly/react-icons/dist/esm/icons/arrow-rig
 
 import { formatBytes, formatTimestamp } from '../lib/format.js';
 import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
-import { autoSelectContent, detectContent, getOsRelease, getProfiles, sdsDisplayName } from '../lib/oscap.js';
+import { autoSelectContent, detectContent, getOsRelease, getProfiles, sdsDisplayName, stripOscapNoise } from '../lib/oscap.js';
 import {
     extractProfile, flattenProfileRules, parseTailoringXml, readTailoringXml,
     saveNewTailoring, updateTailoringFile,
 } from '../lib/tailoring.js';
-import { ContentSelect } from './ContentSelect.jsx';
+import { ContentFieldError, ContentSelect } from './ContentSelect.jsx';
 import { OtherContentMenu } from './OtherContentMenu.jsx';
 import { ProfileDescriptionPanel } from './ProfileDescriptionPanel.jsx';
 import { RuleDetailsBlock } from './RuleDetails.jsx';
@@ -313,6 +313,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
     const [content, setContent] = useState('');
     const [profiles, setProfiles] = useState([]);
     const [profileId, setProfileId] = useState('');
+    const [contentError, setContentError] = useState(null); // { message, details }
     const [name, setName] = useState('');
     const [loadingTree, setLoadingTree] = useState(false);
     const [loadError, setLoadError] = useState(null);
@@ -454,11 +455,21 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
     useEffect(() => {
         if (isEditing || !content) return;
         let cancelled = false;
+        setContentError(null);
         getProfiles(content).then(list => {
             if (cancelled) return;
             setProfiles(list);
             setProfileId(list[0]?.id ?? '');
-        });
+        })
+                .catch(ex => {
+                    if (cancelled) return;
+                    setProfiles([]);
+                    setProfileId('');
+                    setContentError({
+                        message: _("This file isn't SCAP content that OpenSCAP can read."),
+                        details: stripOscapNoise(ex.message || String(ex)),
+                    });
+                });
         return () => { cancelled = true };
     }, [content, isEditing, formResetKey]);
 
@@ -676,8 +687,10 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                             value={content}
                                             onChange={(_e, v) => setContent(v)}
                                             contentList={contentList}
+                                            validated={contentError ? 'error' : 'default'}
                                             emptyLabel={_("Select content…")}
                                         />
+                                        {contentError && <ContentFieldError id="ct-tailor-content-error" error={contentError} />}
                                         <OtherContentMenu
                                             id="ct-tailor-other-content"
                                             onUpload={handleUploadClick}

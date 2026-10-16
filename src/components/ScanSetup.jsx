@@ -24,12 +24,13 @@ import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent }
 import { downloadFile } from '../lib/download.js';
 import {
     autoSelectContent, cpeDisplayName, detectContent, generateGuide, generateProfileFix, getContentPlatform,
-    getOsRelease, getProfiles, isEmptyFix, isPlatformMismatch,
+    getOsRelease, getProfiles, isEmptyFix, isPlatformMismatch, statContentPath, stripOscapNoise,
 } from '../lib/oscap.js';
 import { listScans } from '../lib/scanHistory.js';
 import { listTailoringFiles } from '../lib/tailoring.js';
 import { openReportViewer } from '../lib/reportViewer.js';
-import { ContentSelect } from './ContentSelect.jsx';
+import { ContentFieldError, ContentSelect } from './ContentSelect.jsx';
+import { CONTENT_PACKAGES, MissingPackagesCard } from './MissingPackages.jsx';
 import { OtherContentMenu } from './OtherContentMenu.jsx';
 import { ProfileDescriptionPanel } from './ProfileDescriptionPanel.jsx';
 
@@ -48,17 +49,34 @@ function slugify(text) {
             .replace(/^-+|-+$/g, '');
 }
 
-export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringRefreshKey, contentRefreshKey, onContentChanged, onManageContent }) => {
+// How long typing must pause before a typed content path is checked.
+const MANUAL_PATH_IDLE_MS = 1000;
+
+export const ScanSetup = ({
+    adminAllowed, remediationRunning, onScan, tailoringRefreshKey, contentRefreshKey, onContentChanged,
+    onManageContent, onPackagesInstalled,
+}) => {
     const [contentList, setContentList] = useState([]);
+    // The content the form uses. In manual mode it is set only once the
+    // typed path (manualText) has passed the cheap file check.
     const [content, setContent] = useState('');
     const [manualPath, setManualPath] = useState(false);
+    const [manualText, setManualText] = useState('');
+    // { message, details? } shown on the Content file field.
+    const [contentError, setContentError] = useState(null);
+    // Bumped to reload profiles when the content value itself is unchanged.
+    const [contentReloadKey, setContentReloadKey] = useState(0);
+    const manualRef = useRef(false);
+    const validatedRef = useRef(null); // the typed path last checked
+    const validateSeq = useRef(0);
+    const lastSelectedRef = useRef(''); // last content picked from the list
+    const osRef = useRef({ id: '', versionId: '' });
     const [profiles, setProfiles] = useState([]);
     const [profile, setProfile] = useState('');
     const [tailoringFiles, setTailoringFiles] = useState([]);
     const [tailoringSelection, setTailoringSelection] = useState('');
     const [loadingContent, setLoadingContent] = useState(true);
     const [loadingProfiles, setLoadingProfiles] = useState(false);
-    const [profileError, setProfileError] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState(null);
     const [pendingUpload, setPendingUpload] = useState(null); // { file, existing }
@@ -80,6 +98,12 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
                     if (cancelled) return;
                     setContentList(list);
                     setHost({ cpe, prettyName });
+                    osRef.current = { id, versionId };
+                    // A typed path is not in the list; keep it.
+                    if (manualRef.current) {
+                        setLoadingContent(false);
+                        return;
+                    }
                     // Only re-pick a default on first load or if the previously
                     // selected content vanished (e.g. deleted elsewhere) — an
                     // unrelated refresh (upload from another picker) must not
@@ -94,14 +118,17 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
     }, [contentRefreshKey]);
 
     useEffect(() => {
-        if (!content) return;
-        let cancelled = false;
-        setLoadingProfiles(true);
-        setProfileError(null);
         setProfiles([]);
         setProfile('');
         setTailoringSelection('');
         setContentCpe(null);
+        if (!content) {
+            setLoadingProfiles(false);
+            return;
+        }
+        let cancelled = false;
+        setLoadingProfiles(true);
+        setContentError(null);
         getContentPlatform(content).then(cpe => { if (!cancelled) setContentCpe(cpe); });
         // No silent default (R4): preselect only the profile of the newest
         // saved scan of this same content (Amendment 1: derived from
@@ -117,11 +144,86 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
                 })
                 .catch(ex => {
                     if (cancelled) return;
-                    setProfileError(ex.message);
+                    // The content is at fault, not the profile: the error
+                    // goes on the Content file field.
+                    setContentError({
+                        message: _("This file isn't SCAP content that OpenSCAP can read."),
+                        details: stripOscapNoise(ex.message || String(ex)),
+                    });
                     setLoadingProfiles(false);
                 });
         return () => { cancelled = true };
-    }, [content]);
+    }, [content, contentReloadKey]);
+
+    useEffect(() => {
+        manualRef.current = manualPath;
+        if (!manualPath && content) lastSelectedRef.current = content;
+    }, [manualPath, content]);
+
+    /* A typed path is checked only once the user is done with it (Enter,
+     * blur, or MANUAL_PATH_IDLE_MS without typing), and with a cheap stat
+     * before oscap ever reads it. */
+    async function validateManualPath(text) {
+        const path = text.trim();
+        if (!manualRef.current || path === validatedRef.current) return;
+        validatedRef.current = path;
+        if (!path) return;
+        const seq = ++validateSeq.current;
+        const { kind, message } = await statContentPath(path);
+        if (seq !== validateSeq.current || !manualRef.current) return; // typed on, or left manual mode
+        if (kind === 'file') {
+            setContent(path);
+            return;
+        }
+        if (kind === 'missing')
+            setContentError({ message: cockpit.format(_("No file at $0"), path) });
+        else if (kind === 'directory')
+            setContentError({ message: cockpit.format(_("$0 is a folder. Choose a SCAP content file (.xml)."), path) });
+        else
+            setContentError({ message: cockpit.format(_("$0 can't be read as a file."), path), details: message });
+    }
+
+    useEffect(() => {
+        if (!manualPath) return;
+        const timer = setTimeout(() => validateManualPath(manualText), MANUAL_PATH_IDLE_MS);
+        return () => clearTimeout(timer);
+    }, [manualPath, manualText]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    function handleManualChange(text) {
+        setManualText(text);
+        validatedRef.current = null;
+        validateSeq.current++;
+        setContentError(null);
+        setContent('');
+    }
+
+    function handleSelectContent(path) {
+        setContentError(null);
+        setContent(path);
+    }
+
+    // Leaving manual mode restores the last picked (or the host's default)
+    // content, so neither a typed path nor its error lingers (S2 add).
+    function handleToggleManual() {
+        validateSeq.current++;
+        if (!manualPath) {
+            setManualText(content);
+            validatedRef.current = content;
+            setManualPath(true);
+            manualRef.current = true;
+            return;
+        }
+        setManualPath(false);
+        manualRef.current = false;
+        setManualText('');
+        validatedRef.current = null;
+        const restore = contentList.some(c => c.path === lastSelectedRef.current)
+            ? lastSelectedRef.current
+            : autoSelectContent(contentList, osRef.current.id, osRef.current.versionId);
+        if (restore === content && contentError) setContentReloadKey(k => k + 1);
+        setContentError(null);
+        setContent(restore);
+    }
 
     useEffect(() => {
         let cancelled = false;
@@ -135,12 +237,13 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
     );
     const selectedTailoring = tailoringForContent.find(sc => sc.path === tailoringSelection) ?? null;
 
-    const canScan = adminAllowed && !remediationRunning && content && (selectedTailoring || profile) && !loadingProfiles;
+    const contentReady = !!content && !contentError;
+    const canScan = adminAllowed && !remediationRunning && contentReady && (selectedTailoring || profile) && !loadingProfiles;
     // View Compliance Guide / Download Remediation read only world-readable
     // static SCAP content (and, optionally, the user's own tailoring file) —
     // neither needs superuser, so unlike canScan above, this is deliberately
     // NOT gated behind adminAllowed.
-    const canGenerate = content && (selectedTailoring || profile) && !loadingProfiles;
+    const canGenerate = contentReady && (selectedTailoring || profile) && !loadingProfiles;
 
     // The TAILORED profile id with the tailoring file — the base id would
     // make oscap ignore the tailoring (C§1c-2).
@@ -150,6 +253,10 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
     const activeProfileTitle = selectedTailoring
         ? selectedTailoring.name
         : (profiles.find(p => p.id === profile)?.title || profile);
+
+    // Nothing to scan with: an EmptyState instead of the form. A typed path
+    // still counts as content.
+    const noContent = !loadingContent && contentList.length === 0 && !manualPath;
 
     function handleSubmit(e) {
         e.preventDefault();
@@ -177,6 +284,13 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
         reader.onload = async ev => {
             try {
                 const uploaded = await uploadContent(file.name, new Uint8Array(ev.target.result));
+                if (manualRef.current) {
+                    setManualPath(false);
+                    manualRef.current = false;
+                    setManualText('');
+                    validatedRef.current = null;
+                }
+                setContentError(null);
                 setContent(uploaded.path);
                 onContentChanged?.();
             } catch (ex) {
@@ -301,7 +415,33 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
                     {fixWarning}
                 </Alert>
             )}
-            <Card>
+            {noContent && (
+                <MissingPackagesCard
+                    id="ct-scan-no-content"
+                    cardTitle={_("SCAP Security Scan")}
+                    emptyTitle={_("No SCAP content installed")}
+                    description={_("OpenSCAP is installed, but there is no SCAP content to scan with. Install the SCAP Security Guide (scap-security-guide), or upload a SCAP datastream (.xml).")}
+                    packages={CONTENT_PACKAGES}
+                    installLabel={_("Install scap-security-guide")}
+                    adminAllowed={adminAllowed}
+                    onInstalled={onPackagesInstalled}
+                    extraActions={
+                        <Button variant="secondary" onClick={handleUploadClick} isLoading={uploading} isDisabled={uploading}>
+                            {_("Upload content")}
+                        </Button>
+                    }
+                >
+                    {uploadError && (
+                        <Alert
+                            variant="danger" title={_("Upload failed")} isInline
+                            actionClose={<Button variant="plain" onClick={() => setUploadError(null)}>×</Button>}
+                        >
+                            {uploadError}
+                        </Alert>
+                    )}
+                </MissingPackagesCard>
+            )}
+            {!noContent && <Card>
                 {/* Admin notice sits with the scan it gates (Peter 10-15), not
                     as a page banner above the tabs. Browsing, the guide and
                     remediation downloads still work without root. */}
@@ -341,28 +481,35 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
                                         : manualPath
                                             ? <TextInput
                                                 id="ct-scap-content"
-                                                value={content}
-                                                onChange={(_e, v) => setContent(v)}
+                                                value={manualText}
+                                                onChange={(_e, v) => handleManualChange(v)}
+                                                onBlur={() => validateManualPath(manualText)}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        validateManualPath(manualText);
+                                                    }
+                                                }}
+                                                validated={contentError ? 'error' : 'default'}
+                                                aria-describedby={contentError ? 'ct-scap-content-error' : undefined}
                                                 placeholder="/usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml"
                                             />
                                             : <ContentSelect
                                                 id="ct-scap-content"
                                                 value={content}
-                                                onChange={(_e, v) => setContent(v)}
+                                                onChange={(_e, v) => handleSelectContent(v)}
                                                 contentList={contentList}
+                                                validated={contentError ? 'error' : 'default'}
                                                 emptyLabel={_("No content found — upload a datastream to get started")}
                                             />}
+                                    {contentError && <ContentFieldError id="ct-scap-content-error" error={contentError} />}
                                     <OtherContentMenu
                                         id="ct-scan-other-content"
                                         onUpload={handleUploadClick}
                                         uploading={uploading}
                                         manualPath={manualPath}
-                                        onToggleManual={() => setManualPath(m => !m)}
+                                        onToggleManual={handleToggleManual}
                                         onManage={onManageContent}
-                                    />
-                                    <input
-                                        ref={fileInputRef} type="file" accept=".xml" hidden
-                                        onChange={handleFileChosen}
                                     />
                                     {platformMismatch && (
                                         <Alert
@@ -382,13 +529,13 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
                                             id="ct-scap-profile"
                                             value={selectedTailoring ? selectedTailoring.base_profile_id : profile}
                                             onChange={(_e, v) => setProfile(v)}
-                                            isDisabled={!content || profiles.length === 0 || !!selectedTailoring}
+                                            isDisabled={!contentReady || profiles.length === 0 || !!selectedTailoring}
                                         >
                                             {profiles.length === 0
                                                 ? (
                                                     <FormSelectOption
                                                         value=""
-                                                        label={profileError ? _("Failed to load profiles") : _("No profiles found")}
+                                                        label={contentReady ? _("No profiles found") : _("Select content first")}
                                                         isDisabled
                                                     />
                                                 )
@@ -397,7 +544,6 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
                                                 <FormSelectOption key={p.id} value={p.id} label={p.title || p.id} />
                                             ))}
                                         </FormSelect>}
-                                    {profileError && <p className="ct-field-error">{profileError}</p>}
                                 </FormGroup>
 
                                 <FormGroup label={_("Tailoring policy")} fieldId="ct-scap-tailoring-select">
@@ -416,12 +562,12 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
                         </div>
                         <ProfileDescriptionPanel
                             profileId={selectedTailoring ? selectedTailoring.base_profile_id : profile}
-                            sdsPath={content}
+                            sdsPath={contentReady ? content : ''}
                         />
                     </div>
                 </CardBody>
                 <Divider />
-                <CardFooter>
+                <CardFooter className="ct-setup-footer">
                     <Flex flexWrap={{ default: 'wrap' }} spaceItems={{ default: 'spaceItemsSm' }}>
                         <FlexItem>
                             {adminAllowed && !remediationRunning
@@ -511,25 +657,29 @@ export const ScanSetup = ({ adminAllowed, remediationRunning, onScan, tailoringR
                     </Flex>
                 </CardFooter>
 
-                {pendingUpload && (
-                    <Modal variant="small" isOpen onClose={() => setPendingUpload(null)}>
-                        <ModalHeader title={_("Replace existing content?")} />
-                        <ModalBody>
-                            {cockpit.format(
-                                _("\"$0\" already exists ($1, uploaded $2). Replace with the new file ($3)?"),
-                                pendingUpload.file.name,
-                                formatBytes(pendingUpload.existing.size),
-                                formatTimestamp(pendingUpload.existing.mtime),
-                                formatBytes(pendingUpload.file.size)
-                            )}
-                        </ModalBody>
-                        <ModalFooter>
-                            <Button variant="primary" onClick={handleConfirmReplace}>{_("Replace")}</Button>
-                            <Button variant="link" onClick={() => setPendingUpload(null)}>{_("Cancel")}</Button>
-                        </ModalFooter>
-                    </Modal>
-                )}
-            </Card>
+            </Card>}
+            <input
+                ref={fileInputRef} type="file" accept=".xml" hidden
+                onChange={handleFileChosen}
+            />
+            {pendingUpload && (
+                <Modal variant="small" isOpen onClose={() => setPendingUpload(null)}>
+                    <ModalHeader title={_("Replace existing content?")} />
+                    <ModalBody>
+                        {cockpit.format(
+                            _("\"$0\" already exists ($1, uploaded $2). Replace with the new file ($3)?"),
+                            pendingUpload.file.name,
+                            formatBytes(pendingUpload.existing.size),
+                            formatTimestamp(pendingUpload.existing.mtime),
+                            formatBytes(pendingUpload.file.size)
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button variant="primary" onClick={handleConfirmReplace}>{_("Replace")}</Button>
+                        <Button variant="link" onClick={() => setPendingUpload(null)}>{_("Cancel")}</Button>
+                    </ModalFooter>
+                </Modal>
+            )}
         </>
     );
 };
