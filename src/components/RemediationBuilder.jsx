@@ -280,14 +280,14 @@ export const RemediationBuilder = ({ result, preset, onClose, adminAllowed, reme
                     {applyBlocked
                         ? (
                             <Tooltip content={applyBlocked}>
-                                <Button variant="danger" isAriaDisabled className="ct-builder-apply">
+                                <Button variant="secondary" isAriaDisabled className="ct-builder-apply">
                                     {_("Apply now")}
                                 </Button>
                             </Tooltip>
                         )
                         : (
                             <Button
-                                variant="danger" className="ct-builder-apply" isDisabled={!!busy || selected.size === 0}
+                                variant="secondary" className="ct-builder-apply" isDisabled={!!busy || selected.size === 0}
                                 onClick={applyNow}
                             >
                                 {_("Apply now")}
