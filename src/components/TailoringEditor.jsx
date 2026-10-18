@@ -181,9 +181,9 @@ function formatChangeSummaryText(name, tailorData, ruleEntries, valueEntries) {
 
 /* Collapsible editor section (Peter 10-15, E1/E2): the heading is a PF
  * ExpandableSection toggle (same chevron as the rule groups) with the
- * section's counts beside it; `headerExtra` sits on the right of the
- * header row and stays usable while the section is closed. */
-const CollapsibleSection = ({ id, title, counts, isExpanded, onToggle, headerExtra, children }) => (
+ * section's counts beside it. Searches and filters live in the body, so
+ * a closed section shows only its title and counts. */
+const CollapsibleSection = ({ id, title, counts, isExpanded, onToggle, children }) => (
     <section className="ct-tailor-section ct-tailor-collapsible" aria-labelledby={`${id}-toggle`}>
         <div className="ct-tailor-section-head">
             <ExpandableSectionToggle
@@ -195,7 +195,6 @@ const CollapsibleSection = ({ id, title, counts, isExpanded, onToggle, headerExt
                 {' '}
                 <span className="ct-tailor-section-counts">{counts}</span>
             </ExpandableSectionToggle>
-            {headerExtra}
         </div>
         <ExpandableSection
             isDetached toggleId={`${id}-toggle`} contentId={`${id}-content`}
@@ -591,11 +590,6 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
         }
     }
 
-    function onValueSearch(v) {
-        setValueSearch(v);
-        if (v.trim()) setValuesOpen(true);
-    }
-
     function expandAll() { setDefaultAllExpanded(true); setTreeKey(k => k + 1) }
     function collapseAll() { setDefaultAllExpanded(false); setTreeKey(k => k + 1) }
 
@@ -823,18 +817,18 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                     title={_("Variables")}
                                     counts={cockpit.format(_("$0 · $1 modified"), tailorData.values.length, modifiedValueCount)}
                                     isExpanded={valuesOpen} onToggle={setValuesOpen}
-                                    headerExtra={
+                                >
+                                    <p className="ct-tailor-section-desc ct-tailor-section-lead">{_("Adjust variable values to customize profile behavior.")}</p>
+                                    <div className="ct-tailor-filter-bar">
                                         <SearchInput
-                                            className="ct-tailor-search ct-tailor-values-search"
+                                            className="ct-tailor-search"
                                             placeholder={_("Search variables…")}
                                             aria-label={_("Search variables")}
                                             value={valueSearch}
-                                            onChange={(_e, v) => onValueSearch(v)}
+                                            onChange={(_e, v) => setValueSearch(v)}
                                             onClear={() => setValueSearch('')}
                                         />
-                                    }
-                                >
-                                    <p className="ct-tailor-section-desc ct-tailor-section-lead">{_("Adjust variable values to customize profile behavior.")}</p>
+                                    </div>
                                     <div className="ct-tailor-values-box">
                                         {visibleValues.length === 0 && <p className="ct-tailor-section-desc">{_("No variables match.")}</p>}
                                         <div className="ct-tailor-values-grid">

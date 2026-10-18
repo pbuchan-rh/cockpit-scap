@@ -940,11 +940,6 @@
 // Collapsible Rules / Variables headers (Peter 10-15, E1/E2): a PF
 // ExpandableSection toggle dressed as the section heading (regular text,
 // Title lg size) with its counts in subtle text beside it.
-.ct-tailor-collapsible > .ct-tailor-section-head {
-    align-items: center;
-    flex-wrap: wrap;
-}
-
 .ct-tailor-section-toggle {
     min-inline-size: 0;
 
@@ -977,10 +972,6 @@
 
 .ct-tailor-section-lead {
     margin-block-end: var(--pf-t--global--spacer--sm);
-}
-
-.ct-tailor-values-search {
-    flex: 0 1 20rem;
 }
 
 .ct-filter-label {

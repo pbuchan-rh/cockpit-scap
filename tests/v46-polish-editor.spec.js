@@ -2,8 +2,9 @@
 // sections are collapsible (heading = toggle with counts), INSIDE the
 // Cockpit shell (/scap-dev), both browser projects. Variables is closed for
 // a policy without variable changes and open for one with them (this
-// spec's own v46-test tailoring); its search stays in the header, opens the
-// section and filters. Rules starts open. The sticky name + actions bar
+// spec's own v46-test tailoring); its search sits inside the section body
+// (UAT batch 2, B2-2: hidden while closed, like the Rules search) and
+// filters. Rules starts open. The sticky name + actions bar
 // stays pinned after scrolling past both sections.
 const { test, expect } = require('@playwright/test');
 const { openModuleInShell } = require('./helpers/cockpit');
@@ -30,7 +31,8 @@ const editor = () => frame.locator('.ct-tailor-editor-card');
 const bar = () => editor().locator('[data-ct-tailor-actionbar]');
 const rulesToggle = () => editor().locator('#ct-tailor-rules-title-toggle');
 const varsToggle = () => editor().locator('#ct-tailor-values-title-toggle');
-const varsSearch = () => editor().getByRole('textbox', { name: 'Search variables' });
+const varsSearch = () => editor().locator('#ct-tailor-values-title-content')
+        .getByRole('textbox', { name: 'Search variables' });
 const varGroups = () => editor().locator('.ct-tailor-values-grid .pf-v6-c-form__group');
 
 async function loadNew() {
@@ -48,7 +50,7 @@ test('new policy: Variables closed, Rules open, headings carry the counts', asyn
     await expect(varsToggle()).toHaveText(/^Variables \d+ · 0 modified$/);
     await expect(varsToggle()).toHaveAttribute('aria-expanded', 'false');
     await expect(varGroups().first()).toBeHidden();
-    await expect(varsSearch()).toBeVisible();
+    await expect(varsSearch()).toBeHidden();
     await expect(rulesToggle()).toHaveText(/^Rules \d+ of \d+ selected · 0 modified$/);
     await expect(rulesToggle()).toHaveAttribute('aria-expanded', 'true');
     await expect(editor().locator('.ct-tailor-tree')).toBeVisible();
@@ -76,12 +78,14 @@ test('E1: Variables header toggles; the 28rem scroll box when open', async () =>
     await expect(varGroups().first()).toBeHidden();
 });
 
-test('E1: typing in Search variables opens the section and filters', async ({ browserName }) => {
+test('E1: Search variables, inside the open section, filters', async ({ browserName }) => {
     await expect(varsToggle()).toHaveAttribute('aria-expanded', 'false');
+    await varsToggle().click();
+    await expect(varsSearch()).toBeVisible();
+    await expect(varGroups().first()).toBeVisible();
     const total = await varGroups().count();
     await varsSearch().fill('password');
-    await expect(varsToggle()).toHaveAttribute('aria-expanded', 'true');
-    await expect(varGroups().first()).toBeVisible();
+    await expect.poll(() => varGroups().count()).toBeLessThan(total);
     const shown = await varGroups().count();
     expect(shown).toBeGreaterThan(0);
     expect(shown).toBeLessThan(total);
@@ -118,7 +122,7 @@ test('E2: Rules header toggles; Expand all / Collapse all act on the groups', as
 });
 
 test('E3: action bar stays sticky after scrolling past both sections', async () => {
-    // Still open from the search above (clearing the search keeps it open).
+    // Still open from the search test above.
     if (await varsToggle().getAttribute('aria-expanded') !== 'true') await varsToggle().click();
     await expect(varsToggle()).toHaveAttribute('aria-expanded', 'true');
     await editor().getByRole('heading', { name: 'Changes from base profile' })

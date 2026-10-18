@@ -145,7 +145,7 @@ for (const vp of VIEWPORTS) {
             // Variables starts closed (polish E1): open it, then scroll to it.
             await frame.locator('#ct-tailor-values-title-toggle').click();
             await frame.locator('#ct-tailor-values-title').evaluate(el => el.scrollIntoView({ block: 'start' }));
-            await check('editor-variables', browserName, [bar.getByRole('button', { name: 'Cancel' }), frame.getByRole('textbox', { name: 'Search variables' })]);
+            await check('editor-variables', browserName, [bar.getByRole('button', { name: 'Cancel' }), frame.locator('#ct-tailor-values-title-content').getByRole('textbox', { name: 'Search variables' })]);
             await bar.getByRole('button', { name: 'Cancel' }).click();
         });
     });
