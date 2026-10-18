@@ -1165,11 +1165,31 @@
 
 // The change marker sits in a fixed-width slot (empty when there is none),
 // so the right-aligned % values line up whether "▲14", "±0" or nothing
-// follows them (T1).
+// follows them (T1). The Score header ends where the % values end: its
+// end padding adds the same slot (B2-1).
+.pf-v6-c-table {
+    --ct-score-delta-gap: var(--pf-t--global--spacer--xs);
+    --ct-score-delta-size: calc(3 * var(--pf-t--global--font--size--sm));
+}
+
+.pf-v6-c-table .ct-score-head {
+    padding-inline-end: calc(var(--pf-v6-c-table--cell--PaddingInlineEnd) + var(--ct-score-delta-gap) + var(--ct-score-delta-size));
+}
+
+// Below md the column has no fixed width: PF's header truncation would let
+// it shrink under "Score" plus that padding, pushing the word past the %.
+@media (width < 768px) {
+    .pf-v6-c-table .ct-score-head {
+        --pf-v6-c-table--cell--MinWidth: fit-content;
+        --pf-v6-c-table--cell--MaxWidth: none;
+        --pf-v6-c-table--cell--Overflow: visible;
+    }
+}
+
 .ct-score-delta {
     display: inline-block;
-    inline-size: 3em;
-    margin-inline-start: var(--pf-t--global--spacer--xs);
+    inline-size: var(--ct-score-delta-size);
+    margin-inline-start: var(--ct-score-delta-gap);
     font-size: var(--pf-t--global--font--size--sm);
     text-align: start;
 }

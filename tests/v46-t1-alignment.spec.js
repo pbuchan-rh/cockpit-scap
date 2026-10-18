@@ -9,6 +9,10 @@
 //   the score's % values line up whatever change marker follows them.
 // - Text and date columns left-aligned; Profile / Base Profile / Name take
 //   the remaining width.
+// - UAT batch 2, B2-1: the Score header ends where the % values end (the
+//   markers hang to the right of both), at 1024, 1280 and 1920 windows and
+//   at phone width (Scan History never stacks, so its header shows there
+//   too); screenshots light + dark at 1280 and 1920.
 // Fixtures as in v46-u4-tables (fabricated scans with and without a score
 // change, the v46-test policy, an uploaded content copy), removed again.
 const { test, expect } = require('@playwright/test');
@@ -214,3 +218,40 @@ for (const size of SIZES) {
         });
     }
 }
+
+const SCORE_SIZES = [
+    { name: 'w1024', width: 1024, height: 768 }, { name: 'w1280', width: 1280, height: 900 },
+    { name: 'w1920', width: 1920, height: 1080 }, { name: 'phone', width: 390, height: 844 },
+];
+const UAT2_SHOTS = 'tests/test-results/uat2';
+
+test('B2-1: the Score header ends where the % values end', async ({ browserName }) => {
+    await frame.getByRole('tab', { name: 'Host Scan' }).click();
+    const table = frame.locator('table[aria-label="Scan history"]');
+    const problems = [];
+    for (const size of SCORE_SIZES) {
+        await page.setViewportSize(size);
+        await table.locator('tbody tr').first()
+                .waitFor({ timeout: 30000 });
+        await page.waitForTimeout(500);
+        const m = await frame.evaluate(measure, 'Scan history');
+        const h = m.heads.find(x => x.name === 'Score');
+        if (!h) { problems.push(`${size.name}: no Score header`); continue }
+        const rows = m.rows.filter(r => r.percentRight !== undefined);
+        if (!rows.length) problems.push(`${size.name}: no % values`);
+        for (const [i, r] of rows.entries())
+            if (Math.abs(h.text.right - r.percentRight) > 2)
+                problems.push(`${size.name}: Score header ends at ${h.text.right.toFixed(1)}, row ${i} % at ${r.percentRight.toFixed(1)}`);
+    }
+    // Screenshots (light asserted above; dark only shown).
+    for (const scheme of ['light', 'dark']) {
+        await page.emulateMedia({ colorScheme: scheme });
+        for (const size of SCORE_SIZES.filter(s => ['w1280', 'w1920'].includes(s.name))) {
+            await page.setViewportSize(size);
+            await page.waitForTimeout(500);
+            await frame.locator('.ct-history-card').screenshot({ path: `${UAT2_SHOTS}/b2-1-history-${size.name}-${scheme}-${browserName}.png` });
+        }
+    }
+    await page.emulateMedia({ colorScheme: 'light' });
+    expect(problems).toEqual([]);
+});

@@ -257,7 +257,7 @@ export const ScanHistory = ({ refreshKey, onView, onChanged, diskUsage }) => {
                                     <Tr>
                                         <Th className="ct-date-cell">{_("Date")}</Th>
                                         <Th visibility={WIDE} className="ct-stretch-col">{_("Profile")}</Th>
-                                        <Th className="ct-num-col ct-num-fixed">{_("Score")}</Th>
+                                        <Th className="ct-num-col ct-num-fixed ct-score-head">{_("Score")}</Th>
                                         <Th visibility={WIDER} className="ct-num-col ct-num-fixed">{_("Passed")}</Th>
                                         <Th visibility={WIDER} className="ct-num-col ct-num-fixed">{_("Failed")}</Th>
                                         <Th className="ct-actions-cell">{_("Actions")}</Th>
