@@ -24,9 +24,7 @@ test.afterAll(async () => {
 });
 
 async function startScan() {
-    await frame.locator('#ct-scap-content').selectOption(S.DS);
-    await expect(frame.locator('#ct-scap-profile')).toBeEnabled({ timeout: 60000 });
-    await frame.locator('#ct-scap-profile').selectOption(S.PROFILE_L1);
+    await S.pickContentAndProfile(frame, S.PROFILE_L1);
     const run = frame.getByRole('button', { name: 'Run Scan' });
     await expect(run).toBeEnabled({ timeout: 30000 });
     await run.click();

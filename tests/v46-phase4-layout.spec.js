@@ -50,9 +50,7 @@ for (const vp of VIEWPORTS) {
         }
 
         test('setup', async ({ browserName }) => {
-            await frame.locator('#ct-scap-content').selectOption(S.DS);
-            await expect(frame.locator('#ct-scap-profile')).toBeEnabled({ timeout: 60000 });
-            await frame.locator('#ct-scap-profile').selectOption(S.PROFILE_L1);
+            await S.pickContentAndProfile(frame, S.PROFILE_L1);
             await expect(frame.getByRole('button', { name: 'Run Scan' })).toBeEnabled();
             await check('setup', browserName, [
                 frame.locator('#ct-scap-content'), frame.locator('#ct-scap-profile'), frame.locator('#ct-scan-other-content'),
@@ -133,9 +131,9 @@ for (const vp of VIEWPORTS) {
         test('policy editor', async ({ browserName }) => {
             await frame.locator('[data-ct-results]').getByRole('button', { name: 'Close', exact: true }).click();
             await frame.getByRole('tab', { name: 'Policy Tailoring' }).click();
-            await frame.locator('#ct-tailor-content-select').selectOption(S.DS);
+            await S.pick(frame, '#ct-tailor-content-select', S.DS);
             await expect(frame.locator('#ct-tailor-profile-select')).toBeEnabled({ timeout: 60000 });
-            await frame.locator('#ct-tailor-profile-select').selectOption(S.PROFILE_L1);
+            await S.pick(frame, '#ct-tailor-profile-select', S.PROFILE_L1);
             await frame.getByRole('button', { name: 'Load Rules' }).click();
             const bar = frame.locator('[data-ct-tailor-actionbar]');
             await expect(bar).toBeVisible({ timeout: 120000 });

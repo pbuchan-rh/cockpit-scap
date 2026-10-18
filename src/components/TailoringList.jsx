@@ -254,7 +254,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                             id="ct-tailoring-upload-content"
                             ariaLabel={_("Content for the uploaded policy")}
                             value={pendingTailoring.choice}
-                            onChange={(_e, v) => setPendingTailoring(p => ({ ...p, choice: v }))}
+                            onChange={v => setPendingTailoring(p => ({ ...p, choice: v }))}
                             contentList={contentList}
                         />
                     </ModalBody>

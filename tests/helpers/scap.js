@@ -107,10 +107,39 @@ async function expectDownload(page, click, { binary = false } = {}) {
     return { filename: download.suggestedFilename(), buffer: buf, text: binary ? null : buf.toString('utf8') };
 }
 
-/* Picks `value` (a content path, profile id or tailoring path) in one of
- * the form's pickers, e.g. pick(frame, '#ct-scap-profile', id). */
+/* The module's pickers are PF Selects (U2), not native <select>s: a
+ * MenuToggle carrying the selected value as data-ct-value, and options as
+ * <li data-ct-value> in a PF menu while open. */
+
+/* Picks `value` (a content path, profile id, tailoring path, ...) in the
+ * picker whose toggle is `selector` (or a Locator), e.g.
+ * pick(frame, '#ct-scap-profile', id). */
 async function pick(frame, selector, value) {
-    await frame.locator(selector).selectOption(value);
+    const toggle = typeof selector === 'string' ? frame.locator(selector) : selector;
+    await toggle.click();
+    await frame.locator(`.pf-v6-c-menu li[data-ct-value="${value}"] button`).click();
+    await expect(toggle).toHaveAttribute('data-ct-value', value);
+}
+
+/* The picker's options as [{ value, text }] (opens and closes it). */
+async function pickerOptions(frame, selector) {
+    const toggle = typeof selector === 'string' ? frame.locator(selector) : selector;
+    await toggle.click();
+    const menu = frame.locator('.pf-v6-c-menu').filter({ has: frame.locator('li[data-ct-value]') });
+    await menu.first().waitFor();
+    const options = await menu.first().locator('li[data-ct-value]')
+            .evaluateAll(lis => lis.map(li => ({ value: li.dataset.ctValue, text: li.textContent.trim() })));
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    return options;
+}
+
+/* Picks any option other than the current one; returns its value. */
+async function pickOther(frame, toggle) {
+    const cur = await toggle.getAttribute('data-ct-value');
+    const other = (await pickerOptions(frame, toggle)).find(o => o.value !== cur);
+    await pick(frame, toggle, other.value);
+    return other.value;
 }
 
 /* Host Scan setup: content, then profile (waits for the profiles). */
@@ -196,7 +225,7 @@ function countFixBlocks(text) {
 module.exports = {
     DS, RULE, PROFILE_L1, TEST_TAILORING_NAME, TEST_TAILORED_PROFILE, DESELECTED, SET_VALUES, NO_ANSIBLE_RULES,
     homeDir, snapshotScans, snapshotTmp, createTestTailoring, cleanupCreated, expectDownload, runScan,
-    pick, pickContentAndProfile,
+    pick, pickContentAndProfile, pickerOptions, pickOther,
     openBuilder, closeBuilder, builderDownload, resultsDownload,
     fixVariables, diffVariables, countFixBlocks,
 };

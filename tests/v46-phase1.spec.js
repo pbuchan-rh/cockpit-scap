@@ -100,16 +100,16 @@ test.afterAll(async ({ browserName }) => {
 
 test('no silent default profile; mismatched content warns', async () => {
     const rhel8 = `${home}/SCAP/content/ssg-rhel8-ds.xml`;
-    const options = await frame.locator('#ct-scap-content option').evaluateAll(os => os.map(o => o.value));
+    const options = (await S.pickerOptions(frame, '#ct-scap-content')).map(o => o.value);
     test.skip(!options.includes(rhel8), 'needs uploaded ssg-rhel8-ds.xml on the host');
-    await frame.locator('#ct-scap-content').selectOption(rhel8);
+    await S.pick(frame, '#ct-scap-content', rhel8);
     await expect(frame.locator('#ct-scap-profile')).toBeEnabled({ timeout: 60000 });
     // No saved scan of this content -> placeholder, Run Scan disabled.
-    await expect(frame.locator('#ct-scap-profile')).toHaveValue('');
-    await expect(frame.locator('#ct-scap-profile option:checked')).toHaveText('Select a profile…');
+    await expect(frame.locator('#ct-scap-profile')).toHaveAttribute('data-ct-value', '');
+    await expect(frame.locator('#ct-scap-profile')).toHaveText('Select a profile…');
     await expect(frame.getByRole('button', { name: 'Run Scan' })).toBeDisabled();
     await expect(frame.locator('.ct-content-mismatch')).toContainText('Red Hat Enterprise Linux 8');
-    await frame.locator('#ct-scap-content').selectOption(S.DS);
+    await S.pick(frame, '#ct-scap-content', S.DS);
     await expect(frame.locator('#ct-scap-profile')).toBeEnabled({ timeout: 60000 });
     await expect(frame.locator('.ct-content-mismatch')).toHaveCount(0);
 });
@@ -170,17 +170,17 @@ test('results downloads arrive: per-rule .sh, HTML report, results XML, ARF; emp
 test('after a scan, the setup page preselects the last scanned profile', async () => {
     await frame.locator('[data-ct-results]').getByRole('button', { name: 'Close', exact: true })
             .click();
-    await frame.locator('#ct-scap-content').selectOption(S.DS);
+    await S.pick(frame, '#ct-scap-content', S.DS);
     await expect(frame.locator('#ct-scap-profile')).toBeEnabled({ timeout: 60000 });
-    await expect(frame.locator('#ct-scap-profile')).toHaveValue(S.PROFILE_L1);
+    await expect(frame.locator('#ct-scap-profile')).toHaveAttribute('data-ct-value', S.PROFILE_L1);
     await expect(frame.getByRole('button', { name: 'Run Scan' })).toBeEnabled();
 });
 
 test('setup remediation and guide honour the tailoring', async () => {
     const remediation = frame.locator('#ct-download-remediation-primary');
-    await frame.locator('#ct-scap-profile').selectOption(S.PROFILE_L1);
+    await S.pick(frame, '#ct-scap-profile', S.PROFILE_L1);
     const plain = await S.expectDownload(page, () => remediation.click());
-    await frame.locator('#ct-scap-tailoring-select').selectOption(tailoringPath);
+    await S.pick(frame, '#ct-scap-tailoring-select', tailoringPath);
     const tailored = await S.expectDownload(page, () => remediation.click());
     expect(tailored.filename).toMatch(/\.sh$/);
     const plainN = S.countFixBlocks(plain.text);
@@ -202,7 +202,7 @@ test('setup remediation and guide honour the tailoring', async () => {
 });
 
 test('tailored scan: scoped values include the set-values', async () => {
-    await frame.locator('#ct-scap-tailoring-select').selectOption('');
+    await S.pick(frame, '#ct-scap-tailoring-select', '');
     await S.runScan(frame, { profileId: S.PROFILE_L1, tailoringPath });
     const r = await checkScopedValues('tailored', S.TEST_TAILORED_PROFILE, tailoringPath);
     for (const fixType of ['bash', 'ansible']) {

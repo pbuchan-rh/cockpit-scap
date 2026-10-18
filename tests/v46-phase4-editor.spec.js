@@ -28,9 +28,9 @@ const bar = () => editor().locator('[data-ct-tailor-actionbar]');
 const policiesCard = () => frame.locator('.pf-v6-c-card').filter({ has: frame.getByRole('heading', { name: 'Saved Tailoring Policies' }) });
 
 async function loadNew() {
-    await frame.locator('#ct-tailor-content-select').selectOption(S.DS);
+    await S.pick(frame, '#ct-tailor-content-select', S.DS);
     await expect(frame.locator('#ct-tailor-profile-select')).toBeEnabled({ timeout: 60000 });
-    await frame.locator('#ct-tailor-profile-select').selectOption(S.PROFILE_L1);
+    await S.pick(frame, '#ct-tailor-profile-select', S.PROFILE_L1);
     await editor().getByRole('button', { name: 'Load Rules' }).click();
     await expect(bar()).toBeVisible({ timeout: 120000 });
 }
@@ -47,12 +47,10 @@ async function changeFirstVariable() {
     // Polish E1: Variables may start closed.
     const toggle = editor().locator('#ct-tailor-values-title-toggle');
     if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
-    const ctl = editor().locator('.ct-tailor-values-grid').locator('select, input')
+    const ctl = editor().locator('.ct-tailor-values-grid').locator('.ct-select-toggle, input')
             .first();
-    if (await ctl.evaluate(e => e.tagName) === 'SELECT') {
-        const values = await ctl.locator('option').evaluateAll(os => os.map(o => o.value));
-        const cur = await ctl.inputValue();
-        await ctl.selectOption(values.find(v => v !== cur));
+    if (await ctl.evaluate(e => e.tagName) === 'BUTTON') {
+        await S.pickOther(frame, ctl);
     } else {
         await ctl.fill((await ctl.inputValue()) + '1');
     }

@@ -6,7 +6,6 @@ import { Card, CardBody, CardHeader, CardTitle } from "@patternfly/react-core/di
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { ExpandableSection, ExpandableSectionToggle, ExpandableSectionVariant } from "@patternfly/react-core/dist/esm/components/ExpandableSection/index.js";
 import { Form, FormGroup } from "@patternfly/react-core/dist/esm/components/Form/index.js";
-import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { SearchInput } from "@patternfly/react-core/dist/esm/components/SearchInput/index.js";
@@ -29,6 +28,7 @@ import { ContentFieldError, ContentSelect } from './ContentSelect.jsx';
 import { OtherContentMenu } from './OtherContentMenu.jsx';
 import { ProfileDescriptionPanel } from './ProfileDescriptionPanel.jsx';
 import { RuleDetailsBlock } from './RuleDetails.jsx';
+import { SelectField } from './SelectField.jsx';
 
 const _ = cockpit.gettext;
 
@@ -685,9 +685,10 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                         <ContentSelect
                                             id="ct-tailor-content-select"
                                             value={content}
-                                            onChange={(_e, v) => setContent(v)}
+                                            onChange={setContent}
                                             contentList={contentList}
                                             validated={contentError ? 'error' : 'default'}
+                                            ariaDescribedBy={contentError ? 'ct-tailor-content-error' : undefined}
                                             emptyLabel={_("Select content…")}
                                         />
                                         {contentError && <ContentFieldError id="ct-tailor-content-error" error={contentError} />}
@@ -703,18 +704,15 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                         />
                                     </FormGroup>
                                     <FormGroup label={_("Base profile")} fieldId="ct-tailor-profile-select">
-                                        <FormSelect
-                                            id="ct-tailor-profile-select" value={profileId}
-                                            onChange={(_e, v) => setProfileId(v)}
+                                        <SelectField
+                                            id="ct-tailor-profile-select"
+                                            label={_("Base profile")}
+                                            value={profileId}
+                                            onChange={setProfileId}
+                                            options={profiles.map(p => ({ value: p.id, label: p.title || p.id }))}
+                                            placeholder={_("Select content first")}
                                             isDisabled={!content || profiles.length === 0}
-                                        >
-                                            {profiles.length === 0 && (
-                                                <FormSelectOption value="" label={_("Select content first")} isDisabled />
-                                            )}
-                                            {profiles.map(p => (
-                                                <FormSelectOption key={p.id} value={p.id} label={p.title || p.id} />
-                                            ))}
-                                        </FormSelect>
+                                        />
                                     </FormGroup>
                                     <Button
                                         variant="secondary" isDisabled={!profileId || !content}
@@ -852,15 +850,18 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                                     >
                                                         {val.options && val.options.length > 0
                                                             ? (
-                                                                <FormSelect
+                                                                <SelectField
                                                                     id={`ct-tailor-value-${val.id}`}
+                                                                    label={val.title || val.id}
                                                                     value={activeValue}
-                                                                    onChange={(_e, v) => updateValue(val, v)}
-                                                                >
-                                                                    {val.options.map(opt => (
-                                                                        <FormSelectOption key={opt.selector || opt.value} value={opt.value} label={opt.selector === opt.value ? opt.value : `${opt.selector}: ${opt.value}`} />
-                                                                    ))}
-                                                                </FormSelect>
+                                                                    onChange={v => updateValue(val, v)}
+                                                                    placeholder={activeValue}
+                                                                    options={val.options.map(opt => ({
+                                                                        key: opt.selector || opt.value,
+                                                                        value: opt.value,
+                                                                        label: opt.selector === opt.value ? opt.value : `${opt.selector}: ${opt.value}`,
+                                                                    }))}
+                                                                />
                                                             )
                                                             : (
                                                                 <TextInput

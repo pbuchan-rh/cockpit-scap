@@ -34,9 +34,9 @@ const varsSearch = () => editor().getByRole('textbox', { name: 'Search variables
 const varGroups = () => editor().locator('.ct-tailor-values-grid .pf-v6-c-form__group');
 
 async function loadNew() {
-    await frame.locator('#ct-tailor-content-select').selectOption(S.DS);
+    await S.pick(frame, '#ct-tailor-content-select', S.DS);
     await expect(frame.locator('#ct-tailor-profile-select')).toBeEnabled({ timeout: 60000 });
-    await frame.locator('#ct-tailor-profile-select').selectOption(S.PROFILE_L1);
+    await S.pick(frame, '#ct-tailor-profile-select', S.PROFILE_L1);
     await editor().getByRole('button', { name: 'Load Rules' })
             .click();
     await expect(bar()).toBeVisible({ timeout: 120000 });
@@ -86,7 +86,7 @@ test('E1: typing in Search variables opens the section and filters', async ({ br
     expect(shown).toBeGreaterThan(0);
     expect(shown).toBeLessThan(total);
     // The filter matches the title or the variable id (as before).
-    const hay = await varGroups().evaluateAll(gs => gs.map(g => (g.innerText + ' ' + (g.querySelector('select, input')?.id || '')).toLowerCase()));
+    const hay = await varGroups().evaluateAll(gs => gs.map(g => (g.innerText + ' ' + (g.querySelector('.ct-select-toggle, input')?.id || '')).toLowerCase()));
     for (const h of hay) expect(h).toContain('password');
     await varsToggle().scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${SHOTS}/editor-variables-open-${browserName}.png` });

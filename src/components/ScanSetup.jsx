@@ -9,7 +9,6 @@ import { DropdownItem } from "@patternfly/react-core/dist/esm/components/Dropdow
 import { DropdownList } from "@patternfly/react-core/dist/esm/components/Dropdown/DropdownList.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Form, FormGroup } from "@patternfly/react-core/dist/esm/components/Form/index.js";
-import { FormSelect, FormSelectOption } from "@patternfly/react-core/dist/esm/components/FormSelect/index.js";
 import { MenuToggle } from "@patternfly/react-core/dist/esm/components/MenuToggle/MenuToggle.js";
 import { MenuToggleAction } from "@patternfly/react-core/dist/esm/components/MenuToggle/MenuToggleAction.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
@@ -33,6 +32,7 @@ import { ContentFieldError, ContentSelect } from './ContentSelect.jsx';
 import { CONTENT_PACKAGES, MissingPackagesCard } from './MissingPackages.jsx';
 import { OtherContentMenu } from './OtherContentMenu.jsx';
 import { ProfileDescriptionPanel } from './ProfileDescriptionPanel.jsx';
+import { SelectField } from './SelectField.jsx';
 
 const _ = cockpit.gettext;
 
@@ -497,9 +497,10 @@ export const ScanSetup = ({
                                             : <ContentSelect
                                                 id="ct-scap-content"
                                                 value={content}
-                                                onChange={(_e, v) => handleSelectContent(v)}
+                                                onChange={handleSelectContent}
                                                 contentList={contentList}
                                                 validated={contentError ? 'error' : 'default'}
+                                                ariaDescribedBy={contentError ? 'ct-scap-content-error' : undefined}
                                                 emptyLabel={_("No content found — upload a datastream to get started")}
                                             />}
                                     {contentError && <ContentFieldError id="ct-scap-content-error" error={contentError} />}
@@ -525,38 +526,30 @@ export const ScanSetup = ({
                                 <FormGroup label={_("Profile")} fieldId="ct-scap-profile">
                                     {loadingProfiles
                                         ? <Spinner size="sm" aria-label={_("Loading profiles")} />
-                                        : <FormSelect
+                                        : <SelectField
                                             id="ct-scap-profile"
+                                            label={_("Profile")}
                                             value={selectedTailoring ? selectedTailoring.base_profile_id : profile}
-                                            onChange={(_e, v) => setProfile(v)}
+                                            onChange={setProfile}
+                                            options={profiles.map(p => ({ value: p.id, label: p.title || p.id }))}
+                                            placeholder={profiles.length > 0
+                                                ? _("Select a profile…")
+                                                : contentReady ? _("No profiles found") : _("Select content first")}
                                             isDisabled={!contentReady || profiles.length === 0 || !!selectedTailoring}
-                                        >
-                                            {profiles.length === 0
-                                                ? (
-                                                    <FormSelectOption
-                                                        value=""
-                                                        label={contentReady ? _("No profiles found") : _("Select content first")}
-                                                        isDisabled
-                                                    />
-                                                )
-                                                : <FormSelectOption value="" label={_("Select a profile…")} isPlaceholder isDisabled />}
-                                            {profiles.map(p => (
-                                                <FormSelectOption key={p.id} value={p.id} label={p.title || p.id} />
-                                            ))}
-                                        </FormSelect>}
+                                        />}
                                 </FormGroup>
 
                                 <FormGroup label={_("Tailoring policy")} fieldId="ct-scap-tailoring-select">
-                                    <FormSelect
+                                    <SelectField
                                         id="ct-scap-tailoring-select"
+                                        label={_("Tailoring policy")}
                                         value={tailoringSelection}
-                                        onChange={(_e, v) => setTailoringSelection(v)}
-                                    >
-                                        <FormSelectOption value="" label={_("(No tailoring — use full profile)")} />
-                                        {tailoringForContent.map(sc => (
-                                            <FormSelectOption key={sc.path} value={sc.path} label={sc.name} />
-                                        ))}
-                                    </FormSelect>
+                                        onChange={setTailoringSelection}
+                                        options={[
+                                            { value: '', label: _("(No tailoring — use full profile)") },
+                                            ...tailoringForContent.map(sc => ({ value: sc.path, label: sc.name })),
+                                        ]}
+                                    />
                                 </FormGroup>
                             </Form>
                         </div>

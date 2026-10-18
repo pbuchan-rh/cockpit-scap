@@ -144,7 +144,7 @@ test('Install (Cockpit install dialog) brings the forms back without a reload', 
     await expect(dialog).toHaveCount(0, { timeout: 600000 });
     // Re-detected in place: the form, with this host's content and profiles.
     await expect(frame.locator('#ct-scan-oscap-missing')).toHaveCount(0, { timeout: 30000 });
-    await expect(frame.locator('select#ct-scap-content')).toHaveValue(S.DS, { timeout: 30000 });
+    await expect(frame.locator('#ct-scap-content')).toHaveAttribute('data-ct-value', S.DS, { timeout: 30000 });
     await expect(frame.locator('#ct-scap-profile')).toBeEnabled({ timeout: 60000 });
     await tab('Policy Tailoring').click();
     await expect(frame.locator('#ct-tailor-content-select')).toBeVisible();
@@ -174,7 +174,7 @@ test('content missing: EmptyState with Install scap-security-guide and Upload co
     await empty.getByRole('button', { name: 'Upload content' }).click();
     await (await chooser).setFiles(LOCAL_DS);
     await expect(frame.locator('#ct-scan-no-content')).toHaveCount(0, { timeout: 120000 });
-    await expect(frame.locator('select#ct-scap-content option:checked')).toHaveText('v46-test-missing-deps-ds');
+    await expect(frame.locator('#ct-scap-content')).toHaveText('v46-test-missing-deps-ds');
     await expect(frame.locator('#ct-scap-profile')).toBeEnabled({ timeout: 60000 });
     await expectNoRawErrors();
 });
@@ -183,7 +183,7 @@ test('after reinstalling with dnf, the form is back on reload', async () => {
     sshApplyHost(`rm -f ~/SCAP/content/${UPLOAD_NAME}`);
     restorePackages();
     await reload();
-    await expect(frame.locator('select#ct-scap-content')).toHaveValue(S.DS, { timeout: 30000 });
+    await expect(frame.locator('#ct-scap-content')).toHaveAttribute('data-ct-value', S.DS, { timeout: 30000 });
     await expect(frame.locator('#ct-scan-no-content, #ct-scan-oscap-missing')).toHaveCount(0);
     await expect(frame.locator('#ct-scap-profile')).toBeEnabled({ timeout: 60000 });
     expect(installed()).toEqual(installedBefore);

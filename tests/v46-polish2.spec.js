@@ -49,9 +49,9 @@ const summarySub = () => editor().locator('.ct-tailor-summary .ct-tailor-section
 
 async function loadNew(f) {
     await f.getByRole('tab', { name: 'Policy Tailoring' }).click();
-    await f.locator('#ct-tailor-content-select').selectOption(S.DS);
+    await S.pick(f, '#ct-tailor-content-select', S.DS);
     await expect(f.locator('#ct-tailor-profile-select')).toBeEnabled({ timeout: 60000 });
-    await f.locator('#ct-tailor-profile-select').selectOption(S.PROFILE_L1);
+    await S.pick(f, '#ct-tailor-profile-select', S.PROFILE_L1);
     await editorOf(f).getByRole('button', { name: 'Load Rules' })
             .click();
     await expect(barOf(f)).toBeVisible({ timeout: 120000 });
@@ -71,12 +71,10 @@ async function toggleAideRule(i) {
 async function changeFirstVariable() {
     if (await varsToggle().getAttribute('aria-expanded') !== 'true') await varsToggle().click();
     const ctl = editor().locator('.ct-tailor-values-grid')
-            .locator('select, input')
+            .locator('.ct-select-toggle, input')
             .first();
-    if (await ctl.evaluate(e => e.tagName) === 'SELECT') {
-        const values = await ctl.locator('option').evaluateAll(os => os.map(o => o.value));
-        const cur = await ctl.inputValue();
-        await ctl.selectOption(values.find(v => v !== cur));
+    if (await ctl.evaluate(e => e.tagName) === 'BUTTON') {
+        await S.pickOther(frame, ctl);
     } else {
         await ctl.fill((await ctl.inputValue()) + '1');
     }

@@ -55,7 +55,7 @@ async function sidecarFor(title) {
 }
 
 test('friendly content names in the scan picker; one "Other content" menu, no link row', async () => {
-    await expect(frame.locator('#ct-scap-content option', { hasText: 'Red Hat Enterprise Linux 10' })).toHaveCount(1);
+    expect((await S.pickerOptions(frame, '#ct-scap-content')).filter(o => o.text === 'Red Hat Enterprise Linux 10')).toHaveLength(1);
     for (const old of ['Enter path manually', 'Upload…', 'Manage uploaded content →'])
         await expect(frame.getByRole('button', { name: old })).toHaveCount(0);
     const toggle = frame.locator('#ct-scan-other-content');
@@ -66,7 +66,7 @@ test('friendly content names in the scan picker; one "Other content" menu, no li
     await expect(frame.locator('input#ct-scap-content')).toBeVisible();
     await toggle.click();
     await frame.getByRole('menuitem', { name: 'Use detected content' }).click();
-    await expect(frame.locator('select#ct-scap-content')).toBeVisible();
+    await expect(frame.locator('button#ct-scap-content')).toBeVisible();
 });
 
 test('Manage content opens the SCAP Content card on the Policy Tailoring tab', async () => {
@@ -127,7 +127,7 @@ test('upload a v46-test datastream, it lists as Uploaded with its version, Delet
     await expect(row.locator('td').nth(2)).toHaveText(/^0\.1\.\d+$/);
     await expect(contentCard().locator('.ct-list-count')).toHaveText(new RegExp(`^${rowsBefore + 1} items · \\d+(\\.\\d)? MB$`));
     // ...and is offered by the content pickers.
-    await expect(frame.locator('#ct-tailor-content-select option', { hasText: 'v46-test-upload-ds' })).toHaveCount(1);
+    expect((await S.pickerOptions(frame, '#ct-tailor-content-select')).filter(o => o.text === 'v46-test-upload-ds')).toHaveLength(1);
     await row.getByRole('button', { name: `Delete ${UPLOAD_NAME}` }).click();
     const modal = frame.getByRole('dialog');
     await expect(modal).toContainText(UPLOAD_NAME);
@@ -168,7 +168,7 @@ test('F2: no match asks in a small modal; Cancel saves nothing, choosing saves',
     await uploadTailoring(title, '/opt/v46-test/unknown-ds.xml');
     modal = frame.getByRole('dialog');
     await expect(modal.getByRole('button', { name: 'Save policy' })).toBeDisabled();
-    await modal.getByRole('combobox', { name: 'Content for the uploaded policy' }).selectOption(S.DS);
+    await S.pick(frame, modal.getByRole('button', { name: /^Content for the uploaded policy/ }), S.DS);
     await modal.getByRole('button', { name: 'Save policy' }).click();
     await expect(policiesCard().locator('tbody tr').filter({ hasText: title })).toHaveCount(1);
     expect((await sidecarFor(title)).sds_path).toBe(S.DS);
