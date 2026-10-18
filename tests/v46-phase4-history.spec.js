@@ -80,7 +80,9 @@ test('profile with tailoring subline; score delta only vs same profile and tailo
     await expect(row(NEWER).locator('.ct-score-delta')).toHaveText('10');
     await expect(row(NEWER).locator('.ct-score-delta svg[aria-label="up"]')).toHaveCount(1);
     await expect(row(NEWER).locator('.ct-score-delta')).toHaveClass(/ct-score-delta-up/);
-    await expect(row(OTHER).locator('.ct-score-delta')).toHaveCount(0);
+    // No marker: only T1's empty fixed-width slot, which keeps the % aligned.
+    await expect(row(OTHER).locator('.ct-score-delta')).toHaveText('');
+    await expect(row(OTHER).locator('.ct-score-delta svg')).toHaveCount(0);
 });
 
 test('View scrolls to and focuses the results', async () => {

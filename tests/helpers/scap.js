@@ -116,20 +116,32 @@ async function expectDownload(page, click, { binary = false } = {}) {
  * pick(frame, '#ct-scap-profile', id). */
 async function pick(frame, selector, value) {
     const toggle = typeof selector === 'string' ? frame.locator(selector) : selector;
-    await toggle.click();
+    await openPicker(toggle);
     await frame.locator(`.pf-v6-c-menu li[data-ct-value="${value}"] button`).click();
     await expect(toggle).toHaveAttribute('data-ct-value', value);
+}
+
+/* Opens a picker from the keyboard, with the mouse parked in a corner and
+ * focus moved to the toggle first: a tooltip still showing for the button
+ * clicked last (PF tooltips follow hover and focus) could otherwise sit
+ * over the toggle or its menu and swallow the click. */
+async function openPicker(toggle) {
+    await expect(toggle).toBeEnabled({ timeout: 60000 }); // focus/press do not wait for it
+    await toggle.page().mouse.move(0, 0);
+    await toggle.focus();
+    await toggle.press('Enter');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 }
 
 /* The picker's options as [{ value, text }] (opens and closes it). */
 async function pickerOptions(frame, selector) {
     const toggle = typeof selector === 'string' ? frame.locator(selector) : selector;
-    await toggle.click();
+    await openPicker(toggle);
     const menu = frame.locator('.pf-v6-c-menu').filter({ has: frame.locator('li[data-ct-value]') });
     await menu.first().waitFor();
     const options = await menu.first().locator('li[data-ct-value]')
             .evaluateAll(lis => lis.map(li => ({ value: li.dataset.ctValue, text: li.textContent.trim() })));
-    await toggle.click();
+    await toggle.press('Escape');
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     return options;
 }
