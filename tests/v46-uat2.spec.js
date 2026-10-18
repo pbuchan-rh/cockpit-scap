@@ -113,7 +113,8 @@ test('Variables search filters and clears', async ({ browserName }) => {
     await expect(varGroups()).toHaveCount(total);
     // Variables expanded (Rules collapsed), for the screenshot.
     await setOpen(SECTIONS[0], false);
-    await toggle(sec).evaluate(el => el.scrollIntoView({ block: 'start' }));
+    // The section (scroll-margin 6rem) clears the sticky action bar.
+    await section(sec).evaluate(el => el.scrollIntoView({ block: 'start' }));
     await page.waitForTimeout(300);
     await shots('editor-variables-expanded', browserName, page);
 });
