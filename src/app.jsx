@@ -9,7 +9,7 @@ import { Tab, Tabs, TabTitleText } from "@patternfly/react-core/dist/esm/compone
 import { isOscapInstalled, makeTmpdir, startScan, readResults, cleanupTmpdir } from './lib/oscap.js';
 import { groupReferences, parseResults } from './lib/results.js';
 import { extractProfile, flattenProfileRules, getTailoringDiskUsage, parseTailoringXml, readTailoringXml } from './lib/tailoring.js';
-import { saveScan, readSavedScanFiles, getScanHistoryDiskUsage } from './lib/scanHistory.js';
+import { findPriorScanDuration, saveScan, readSavedScanFiles, getScanHistoryDiskUsage } from './lib/scanHistory.js';
 import { ScanSetup } from './components/ScanSetup.jsx';
 import { ScanProgress } from './components/ScanProgress.jsx';
 import { ScanResults } from './components/ScanResults.jsx';
@@ -42,10 +42,12 @@ export const App = () => {
     // Remediation Builder drawer: null when closed, else { preset, key }
     // (key remounts it so each open starts from its preset selection).
     const [builder, setBuilder] = useState(null);
-    // Running view: { config, startedAt, total, titles } for the scan in
-    // flight. total (rules the profile/tailoring selects) and titles arrive
-    // a moment after the scan starts, from the same extractProfile() call
-    // the results' rule metadata uses.
+    // Running view: { config, startedAt, total, titles, priorDuration } for
+    // the scan in flight. total (rules the profile/tailoring selects) and
+    // titles arrive a moment after the scan starts, from the same
+    // extractProfile() call the results' rule metadata uses. priorDuration
+    // (seconds the newest matching saved scan took, null if none) is
+    // undefined until looked up.
     const [scanInfo, setScanInfo] = useState(null);
     // Bumped by history "View": scroll to and focus the results (R3).
     const [resultsFocusKey, setResultsFocusKey] = useState(0);
@@ -101,8 +103,12 @@ export const App = () => {
         setError(null);
         setOutput([]);
         const startedAt = Date.now();
-        setScanInfo({ config, startedAt, total: null, titles: null });
+        setScanInfo({ config, startedAt, total: null, titles: null, priorDuration: undefined });
         setPhase('running');
+
+        findPriorScanDuration({ profileId: config.profile, sdsPath: config.content, tailoringPath: config.tailoring })
+                .catch(() => null)
+                .then(priorDuration => setScanInfo(s => (s && s.startedAt === startedAt ? { ...s, priorDuration } : s)));
 
         // Started alongside the scan: gives the running view its total and
         // rule titles, and the results their rule metadata.
@@ -149,6 +155,7 @@ export const App = () => {
                 }
             }
 
+            const scanDurationS = Math.round((Date.now() - startedAt) / 1000);
             setScanProc(null);
             console.debug('Scan finished, hasFindings:', hasFindings);
 
@@ -180,6 +187,7 @@ export const App = () => {
                     parsed,
                     files,
                     ruleMeta,
+                    scanDurationS,
                 });
                 setHistorySaveError(null);
             } catch (ex) {

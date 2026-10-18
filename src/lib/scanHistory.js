@@ -49,8 +49,10 @@ async function writeManifest(path, manifest) {
  * generateProfileFix() the same way ScanSetup.jsx does. `tailoringFile` is
  * the tailoring's display name (shown in the history table); `tailoringPath`
  * is the actual sidecar XML path oscap needs for --tailoring-file — kept
- * distinct since they're different strings. */
-export async function saveScan({ profileId, profileTitle, sdsPath, tailoringFile, tailoringPath, parsed, files, ruleMeta, baseProfileId }) {
+ * distinct since they're different strings. `scanDurationS` is whole seconds
+ * from scan start to oscap's exit: the next scan of the same content,
+ * profile and tailoring counts down from it (findPriorScanDuration). */
+export async function saveScan({ profileId, profileTitle, sdsPath, tailoringFile, tailoringPath, parsed, files, ruleMeta, baseProfileId, scanDurationS }) {
     const rootDir = await getScanHistoryDir();
     await ensureUserDir(rootDir);
 
@@ -85,6 +87,7 @@ export async function saveScan({ profileId, profileTitle, sdsPath, tailoringFile
         tailoring_path: tailoringPath || null,
         score: parsed.scorePercent,
         counts: { pass: parsed.pass, fail: parsed.fail },
+        scan_duration_s: Number.isFinite(scanDurationS) ? scanDurationS : null,
         rule_meta: ruleMeta || {},
     };
     await writeManifest(manifestPath, manifest);
@@ -122,6 +125,59 @@ export async function listScans() {
     }));
     return manifests.filter(Boolean)
             .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+}
+
+/* Seconds a saved scan took, from its own results' TestResult start-time
+ * and end-time (what the results page shows as "Duration"). Only the
+ * opening tag is read: grep -m1 stops gzip right after it. */
+async function resultsDurationS(dir) {
+    try {
+        const tag = await cockpit.spawn(
+            ['sh', '-c', 'gzip -dc -- "$1" | grep -m1 -oE "<([A-Za-z0-9_.-]+:)?TestResult [^>]*>"', 'sh', `${dir}/results.xml.gz`],
+            { superuser: 'try', err: 'ignore' }
+        );
+        const start = tag.match(/start-time="([^"]+)"/)?.[1];
+        const end = tag.match(/end-time="([^"]+)"/)?.[1];
+        const s = Math.round((new Date(end) - new Date(start)) / 1000);
+        return Number.isFinite(s) && s > 0 ? s : null;
+    } catch {
+        return null;
+    }
+}
+
+/* How long the newest saved scan of the same content, profile and
+ * tailoring took, in seconds, for the running view's countdown (as v3).
+ * Manifests are read newest first and only until the first match; a match
+ * saved before scan_duration_s existed falls back to its own results file.
+ * null when no saved scan matches. */
+export async function findPriorScanDuration({ profileId, sdsPath, tailoringPath }) {
+    const rootDir = await getScanHistoryDir();
+    let output;
+    try {
+        output = await cockpit.spawn(['ls', rootDir], { superuser: 'try', err: 'ignore' });
+    } catch {
+        return null;
+    }
+    const entries = output.trim().split('\n')
+            .filter(Boolean)
+            .sort()
+            .reverse();
+    for (const ts of entries) {
+        const dir = `${rootDir}/${ts}`;
+        let manifest;
+        try {
+            manifest = JSON.parse(await cockpit.file(`${dir}/manifest.json`, { superuser: 'try' }).read());
+        } catch {
+            continue;
+        }
+        if (!manifest || manifest.profile_id !== profileId || manifest.sds_file !== sdsPath ||
+            (manifest.tailoring_path || null) !== (tailoringPath || null))
+            continue;
+        if (Number.isFinite(manifest.scan_duration_s) && manifest.scan_duration_s > 0)
+            return manifest.scan_duration_s;
+        return resultsDurationS(dir);
+    }
+    return null;
 }
 
 /* Read back a saved scan's files for the "View report"/"Download" actions.

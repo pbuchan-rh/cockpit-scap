@@ -107,12 +107,23 @@ async function expectDownload(page, click, { binary = false } = {}) {
     return { filename: download.suggestedFilename(), buffer: buf, text: binary ? null : buf.toString('utf8') };
 }
 
+/* Picks `value` (a content path, profile id or tailoring path) in one of
+ * the form's pickers, e.g. pick(frame, '#ct-scap-profile', id). */
+async function pick(frame, selector, value) {
+    await frame.locator(selector).selectOption(value);
+}
+
+/* Host Scan setup: content, then profile (waits for the profiles). */
+async function pickContentAndProfile(frame, profileId = PROFILE_L1, content = DS) {
+    await pick(frame, '#ct-scap-content', content);
+    await expect(frame.locator('#ct-scap-profile')).toBeEnabled({ timeout: 60000 });
+    await pick(frame, '#ct-scap-profile', profileId);
+}
+
 /* Runs a scan from the setup page and waits for the results page. */
 async function runScan(frame, { profileId = PROFILE_L1, tailoringPath = null } = {}) {
-    await frame.locator('#ct-scap-content').selectOption(DS);
-    await expect(frame.locator('#ct-scap-profile')).toBeEnabled({ timeout: 60000 });
-    await frame.locator('#ct-scap-profile').selectOption(profileId);
-    if (tailoringPath) await frame.locator('#ct-scap-tailoring-select').selectOption(tailoringPath);
+    await pickContentAndProfile(frame, profileId);
+    if (tailoringPath) await pick(frame, '#ct-scap-tailoring-select', tailoringPath);
     const run = frame.getByRole('button', { name: 'Run Scan' });
     await expect(run).toBeEnabled({ timeout: 30000 });
     await run.click();
@@ -185,6 +196,7 @@ function countFixBlocks(text) {
 module.exports = {
     DS, RULE, PROFILE_L1, TEST_TAILORING_NAME, TEST_TAILORED_PROFILE, DESELECTED, SET_VALUES, NO_ANSIBLE_RULES,
     homeDir, snapshotScans, snapshotTmp, createTestTailoring, cleanupCreated, expectDownload, runScan,
+    pick, pickContentAndProfile,
     openBuilder, closeBuilder, builderDownload, resultsDownload,
     fixVariables, diffVariables, countFixBlocks,
 };

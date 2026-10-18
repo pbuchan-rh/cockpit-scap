@@ -18,6 +18,7 @@ import { CheckCircleIcon } from "@patternfly/react-icons/dist/esm/icons/check-ci
 import { ExclamationCircleIcon } from "@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon.js";
 import { ExclamationTriangleIcon } from "@patternfly/react-icons/dist/esm/icons/exclamation-triangle-icon.js";
 
+import { nextRateState, priorEstimate, rateEstimate } from '../lib/eta.js';
 import { getContentVersion, parseProgressLine, sdsDisplayName } from '../lib/oscap.js';
 import { ruleShortId } from '../lib/rules.js';
 
@@ -52,6 +53,17 @@ export function formatClock(seconds) {
     return m > 0 ? cockpit.format(_("${0}m ${1}s"), m, String(s).padStart(2, '0')) : cockpit.format(_("${0}s"), s);
 }
 
+/* The time-left text. A prior scan's duration is precise enough for
+ * minutes and seconds; the rule-rate guess only gets coarse words. */
+function remainingText(remaining, source) {
+    const s = Math.round(remaining);
+    if (s <= 0) return _("Finishing…");
+    if (source === 'prior') return cockpit.format(_("about $0 remaining"), formatClock(s));
+    if (s < 60) return _("less than a minute remaining");
+    const m = Math.round(s / 60);
+    return cockpit.format(cockpit.ngettext("about $0 minute remaining", "about $0 minutes remaining", m), m);
+}
+
 // Pixels from the bottom that still count as "at the newest rule".
 const FOLLOW_SLACK = 8;
 
@@ -59,7 +71,9 @@ const FOLLOW_SLACK = 8;
  * ETA, live PASSED / FAILED / ERRORS tiles, and a scrollable feed of the
  * evaluated rules that follows the newest until the user scrolls up.
  * Everything is derived from oscap's --progress lines (`output`); `info`
- * is app.jsx's { config, startedAt, total, titles }. */
+ * is app.jsx's { config, startedAt, total, titles, priorDuration }. The
+ * time left comes from lib/eta.js: the prior scan's duration when there is
+ * one, else the rule rate; the bar follows the same estimate. */
 export const ScanProgress = ({ output, info, onCancel }) => {
     const [now, setNow] = useState(Date.now());
     const [hostname, setHostname] = useState('');
@@ -69,6 +83,7 @@ export const ScanProgress = ({ output, info, onCancel }) => {
     const [showOutput, setShowOutput] = useState(false);
     const [cancelling, setCancelling] = useState(false);
     const feedRef = useRef(null);
+    const rateRef = useRef(null); // lib/eta.js rate state
     const config = info?.config || {};
 
     useEffect(() => {
@@ -101,14 +116,25 @@ export const ScanProgress = ({ output, info, onCancel }) => {
 
     const done = results.length;
     const total = info?.total ? Math.max(info.total, done) : null;
-    const elapsed = Math.max(0, Math.floor((now - (info?.startedAt ?? now)) / 1000));
-    let eta = null;
-    if (total && done >= 5 && elapsed >= 3) {
-        const remaining = Math.round(elapsed / done * (total - done));
-        eta = remaining <= 0
-            ? _("Finishing…")
-            : cockpit.format(_("about $0 remaining"), formatClock(remaining));
+    // `now` only drives the 1 s re-render; the estimate reads the clock
+    // itself so a render caused by new output is not a second behind.
+    const startedAt = info?.startedAt ?? now;
+    const clock = Math.max(now, Date.now());
+    const elapsed = Math.max(0, Math.floor((clock - startedAt) / 1000));
+    const prior = info?.priorDuration;
+    let source = null;
+    let estimate = null;
+    if (prior) {
+        source = 'prior';
+        estimate = priorEstimate(prior, elapsed);
+    } else if (prior === null) {
+        source = 'rate';
+        rateRef.current = nextRateState(rateRef.current, { now: clock, startedAt, done, total });
+        estimate = rateEstimate(rateRef.current, { now: clock, startedAt });
     }
+    let barValue = total ? Math.round(done / total * 100) : 0;
+    if (estimate) barValue = Math.min(99, Math.round(estimate.fraction * 100));
+    else if (source === 'prior') barValue = 99; // ran past the prior scan's time
 
     // Follow the newest rule unless the user scrolled up to read.
     useLayoutEffect(() => {
@@ -155,15 +181,26 @@ export const ScanProgress = ({ output, info, onCancel }) => {
             <CardBody>
                 <Progress
                     className="ct-scan-progress-bar"
-                    value={total ? Math.round(done / total * 100) : 0}
+                    value={barValue}
                     title={total
                         ? cockpit.format(_("$0 of $1 rules evaluated"), done, total)
                         : cockpit.format(cockpit.ngettext("$0 rule evaluated", "$0 rules evaluated", done), done)}
-                    measureLocation={total ? ProgressMeasureLocation.outside : ProgressMeasureLocation.none}
+                    measureLocation={total || estimate ? ProgressMeasureLocation.outside : ProgressMeasureLocation.none}
                     helperText={
                         <span className="ct-scan-eta">
                             {cockpit.format(_("Elapsed $0"), formatClock(elapsed))}
-                            {eta && <> · {eta}</>}
+                            {estimate && (
+                                <>
+                                    {' · '}
+                                    <span
+                                        className="ct-scan-remaining"
+                                        data-ct-eta-source={source}
+                                        data-ct-remaining={Math.round(estimate.remaining)}
+                                    >
+                                        {remainingText(estimate.remaining, source)}
+                                    </span>
+                                </>
+                            )}
                         </span>
                     }
                     aria-label={_("Scan progress")}
