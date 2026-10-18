@@ -25,6 +25,7 @@ BuildRequires: nodejs-esbuild
 
 Requires: cockpit-bridge
 Requires: openscap-scanner
+Recommends: scap-security-guide
 
 %{NPM_PROVIDES}
 
