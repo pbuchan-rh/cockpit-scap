@@ -1,34 +1,19 @@
 import cockpit from 'cockpit';
 
-import { listUploadedContent } from './content.js';
+import { INSTALLED_CONTENT_ROOT, listInstalledContent, listUploadedContent } from './content.js';
 import { readTailoringXml } from './tailoring.js';
 
-const SSG_CONTENT_DIR = '/usr/share/xml/scap/ssg/content';
-
-async function detectSystemContent() {
-    try {
-        const output = await cockpit.spawn(
-            ['find', SSG_CONTENT_DIR, '-name', '*-ds.xml', '-type', 'f'],
-            { err: 'ignore' }
-        );
-        return output.trim().split('\n')
-                .filter(Boolean)
-                .sort();
-    } catch {
-        return [];
-    }
-}
-
-/* Merges auto-detected SSG system content with the user's uploaded content
- * (~/SCAP/content/, see lib/content.js), tagged by source so every picker
+/* Merges installed content (every *-ds.xml under /usr/share/xml/scap, see
+ * listInstalledContent) with the user's uploaded content (~/SCAP/content/,
+ * see lib/content.js), tagged by source so every picker
  * (ScanSetup.jsx, TailoringEditor.jsx, TailoringList.jsx) can render both
  * without reimplementing detection. Breaking return-shape change from bare
  * path strings to {path, source} objects — see PLAN_V4.3_CONTENT_UPLOAD.md
  * Decision 6. */
 export async function detectContent() {
-    const [system, uploaded] = await Promise.all([detectSystemContent(), listUploadedContent()]);
+    const [system, uploaded] = await Promise.all([listInstalledContent(), listUploadedContent()]);
     return [
-        ...system.map(path => ({ path, source: 'system' })),
+        ...system.map(c => ({ path: c.path, source: 'system' })),
         ...uploaded.map(c => ({ path: c.path, source: 'uploaded' })),
     ];
 }
@@ -45,21 +30,22 @@ const SDS_DISPLAY_NAMES = {
 /* "Red Hat Enterprise Linux 10" for ssg-rhel10-ds.xml, wherever it lives
  * (an uploaded ssg-rhel9-ds.xml gets the friendly name too; the pickers
  * group by source, and lists show the file name as a subline). Other SSG
- * names lose their ssg-/-ds.xml decoration; any other upload just loses
- * .xml. `source` is optional: a bare path (e.g. a tailoring sidecar's
- * sds_path) is system content when it is under the SSG install dir. */
+ * names lose their ssg-/-ds.xml decoration; other installed content shows
+ * its file name; any other upload just loses .xml. `source` is optional: a
+ * bare path (e.g. a tailoring sidecar's sds_path) is installed content when
+ * it is under /usr/share/xml/scap. */
 export function sdsDisplayName(path, source) {
     if (!path) return '—';
     const name = path.split('/').pop() ?? path;
     const rhel = name.match(/^ssg-rhel(\d+)-ds\.xml$/);
     if (rhel) return `Red Hat Enterprise Linux ${rhel[1]}`;
     if (SDS_DISPLAY_NAMES[name]) return SDS_DISPLAY_NAMES[name];
-    const src = source ?? (path.startsWith(SSG_CONTENT_DIR + '/') ? 'system' : 'uploaded');
-    if (src === 'system' || /^ssg-.*-ds\.xml$/.test(name)) {
+    if (/^ssg-.*-ds\.xml$/.test(name)) {
         return name.replace(/^ssg-/, '').replace(/-ds\.xml$/, '')
                 .replace(/-/g, ' ');
     }
-    return name.replace(/\.xml$/, '');
+    const src = source ?? (path.startsWith(INSTALLED_CONTENT_ROOT + '/') ? 'system' : 'uploaded');
+    return src === 'system' ? name : name.replace(/\.xml$/, '');
 }
 
 export function contentFileName(path) {
@@ -79,8 +65,6 @@ export async function getContentVersion(sdsPath) {
         return null;
     }
 }
-
-export const SYSTEM_CONTENT_DIR = SSG_CONTENT_DIR;
 
 /* Default content for this host: the SSG datastream matching the OS major
  * version, else any datastream for the OS id, else the first one found.
@@ -163,22 +147,6 @@ export async function isOscapInstalled() {
         return true;
     } catch (ex) {
         return !(ex.problem === 'not-found' || ex.exit_status === 127);
-    }
-}
-
-/* Cheap check of a typed content path before oscap reads it:
- * { kind: 'file' | 'directory' | 'missing' | 'other' | 'error', message }.
- * stat -L follows a symlink to what it points at. */
-export async function statContentPath(path) {
-    try {
-        const type = (await cockpit.spawn(['stat', '-L', '-c', '%F', '--', path], { err: 'message' })).trim();
-        if (type === 'directory') return { kind: 'directory' };
-        if (type.startsWith('regular')) return { kind: 'file' }; // "regular file" / "regular empty file"
-        return { kind: 'other', message: type };
-    } catch (ex) {
-        const message = ex.message || String(ex);
-        if (/No such file|Not a directory/i.test(message)) return { kind: 'missing' };
-        return { kind: 'error', message };
     }
 }
 

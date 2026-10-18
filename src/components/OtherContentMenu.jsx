@@ -8,9 +8,9 @@ const _ = cockpit.gettext;
 
 /* "Other content ▾" under a content picker (F4, cheap version): one menu
  * instead of a row of blue links. Items appear only when their handler is
- * given: Upload content…, Enter a path / Use detected content (manual
- * toggle), Manage content (brings the SCAP Content card into view). */
-export const OtherContentMenu = ({ id, onUpload, uploading, manualPath, onToggleManual, onManage }) => {
+ * given: Upload content…, Manage content (brings the SCAP Content card
+ * into view). */
+export const OtherContentMenu = ({ id, onUpload, uploading, onManage }) => {
     const [isOpen, setIsOpen] = useState(false);
     return (
         <Dropdown
@@ -34,11 +34,6 @@ export const OtherContentMenu = ({ id, onUpload, uploading, manualPath, onToggle
                         description={_("Add a SCAP datastream (.xml) from this computer")}
                     >
                         {_("Upload content…")}
-                    </DropdownItem>
-                )}
-                {onToggleManual && (
-                    <DropdownItem value="manual" onClick={onToggleManual}>
-                        {manualPath ? _("Use detected content") : _("Enter a path…")}
                     </DropdownItem>
                 )}
                 {onManage && (

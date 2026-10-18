@@ -99,30 +99,39 @@ export async function listUploadedContent() {
     }
 }
 
-/* The scap-security-guide RPM's datastreams ("Installed" in the SCAP
- * Content card), same {path, name, size, mtime} shape as
- * listUploadedContent(). */
-export async function listIncludedContent(dir) {
+// Installed SCAP content lives anywhere under here, not only in
+// scap-security-guide's ssg/content directory.
+export const INSTALLED_CONTENT_ROOT = '/usr/share/xml/scap';
+const SSG_CONTENT_DIR = `${INSTALLED_CONTENT_ROOT}/ssg/content`;
+
+/* Every datastream (*-ds.xml) under INSTALLED_CONTENT_ROOT, at any depth
+ * ("Installed" in the pickers and the SCAP Content card), same
+ * {path, name, size, mtime} shape as listUploadedContent(). A file reached
+ * twice (a symlink to another one, a symlinked directory) is listed once,
+ * preferring scap-security-guide's own path. Sorted by name. */
+export async function listInstalledContent() {
+    let output;
     try {
-        const output = await cockpit.spawn(
-            ['find', dir, '-maxdepth', '1', '-name', '*-ds.xml', '-type', 'f', '-printf', '%f|%s|%T@\n'],
-            { err: 'ignore' }
-        );
-        return output.trim().split('\n')
-                .filter(Boolean)
-                .map(line => {
-                    const [name, size, mtimeEpoch] = line.split('|');
-                    return {
-                        path: `${dir}/${name}`,
-                        name,
-                        size: Number(size),
-                        mtime: new Date(Number(mtimeEpoch) * 1000).toISOString(),
-                    };
-                })
-                .sort((a, b) => a.name.localeCompare(b.name));
+        output = await cockpit.spawn(['sh', '-c',
+            'find "$1" \\( -type f -o -type l \\) -name "*-ds.xml" 2>/dev/null | while IFS= read -r f; do ' +
+            '[ -f "$f" ] && r=$(realpath -e -- "$f") || continue; printf "%s|%s|%s\\n" "$f" "$r" "$(stat -L -c "%s|%Y" -- "$f")"; done',
+            'sh', INSTALLED_CONTENT_ROOT], { err: 'ignore' });
     } catch {
         return [];
     }
+    const byReal = new Map();
+    for (const line of output.split('\n').filter(Boolean)) {
+        const [path, real, size, mtimeEpoch] = line.split('|');
+        const prev = byReal.get(real);
+        if (prev && (prev.path.startsWith(SSG_CONTENT_DIR + '/') || !path.startsWith(SSG_CONTENT_DIR + '/'))) continue;
+        byReal.set(real, {
+            path,
+            name: path.split('/').pop(),
+            size: Number(size),
+            mtime: new Date(Number(mtimeEpoch) * 1000).toISOString(),
+        });
+    }
+    return [...byReal.values()].sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
 }
 
 /* Upload pipeline: sanitize -> hash client-side bytes -> write to a scratch

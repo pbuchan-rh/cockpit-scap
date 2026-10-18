@@ -13,7 +13,6 @@ import { MenuToggle } from "@patternfly/react-core/dist/esm/components/MenuToggl
 import { MenuToggleAction } from "@patternfly/react-core/dist/esm/components/MenuToggle/MenuToggleAction.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
-import { TextInput } from "@patternfly/react-core/dist/esm/components/TextInput/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/index.js";
 import { LockIcon } from "@patternfly/react-icons/dist/esm/icons/lock-icon.js";
@@ -23,7 +22,7 @@ import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent }
 import { downloadFile } from '../lib/download.js';
 import {
     autoSelectContent, cpeDisplayName, detectContent, generateGuide, generateProfileFix, getContentPlatform,
-    getOsRelease, getProfiles, isEmptyFix, isPlatformMismatch, statContentPath, stripOscapNoise,
+    getOsRelease, getProfiles, isEmptyFix, isPlatformMismatch, stripOscapNoise,
 } from '../lib/oscap.js';
 import { listScans } from '../lib/scanHistory.js';
 import { listTailoringFiles } from '../lib/tailoring.js';
@@ -49,28 +48,15 @@ function slugify(text) {
             .replace(/^-+|-+$/g, '');
 }
 
-// How long typing must pause before a typed content path is checked.
-const MANUAL_PATH_IDLE_MS = 1000;
-
 export const ScanSetup = ({
     adminAllowed, remediationRunning, onScan, tailoringRefreshKey, contentRefreshKey, onContentChanged,
     onManageContent, onPackagesInstalled,
 }) => {
     const [contentList, setContentList] = useState([]);
-    // The content the form uses. In manual mode it is set only once the
-    // typed path (manualText) has passed the cheap file check.
     const [content, setContent] = useState('');
-    const [manualPath, setManualPath] = useState(false);
-    const [manualText, setManualText] = useState('');
-    // { message, details? } shown on the Content file field.
+    // { message, details? } shown on the Content file field when oscap
+    // cannot read the chosen content.
     const [contentError, setContentError] = useState(null);
-    // Bumped to reload profiles when the content value itself is unchanged.
-    const [contentReloadKey, setContentReloadKey] = useState(0);
-    const manualRef = useRef(false);
-    const validatedRef = useRef(null); // the typed path last checked
-    const validateSeq = useRef(0);
-    const lastSelectedRef = useRef(''); // last content picked from the list
-    const osRef = useRef({ id: '', versionId: '' });
     const [profiles, setProfiles] = useState([]);
     const [profile, setProfile] = useState('');
     const [tailoringFiles, setTailoringFiles] = useState([]);
@@ -98,16 +84,10 @@ export const ScanSetup = ({
                     if (cancelled) return;
                     setContentList(list);
                     setHost({ cpe, prettyName });
-                    osRef.current = { id, versionId };
-                    // A typed path is not in the list; keep it.
-                    if (manualRef.current) {
-                        setLoadingContent(false);
-                        return;
-                    }
                     // Only re-pick a default on first load or if the previously
                     // selected content vanished (e.g. deleted elsewhere) — an
                     // unrelated refresh (upload from another picker) must not
-                    // clobber the user's manual selection.
+                    // clobber the user's own pick.
                     setContent(prev => (prev && list.some(c => c.path === prev)) ? prev : autoSelectContent(list, id, versionId));
                     setLoadingContent(false);
                 })
@@ -153,76 +133,11 @@ export const ScanSetup = ({
                     setLoadingProfiles(false);
                 });
         return () => { cancelled = true };
-    }, [content, contentReloadKey]);
-
-    useEffect(() => {
-        manualRef.current = manualPath;
-        if (!manualPath && content) lastSelectedRef.current = content;
-    }, [manualPath, content]);
-
-    /* A typed path is checked only once the user is done with it (Enter,
-     * blur, or MANUAL_PATH_IDLE_MS without typing), and with a cheap stat
-     * before oscap ever reads it. */
-    async function validateManualPath(text) {
-        const path = text.trim();
-        if (!manualRef.current || path === validatedRef.current) return;
-        validatedRef.current = path;
-        if (!path) return;
-        const seq = ++validateSeq.current;
-        const { kind, message } = await statContentPath(path);
-        if (seq !== validateSeq.current || !manualRef.current) return; // typed on, or left manual mode
-        if (kind === 'file') {
-            setContent(path);
-            return;
-        }
-        if (kind === 'missing')
-            setContentError({ message: cockpit.format(_("No file at $0"), path) });
-        else if (kind === 'directory')
-            setContentError({ message: cockpit.format(_("$0 is a folder. Choose a SCAP content file (.xml)."), path) });
-        else
-            setContentError({ message: cockpit.format(_("$0 can't be read as a file."), path), details: message });
-    }
-
-    useEffect(() => {
-        if (!manualPath) return;
-        const timer = setTimeout(() => validateManualPath(manualText), MANUAL_PATH_IDLE_MS);
-        return () => clearTimeout(timer);
-    }, [manualPath, manualText]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    function handleManualChange(text) {
-        setManualText(text);
-        validatedRef.current = null;
-        validateSeq.current++;
-        setContentError(null);
-        setContent('');
-    }
+    }, [content]);
 
     function handleSelectContent(path) {
         setContentError(null);
         setContent(path);
-    }
-
-    // Leaving manual mode restores the last picked (or the host's default)
-    // content, so neither a typed path nor its error lingers (S2 add).
-    function handleToggleManual() {
-        validateSeq.current++;
-        if (!manualPath) {
-            setManualText(content);
-            validatedRef.current = content;
-            setManualPath(true);
-            manualRef.current = true;
-            return;
-        }
-        setManualPath(false);
-        manualRef.current = false;
-        setManualText('');
-        validatedRef.current = null;
-        const restore = contentList.some(c => c.path === lastSelectedRef.current)
-            ? lastSelectedRef.current
-            : autoSelectContent(contentList, osRef.current.id, osRef.current.versionId);
-        if (restore === content && contentError) setContentReloadKey(k => k + 1);
-        setContentError(null);
-        setContent(restore);
     }
 
     useEffect(() => {
@@ -254,9 +169,8 @@ export const ScanSetup = ({
         ? selectedTailoring.name
         : (profiles.find(p => p.id === profile)?.title || profile);
 
-    // Nothing to scan with: an EmptyState instead of the form. A typed path
-    // still counts as content.
-    const noContent = !loadingContent && contentList.length === 0 && !manualPath;
+    // Nothing to scan with: an EmptyState instead of the form.
+    const noContent = !loadingContent && contentList.length === 0;
 
     function handleSubmit(e) {
         e.preventDefault();
@@ -284,12 +198,6 @@ export const ScanSetup = ({
         reader.onload = async ev => {
             try {
                 const uploaded = await uploadContent(file.name, new Uint8Array(ev.target.result));
-                if (manualRef.current) {
-                    setManualPath(false);
-                    manualRef.current = false;
-                    setManualText('');
-                    validatedRef.current = null;
-                }
                 setContentError(null);
                 setContent(uploaded.path);
                 onContentChanged?.();
@@ -478,38 +386,20 @@ export const ScanSetup = ({
                                     )}
                                     {loadingContent
                                         ? <Spinner size="sm" aria-label={_("Loading content")} />
-                                        : manualPath
-                                            ? <TextInput
-                                                id="ct-scap-content"
-                                                value={manualText}
-                                                onChange={(_e, v) => handleManualChange(v)}
-                                                onBlur={() => validateManualPath(manualText)}
-                                                onKeyDown={e => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        validateManualPath(manualText);
-                                                    }
-                                                }}
-                                                validated={contentError ? 'error' : 'default'}
-                                                aria-describedby={contentError ? 'ct-scap-content-error' : undefined}
-                                                placeholder="/usr/share/xml/scap/ssg/content/ssg-rhel10-ds.xml"
-                                            />
-                                            : <ContentSelect
-                                                id="ct-scap-content"
-                                                value={content}
-                                                onChange={handleSelectContent}
-                                                contentList={contentList}
-                                                validated={contentError ? 'error' : 'default'}
-                                                ariaDescribedBy={contentError ? 'ct-scap-content-error' : undefined}
-                                                emptyLabel={_("No content found — upload a datastream to get started")}
-                                            />}
+                                        : <ContentSelect
+                                            id="ct-scap-content"
+                                            value={content}
+                                            onChange={handleSelectContent}
+                                            contentList={contentList}
+                                            validated={contentError ? 'error' : 'default'}
+                                            ariaDescribedBy={contentError ? 'ct-scap-content-error' : undefined}
+                                            emptyLabel={_("No content found — upload a datastream to get started")}
+                                        />}
                                     {contentError && <ContentFieldError id="ct-scap-content-error" error={contentError} />}
                                     <OtherContentMenu
                                         id="ct-scan-other-content"
                                         onUpload={handleUploadClick}
                                         uploading={uploading}
-                                        manualPath={manualPath}
-                                        onToggleManual={handleToggleManual}
                                         onManage={onManageContent}
                                     />
                                     {platformMismatch && (

@@ -128,7 +128,8 @@
     margin-block-start: var(--pf-t--global--spacer--xs);
 }
 
-// Content file field error (S2): oscap's own text behind "Details".
+// Content file field error (content oscap cannot read): oscap's own text
+// behind "Details".
 .ct-content-error-details {
     margin-block-start: var(--pf-t--global--spacer--xs);
 }
@@ -140,7 +141,7 @@
     color: var(--pf-t--global--text--color--subtle);
 }
 
-// Setup footer (S2): Run Scan, View Compliance Guide and Download
+// Setup footer: Run Scan, View Compliance Guide and Download
 // Remediation are disabled the same way, PF's own grey. The house rule
 // above keeps disabled secondary buttons blue, which made View Compliance
 // Guide the odd one out next to the primary and the split toggle.

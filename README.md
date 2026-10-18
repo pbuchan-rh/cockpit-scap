@@ -13,9 +13,9 @@ context switching.
 
 ## What it does
 
-- **Run a scan** — detects installed SSG data streams under `/usr/share/xml/scap/ssg/content/`,
-  pre-selects one based on `/etc/os-release`, and lists profiles for the selected content
-  (`oscap info`). A manual content path and an optional tailoring file are also available.
+- **Run a scan** — detects installed SCAP data streams (`*-ds.xml`) anywhere under
+  `/usr/share/xml/scap/`, pre-selects one based on `/etc/os-release`, and lists profiles for the
+  selected content (`oscap info`). Uploaded content and an optional tailoring file are also available.
 - **Live output** — `oscap xccdf eval` output streams into the page as the scan runs, with a
   Cancel button.
 - **Results** — compliance score and pass/fail/error counts, parsed client-side from

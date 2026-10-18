@@ -61,12 +61,9 @@ test('friendly content names in the scan picker; one "Other content" menu, no li
     const toggle = frame.locator('#ct-scan-other-content');
     await toggle.click();
     const items = (await frame.getByRole('menuitem').allInnerTexts()).map(t => t.split('\n')[0].trim());
-    expect(items).toEqual(['Upload content…', 'Enter a path…', 'Manage content']);
-    await frame.getByRole('menuitem', { name: 'Enter a path…' }).click();
-    await expect(frame.locator('input#ct-scap-content')).toBeVisible();
-    await toggle.click();
-    await frame.getByRole('menuitem', { name: 'Use detected content' }).click();
-    await expect(frame.locator('button#ct-scap-content')).toBeVisible();
+    // No path entry any more (U3): detected content or an upload.
+    expect(items).toEqual(['Upload content…', 'Manage content']);
+    await page.keyboard.press('Escape');
 });
 
 test('Manage content opens the SCAP Content card on the Policy Tailoring tab', async () => {

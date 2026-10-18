@@ -12,17 +12,17 @@ import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/es
 
 import { ListCardTitle } from './ListCardTitle.jsx';
 import {
-    checkUploadSize, deleteUploadedContent, listIncludedContent, listUploadedContent, sanitizeFilename,
+    checkUploadSize, deleteUploadedContent, listInstalledContent, listUploadedContent, sanitizeFilename,
     statExistingContent, uploadContent,
 } from '../lib/content.js';
 import { formatBytes, formatTimestamp, listFooterText } from '../lib/format.js';
-import { SYSTEM_CONTENT_DIR, getContentVersion, sdsDisplayName } from '../lib/oscap.js';
+import { getContentVersion, sdsDisplayName } from '../lib/oscap.js';
 
 const _ = cockpit.gettext;
 
 async function loadContent() {
     const [included, uploaded] = await Promise.all([
-        listIncludedContent(SYSTEM_CONTENT_DIR), listUploadedContent(),
+        listInstalledContent(), listUploadedContent(),
     ]);
     const rows = [
         ...included.map(c => ({ ...c, source: 'system' })),
@@ -34,8 +34,9 @@ async function loadContent() {
 }
 
 /* "SCAP Content" (G1): every datastream on the host in one table.
- * Installed rows come from the scap-security-guide RPM
- * (/usr/share/xml/scap/ssg/content, no Delete); Uploaded rows are the
+ * Installed rows are every datastream under /usr/share/xml/scap (the
+ * scap-security-guide RPM's and any other package's, no Delete), the same
+ * list the content pickers call "Installed"; Uploaded rows are the
  * user's ~/SCAP/content (Delete). Not "SSG Content": uploads can be any
  * vendor's SCAP content. Owns the Upload entry point; the content pickers'
  * "Other content" menus upload through the same lib/content.js calls and
