@@ -53,7 +53,8 @@ test('running view: context, bar moves, tiles count up, feed follows / pauses / 
     await expect(ctx).toContainText(/Version\s*0\.1\.\d+/);
     await expect(ctx).toContainText('CIS Red Hat Enterprise Linux 10 Benchmark for Level 1 - Server');
     await expect(ctx).toContainText(/Policy\s*—/);
-    await expect(ctx).toContainText('scap-test10');
+    // The target is the host under test (scap-test10 or scap-apply10).
+    await expect(ctx).toContainText(new URL(process.env.COCKPIT_URL).hostname.split('.')[0]);
 
     // The bar is real: "n of 323 rules" and its value grows.
     const bar = running.locator('.ct-scan-progress-bar');
