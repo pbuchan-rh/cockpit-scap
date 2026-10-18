@@ -20,6 +20,10 @@ import { getContentVersion, sdsDisplayName } from '../lib/oscap.js';
 
 const _ = cockpit.gettext;
 
+// Added only where the table has room for it next to the actions (from
+// lg, U4); stacked rows (below md) show every field.
+const WIDE_ONLY = ['hiddenOnMd', 'visibleOnLg'];
+
 async function loadContent() {
     const [included, uploaded] = await Promise.all([
         listInstalledContent(), listUploadedContent(),
@@ -184,29 +188,29 @@ export const ScapContentCard = ({ refreshKey, onChanged }) => {
                             <Table aria-label={_("SCAP content")} variant="compact" className="ct-table-band">
                                 <Thead>
                                     <Tr>
-                                        <Th>{_("Name")}</Th>
-                                        <Th>{_("Source")}</Th>
-                                        <Th>{_("Version")}</Th>
-                                        <Th className="ct-num-col">{_("Size")}</Th>
-                                        <Th>{_("Added")}</Th>
+                                        <Th className="ct-stretch-col">{_("Name")}</Th>
+                                        <Th className="ct-fit-col">{_("Source")}</Th>
+                                        <Th className="ct-fit-col">{_("Version")}</Th>
+                                        <Th className="ct-num-col ct-fit-col">{_("Size")}</Th>
+                                        <Th visibility={WIDE_ONLY} className="ct-date-cell">{_("Added")}</Th>
                                         <Th className="ct-actions-cell">{_("Actions")}</Th>
                                     </Tr>
                                 </Thead>
                                 <Tbody>
                                     {rows.map(item => (
                                         <Tr key={item.path} data-ct-source={item.source}>
-                                            <Td dataLabel={_("Name")}>
+                                            <Td dataLabel={_("Name")} className="ct-stretch-col">
                                                 <div>{sdsDisplayName(item.path, item.source)}</div>
                                                 <div className="ct-cell-subline">{item.name}</div>
                                             </Td>
-                                            <Td dataLabel={_("Source")}>
+                                            <Td dataLabel={_("Source")} className="ct-fit-col">
                                                 {/* Plain "Installed": the Version column already
                                                     shows the scap-security-guide version (Peter 10-15, C2). */}
                                                 {item.source === 'system' ? _("Installed") : _("Uploaded")}
                                             </Td>
-                                            <Td dataLabel={_("Version")}>{item.version || '—'}</Td>
-                                            <Td dataLabel={_("Size")} className="ct-num-col">{formatBytes(item.size)}</Td>
-                                            <Td dataLabel={_("Added")}>{formatTimestamp(item.mtime)}</Td>
+                                            <Td dataLabel={_("Version")} className="ct-fit-col">{item.version || '—'}</Td>
+                                            <Td dataLabel={_("Size")} className="ct-num-col ct-fit-col">{formatBytes(item.size)}</Td>
+                                            <Td dataLabel={_("Added")} visibility={WIDE_ONLY} className="ct-date-cell">{formatTimestamp(item.mtime)}</Td>
                                             <Td dataLabel={_("Actions")} className="ct-actions-cell">
                                                 {item.source === 'uploaded' && (
                                                     <Button

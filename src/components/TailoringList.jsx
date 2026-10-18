@@ -23,6 +23,10 @@ import { ContentSelect } from './ContentSelect.jsx';
 
 const _ = cockpit.gettext;
 
+// Content and Created only where the table has room for them next to the
+// actions (from xl, U4); stacked rows (below md) show every field.
+const WIDE_ONLY = ['hiddenOnMd', 'visibleOnXl'];
+
 function formatCreated(ts) {
     if (!ts) return '—';
     return ts.slice(0, 10) + ' ' + ts.slice(11).replace(/-/g, ':');
@@ -201,22 +205,22 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                             <Table aria-label={_("Saved tailoring policies")} variant="compact" className="ct-table-band">
                                 <Thead>
                                     <Tr>
-                                        <Th>{_("Name")}</Th>
-                                        <Th>{_("Content")}</Th>
-                                        <Th>{_("Base Profile")}</Th>
-                                        <Th modifier="wrap">{_("Rules Modified")}</Th>
-                                        <Th>{_("Created")}</Th>
+                                        <Th className="ct-stretch-col">{_("Name")}</Th>
+                                        <Th visibility={WIDE_ONLY} className="ct-fit-col">{_("Content")}</Th>
+                                        <Th className="ct-stretch-col">{_("Base Profile")}</Th>
+                                        <Th modifier="wrap" className="ct-num-col">{_("Rules Modified")}</Th>
+                                        <Th visibility={WIDE_ONLY} className="ct-date-cell">{_("Created")}</Th>
                                         <Th className="ct-actions-cell">{_("Actions")}</Th>
                                     </Tr>
                                 </Thead>
                                 <Tbody>
                                     {sidecars.map(sc => (
                                         <Tr key={sc.path}>
-                                            <Td dataLabel={_("Name")}>{sc.name}</Td>
-                                            <Td dataLabel={_("Content")}>{sdsDisplayName(sc.sds_path)}</Td>
-                                            <Td dataLabel={_("Base Profile")}>{sc.base_profile_title || sc.base_profile_id}</Td>
-                                            <Td dataLabel={_("Rules Modified")}>{sc.rules_modified ?? '—'}</Td>
-                                            <Td dataLabel={_("Created")}>{formatCreated(sc.created)}</Td>
+                                            <Td dataLabel={_("Name")} className="ct-stretch-col">{sc.name}</Td>
+                                            <Td dataLabel={_("Content")} visibility={WIDE_ONLY} className="ct-fit-col">{sdsDisplayName(sc.sds_path)}</Td>
+                                            <Td dataLabel={_("Base Profile")} className="ct-stretch-col">{sc.base_profile_title || sc.base_profile_id}</Td>
+                                            <Td dataLabel={_("Rules Modified")} className="ct-num-col">{sc.rules_modified ?? '—'}</Td>
+                                            <Td dataLabel={_("Created")} visibility={WIDE_ONLY} className="ct-date-cell">{formatCreated(sc.created)}</Td>
                                             <Td dataLabel={_("Actions")} className="ct-actions-cell">
                                                 <Flex spaceItems={{ default: 'spaceItemsSm' }} flexWrap={{ default: 'nowrap' }}>
                                                     <FlexItem flex={{ default: 'flexNone' }}>

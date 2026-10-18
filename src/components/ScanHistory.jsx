@@ -23,8 +23,11 @@ import { slugify } from '../lib/rules.js';
 
 const _ = cockpit.gettext;
 
-// Phone width keeps a 3-column table (Date | Score | Actions), R7.
+// Phone width keeps a 3-column table (Date | Score | Actions), R7; from
+// md Profile joins, and Passed / Failed from xl, where all six fit next to
+// View · Download · Delete (U4).
 const WIDE = ['hidden', 'visibleOnMd'];
+const WIDER = ['hidden', 'visibleOnXl'];
 
 function scoreText(score) {
     return score !== null && score !== undefined ? `${score}%` : _("N/A");
@@ -43,8 +46,17 @@ function scoreDeltas(scans) {
     return deltas;
 }
 
+// Always rendered: an empty slot keeps the % values of rows without a
+// marker in line with the others (T1).
+// Date and time each stay in one piece when a phone-width cell wraps them
+// (not "2026-10- / 17 23:28:37").
+const DateTime = ({ timestamp }) => {
+    const [date, time] = formatTimestamp(timestamp).split(' ');
+    return <><span className="ct-nowrap">{date}</span>{time && <> <span className="ct-nowrap">{time}</span></>}</>;
+};
+
 const ScoreDelta = ({ delta }) => {
-    if (delta === undefined) return null;
+    if (delta === undefined) return <span className="ct-score-delta" />;
     if (delta === 0)
         return <span className="ct-score-delta ct-score-delta-same" title={_("Same as the previous scan of this profile")}>±0</span>;
     const up = delta > 0;
@@ -243,29 +255,29 @@ export const ScanHistory = ({ refreshKey, onView, onChanged, diskUsage }) => {
                             <Table aria-label={_("Scan history")} variant="compact" gridBreakPoint="" className="ct-table-band">
                                 <Thead>
                                     <Tr>
-                                        <Th>{_("Date")}</Th>
-                                        <Th visibility={WIDE}>{_("Profile")}</Th>
-                                        <Th>{_("Score")}</Th>
-                                        <Th visibility={WIDE} className="ct-num-col">{_("Passed")}</Th>
-                                        <Th visibility={WIDE} className="ct-num-col">{_("Failed")}</Th>
+                                        <Th className="ct-date-cell">{_("Date")}</Th>
+                                        <Th visibility={WIDE} className="ct-stretch-col">{_("Profile")}</Th>
+                                        <Th className="ct-num-col ct-num-fixed">{_("Score")}</Th>
+                                        <Th visibility={WIDER} className="ct-num-col ct-num-fixed">{_("Passed")}</Th>
+                                        <Th visibility={WIDER} className="ct-num-col ct-num-fixed">{_("Failed")}</Th>
                                         <Th className="ct-actions-cell">{_("Actions")}</Th>
                                     </Tr>
                                 </Thead>
                                 <Tbody>
                                     {scans.map(sc => (
                                         <Tr key={sc.dir}>
-                                            <Td dataLabel={_("Date")} className="ct-date-cell">{formatTimestamp(sc.timestamp)}</Td>
-                                            <Td dataLabel={_("Profile")} visibility={WIDE}>
+                                            <Td dataLabel={_("Date")} className="ct-date-cell"><DateTime timestamp={sc.timestamp} /></Td>
+                                            <Td dataLabel={_("Profile")} visibility={WIDE} className="ct-stretch-col">
                                                 <div>{sc.profile_title || sc.profile_id}</div>
                                                 {sc.tailoring_file && sc.tailoring_file !== sc.profile_title && (
                                                     <div className="ct-cell-subline">{sc.tailoring_file}</div>
                                                 )}
                                             </Td>
-                                            <Td dataLabel={_("Score")} className="ct-score-cell">
-                                                {scoreText(sc.score)} <ScoreDelta delta={deltas[sc.dir]} />
+                                            <Td dataLabel={_("Score")} className="ct-num-col ct-num-fixed ct-score-cell">
+                                                {scoreText(sc.score)}<ScoreDelta delta={deltas[sc.dir]} />
                                             </Td>
-                                            <Td dataLabel={_("Passed")} visibility={WIDE} className="ct-num-col">{sc.counts?.pass ?? '—'}</Td>
-                                            <Td dataLabel={_("Failed")} visibility={WIDE} className="ct-num-col">{sc.counts?.fail ?? '—'}</Td>
+                                            <Td dataLabel={_("Passed")} visibility={WIDER} className="ct-num-col ct-num-fixed">{sc.counts?.pass ?? '—'}</Td>
+                                            <Td dataLabel={_("Failed")} visibility={WIDER} className="ct-num-col ct-num-fixed">{sc.counts?.fail ?? '—'}</Td>
                                             <Td dataLabel={_("Actions")} className="ct-actions-cell">
                                                 <RowActions
                                                     sc={sc}

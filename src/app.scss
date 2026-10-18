@@ -790,6 +790,42 @@
 // which sets white-space via a CSS var at class+type specificity.
 .pf-v6-c-table .ct-actions-cell {
     white-space: nowrap;
+    text-align: start;
+}
+
+// T1 (Peter 10-17), from md where the tables are tables, not stacked
+// rows: Actions as narrow as its contents (it is the last column, so it
+// ends flush with the table's right edge), header and links starting at
+// the same left edge; dates and short text columns fit their contents;
+// Score / Passed / Failed equally wide. Whatever is left goes to the
+// columns without a width: Profile, Name, Base Profile. The variables are
+// PF's own pf-m-fit-content ones; they also lift the header row's
+// truncation (max-width 1px), which clipped a header wider than its cells.
+@media (width >= 768px) {
+    .pf-v6-c-table .ct-actions-cell,
+    .pf-v6-c-table .ct-fit-col,
+    .pf-v6-c-table .ct-date-cell {
+        --pf-v6-c-table--cell--MinWidth: fit-content;
+        --pf-v6-c-table--cell--MaxWidth: none;
+        --pf-v6-c-table--cell--Overflow: visible;
+
+        inline-size: 1%;
+        white-space: nowrap;
+    }
+
+    .pf-v6-c-table .ct-num-fixed {
+        --pf-v6-c-table--cell--MinWidth: 7.5rem;
+        --pf-v6-c-table--cell--MaxWidth: none;
+
+        inline-size: 7.5rem;
+    }
+}
+
+// The columns that take the slack may break a long unbroken name (a
+// policy called RHEL10_CIS2_DMZ_WEB) rather than push the table past its
+// card (U4).
+.pf-v6-c-table .ct-stretch-col {
+    overflow-wrap: anywhere;
 }
 
 // Tabs
@@ -1104,6 +1140,18 @@
     font-variant-numeric: tabular-nums;
 }
 
+// Stacked rows (a grid-md table below md) put each value next to its
+// label: numbers start there like the text values.
+@media (width < 768px) {
+    .pf-v6-c-table.pf-m-grid-md .ct-num-col {
+        text-align: start;
+    }
+}
+
+.ct-nowrap {
+    white-space: nowrap;
+}
+
 .ct-cell-subline {
     font-size: var(--pf-t--global--font--size--sm);
     color: var(--pf-t--global--text--color--subtle);
@@ -1115,9 +1163,15 @@
     font-variant-numeric: tabular-nums;
 }
 
+// The change marker sits in a fixed-width slot (empty when there is none),
+// so the right-aligned % values line up whether "▲14", "±0" or nothing
+// follows them (T1).
 .ct-score-delta {
+    display: inline-block;
+    inline-size: 3em;
     margin-inline-start: var(--pf-t--global--spacer--xs);
     font-size: var(--pf-t--global--font--size--sm);
+    text-align: start;
 }
 
 .ct-score-delta-icon {
@@ -1149,12 +1203,6 @@
 @media (width >= 992px) {
     .ct-history-kebab.ct-history-kebab {
         display: none;
-    }
-}
-
-@media (width >= 768px) {
-    .pf-v6-c-table .ct-date-cell {
-        white-space: nowrap;
     }
 }
 
