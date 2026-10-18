@@ -94,6 +94,8 @@ clean:
 install: $(DIST_TEST) po/LINGUAS
 	mkdir -p $(DESTDIR)$(PREFIX)/share/cockpit/$(PACKAGE_NAME)
 	cp -r dist/* $(DESTDIR)$(PREFIX)/share/cockpit/$(PACKAGE_NAME)
+	mkdir -p $(DESTDIR)$(PREFIX)/share/metainfo
+	cp org.cockpit_project.$(RPM_NAME).metainfo.xml $(DESTDIR)$(PREFIX)/share/metainfo/
 
 # this requires a built source tree and avoids having to install anything system-wide
 devel-install: $(DIST_TEST)
@@ -115,7 +117,7 @@ dist: $(TARFILE)
 $(TARFILE): export NODE_ENV=production
 $(TARFILE): $(DIST_TEST) $(SPEC)
 	tar --xz $(TAR_ARGS) -cf $(TARFILE) --transform 's,^,$(RPM_NAME)/,' \
-		--exclude packaging/$(SPEC).in --exclude node_modules \
+		--exclude packaging/$(SPEC).in --exclude node_modules --exclude docs/screenshots \
 		$$(git ls-files) $(COCKPIT_REPO_FILES) $(NODE_MODULES_TEST) $(DIST_TEST) \
 		$(SPEC) dist/
 

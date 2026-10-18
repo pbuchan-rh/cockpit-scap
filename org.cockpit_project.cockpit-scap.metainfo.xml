@@ -3,25 +3,28 @@
   <id>org.cockpit_project.cockpit-scap</id>
   <extends>org.cockpit_project.cockpit</extends>
   <metadata_license>CC0-1.0</metadata_license>
-  <name>SCAP Compliance</name>
-  <summary>OpenSCAP compliance scanning and remediation</summary>
+  <name>SCAP Security</name>
+  <summary>OpenSCAP scanning, remediation and tailoring for this host</summary>
   <description>
     <p>
-      cockpit-scap brings OpenSCAP compliance scanning, profile tailoring, and
-      selective remediation directly into the Cockpit browser console.
+      cockpit-scap runs OpenSCAP compliance scans on the host Cockpit runs on and
+      shows the results in Cockpit.
     </p>
     <ul>
-      <li>Host and container image scanning on demand with configurable history retention</li>
-      <li>Selective Remediation Builder: cherry-pick failing rules, download bash or Ansible scripts, or Apply Now with two-gate confirmation</li>
-      <li>Profile tailoring editor: enable/disable rules, adjust variables, save and upload XCCDF tailoring files</li>
-      <li>Activity log: structured audit trail of all privileged actions with systemd journal integration</li>
-      <li>Full SELinux enforcing mode support</li>
+      <li>Host Scan: choose SCAP content, a profile and an optional tailoring policy, run the scan, and see the score and failing rules by severity</li>
+      <li>Download the HTML report, results XML and ARF of a scan</li>
+      <li>Remediation Builder: download a Bash script or Ansible playbook for selected failing rules, or apply the Bash fixes on the host</li>
+      <li>Scan History: completed scans are kept in the user's home directory, with the score change from the previous scan of the same profile</li>
+      <li>Policy Tailoring: enable or disable rules, change variable values, and save, upload or download XCCDF tailoring files</li>
+      <li>SCAP Content: list installed SCAP datastreams and upload your own</li>
     </ul>
   </description>
-  <launchable type="cockpit-manifest">cockpit-scap</launchable>
+  <launchable type="cockpit-manifest">scap</launchable>
   <url type="homepage">https://github.com/pbuchan-rh/cockpit-scap</url>
   <url type="bugtracker">https://github.com/pbuchan-rh/cockpit-scap/issues</url>
   <releases>
+    <release version="4.6.0" date="2026-10-18"/>
+    <release version="3.10.2" date="2026-06-20"/>
     <release version="3.10.1" date="2026-06-10"/>
     <release version="3.10.0" date="2026-06-10"/>
     <release version="3.9.2" date="2026-06-09"/>

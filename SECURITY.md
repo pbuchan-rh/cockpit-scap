@@ -21,17 +21,18 @@ Please include OS version, Cockpit version (`cockpit --version`), steps to repro
 ## Context and Scope
 
 cockpit-scap is a Cockpit browser UI module that runs locally on a single host. It is not
-a network daemon and does not expose any external services. It invokes `oscap` and `podman` as
-subprocesses and writes output to `/var/lib/cockpit-scap/`.
+a network daemon and does not expose any external services. It runs `oscap` (and, for Apply
+now, a transient systemd unit) through Cockpit, and stores its data in the Cockpit user's
+`~/SCAP/` directory. Scans use a root-owned temp directory under `/tmp`.
 
 The attack surface is intentionally narrow: only users who already have access to Cockpit on the
 host can interact with this module.
 
 In scope:
 - Unintended privilege escalation via `cockpit.spawn()` calls
-- Path traversal or arbitrary file writes outside `/var/lib/cockpit-scap/`
-- XSS via scan results or report content
+- Path traversal or file writes outside `~/SCAP/` and the module's `/tmp` directories
+- XSS via scan results, report content, uploaded SCAP content or tailoring files
 
 Out of scope:
-- Vulnerabilities in `openscap`, `scap-security-guide`, `podman`, or Cockpit itself — report those upstream
+- Vulnerabilities in `openscap`, `scap-security-guide`, or Cockpit itself — report those upstream
 - Issues requiring prior compromise of the host

@@ -1,132 +1,114 @@
 # Contributing to cockpit-scap
 
-Thanks for your interest in contributing. cockpit-scap is a community project built to fill the gap left by SCAP Workbench on RHEL 10 — contributions of any size are welcome.
-
-## Good first contributions
-
-Not sure where to start? These areas are approachable without deep knowledge of the codebase:
-
-- **Bug reports** — if something breaks on your setup, open an issue (see below)
-- **Documentation** — typos, unclear steps, missing examples
-- **SCAP profile testing** — if you've run cockpit-scap against CIS, STIG, or PCI-DSS profiles and found issues, that's valuable feedback
-- **UI polish** — small visual improvements that follow the existing PatternFly 6 patterns
-
-For larger features, open an issue first to discuss scope before investing time in an implementation.
+Bug reports, documentation fixes and code changes are welcome. For a larger change, open an
+issue first to agree on the scope.
 
 ## Requirements
 
-You need a RHEL 10 system (physical, VM, or container) with Cockpit installed:
+A RHEL 10 (or similar) host with Cockpit and OpenSCAP:
 
 ```bash
-sudo dnf install cockpit
+sudo dnf install cockpit openscap-scanner scap-security-guide
 sudo systemctl enable --now cockpit.socket
 ```
 
-For full functionality, also install the SCAP tools:
+To build, you also need `make`, Node.js and npm.
 
-```bash
-sudo dnf install openscap-scanner scap-security-guide openscap-utils
+## Stack and layout
+
+React 18 + PatternFly 6, bundled with esbuild, the same setup as `cockpit-podman`.
+
+```
+src/
+├── index.html, index.jsx   # entry point; the mount div has class="ct-page-fill"
+├── app.jsx, app.scss       # tabs (Host Scan, Policy Tailoring), shared state, styles
+├── manifest.json           # Cockpit manifest (installs as "scap")
+├── components/             # one file per card, dialog or picker
+└── lib/                    # oscap calls, results parsing, scan history, tailoring, content
+packaging/cockpit-scap.spec.in
+tests/                      # Playwright suite
+tools/deploy-dev-copies.sh  # deploys dist/ as a dev copy (see below)
 ```
 
-For container scanning, also install:
+## Building
 
 ```bash
-sudo dnf install openscap-utils podman
+make              # npm install, fetch Cockpit's pkg/lib, build dist/
+npm run build     # rebuild dist/ after a change
+npm run watch     # rebuild on every change
+make rpm          # build the RPM
 ```
 
-## Getting the code
+Lint before you commit; both must be clean:
 
 ```bash
-git clone https://github.com/pbuchan-rh/cockpit-scap.git
-cd cockpit-scap
+npx eslint src/
+npx stylelint "src/**/*.scss"
 ```
 
-## Development workflow
+## Trying a change
 
-cockpit-scap has no build toolchain — no npm, no webpack, no compilation step. Files are served directly by Cockpit from the module directory.
+`make devel-install` links `dist/` to `~/.local/share/cockpit/scap`, which shadows an
+installed RPM for your user. `make devel-uninstall` removes the link.
 
-**Install for development** (user-space, no system files touched):
+To test next to an installed RPM, deploy a dev copy instead:
 
 ```bash
-mkdir -p ~/.local/share/cockpit
-ln -s $(pwd)/src ~/.local/share/cockpit/cockpit-scap
+npm run build && tools/deploy-dev-copies.sh user@testhost
 ```
 
-Cockpit serves files from `~/.local/share/cockpit/` with higher priority than the system path. Changes to source files are picked up immediately after a browser refresh — no reinstall needed.
-
-**Testing on a remote host:**
-
-If your development machine is different from your test host, use rsync to deploy and then refresh the browser:
-
-```bash
-rsync -av src/ user@testhost:~/.local/share/cockpit/cockpit-scap/
-```
-
-A browser refresh is usually sufficient to pick up the new files. If you see stale behavior after refreshing, restarting the Cockpit bridge will clear it:
-
-```bash
-ssh user@testhost "sudo systemctl restart cockpit"
-```
-
-Note that a bridge restart drops your Cockpit session and requires re-authentication — treat it as a cache-busting last resort rather than a step to run on every deploy.
+It copies `dist/` to `~/.local/share/cockpit/scap-dev/` on that host, labelled
+"SCAP Security (dev)" in the Cockpit menu. Hard-refresh the browser after each deploy.
 
 ## Code conventions
 
-- **Vanilla JavaScript only** — no frameworks, no npm, no CDN imports
-- **Multi-file architecture** — the JS is split into per-tab files that share a single global scope (classic `<script defer>` tags, no ES modules). See File structure below.
-- **PatternFly 6** for all UI components — use existing PF6 classes; do not introduce new CSS frameworks
-- All custom CSS classes prefixed with `ct-`
-- `cockpit.spawn()` for subprocess execution, `cockpit.file()` for file I/O
-- `{ superuser: "require" }` scoped to scan execution only — never broader than needed
-- No inline event handlers in HTML (`onclick=`, `onchange=` etc.) — wire all listeners in JavaScript
-- No `eval()`, no dynamic script injection
-- All module file I/O goes to `/var/lib/cockpit-scap/` — never write outside this path
+- PatternFly 6 components; import them from `@patternfly/react-core/dist/esm/...`, not the
+  package root.
+- Custom CSS classes start with `ct-`; colors come from PatternFly tokens, never hex values.
+- `cockpit.spawn()` for subprocesses and `cockpit.file()` for text files. Read binary or
+  gzip files with `cockpit.spawn(['cat', ...], { binary: true })`.
+- `{ superuser: "require" }` only where root is needed (running `oscap`, reading its result
+  files, Apply now).
+- Module data goes under `~/SCAP/` of the Cockpit user; scans use a temp directory under
+  `/tmp`. Nothing is written to `/var/lib/`.
+- No outbound network calls, no `eval()`.
 
-## File structure
+## Tests
 
-```
-cockpit-scap/
-├── src/
-│   ├── index.html          # Module markup; loads all JS files via <script defer>
-│   ├── index.js            # Constants, shared globals, DOMContentLoaded wiring,
-│   │                       #   shared utilities (makeTimestamp, formatDuration, etc.),
-│   │                       #   content/profile loading, activity log tab
-│   ├── settings.js         # Settings tab (retention, tab visibility, admin controls)
-│   ├── tailoring.js        # Policy Tailoring tab (editor, XML generation/parsing)
-│   ├── remediation.js      # Remediation panel and script generation
-│   ├── host-scan.js        # Host Scan tab, scan history, report viewer
-│   ├── container-scan.js   # Container Scan tab (self-contained)
-│   ├── style.css           # PatternFly overrides and custom styles
-│   ├── manifest.json       # Cockpit module manifest
-│   └── viewer.html         # CSP-compliant HTML report viewer (IndexedDB-backed)
-├── selinux/
-│   └── cockpit-scap.fc     # SELinux file context definitions
-├── docs/
-│   └── screenshots/        # README screenshots
-└── Makefile                # Install/uninstall targets
+The Playwright suite in `tests/` drives a real Cockpit host in Chromium and Firefox. Most
+specs open the dev copy (`/scap-dev`, see above); set `SCAP_SHELL_PATH=/scap` to test the
+installed RPM instead. Some specs run real scans, and `v46-apply-now` and `v46-missing-deps`
+change the host (they apply fixes or remove packages): they only run against the disposable
+host named in `tests/helpers/apply-host.js`.
+
+Set the host and credentials in the environment, or in `tests/.env` (copy
+`tests/.env.example`). Never commit `tests/.env`.
+
+```bash
+npx playwright install chromium firefox
+COCKPIT_URL=https://testhost:9090 COCKPIT_USER=me COCKPIT_PASS=... \
+  npx playwright test --config=tests/playwright.config.js --project=chromium tests/v46-phase2.spec.js
 ```
 
-All JS files share the same browser global scope — functions and `let`/`const` declarations in one file are accessible from all others. Load order is enforced by the `<script defer>` tag order in `index.html`: `index.js` first, `container-scan.js` last.
+Run one spec at a time; the tests share one Cockpit session. See
+[tests/TESTING.md](tests/TESTING.md) for details.
 
 ## Submitting changes
 
-1. Fork the repository and create a branch for your change
-2. Test your change with SELinux in **enforcing** mode — `getenforce` should return `Enforcing`
-3. Open a pull request with a clear description of what the change does and why
-4. Include a screenshot or screen recording for any UI change
-
-For larger features or changes that affect scope, open an issue first and reference [DESIGN.md](DESIGN.md) — it covers the project's goals and what's deliberately out of scope.
+1. Fork the repository and create a branch.
+2. Build, lint, and test the change on a host with SELinux enforcing.
+3. Open a pull request that says what changed and why. Include a screenshot for UI changes.
 
 ## Reporting bugs
 
 Open a [GitHub issue](https://github.com/pbuchan-rh/cockpit-scap/issues) with:
 
-- RHEL version and Cockpit version (`cockpit --version`)
+- OS version, Cockpit version (`cockpit --version`) and `rpm -q cockpit-scap`
 - Steps to reproduce
-- What you expected vs. what happened
+- What you expected and what happened
 - Browser console output if relevant (F12 → Console)
 
-If you hit issues specifically on a CIS-hardened or STIG-hardened host, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md) first — some common breakages are documented there.
+On a CIS- or STIG-hardened host, check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) first.
 
 ## License
 

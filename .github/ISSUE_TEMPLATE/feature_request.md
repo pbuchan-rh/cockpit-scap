@@ -18,6 +18,3 @@ Any other approaches you've thought about.
 
 **Additional context**
 Screenshots, mockups, or references to similar tools are welcome.
-
----
-Before submitting, please check [DESIGN.md](../../DESIGN.md) to confirm the request is within the project's stated scope.

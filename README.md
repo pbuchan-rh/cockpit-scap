@@ -1,7 +1,7 @@
 # cockpit-scap
 
-A native [Cockpit](https://cockpit-project.org/) module for OpenSCAP compliance on the host
-Cockpit is running on: harden a box and scan it, from the Cockpit browser console.
+A [Cockpit](https://cockpit-project.org/) module for OpenSCAP. It scans the host Cockpit runs
+on, shows the results, builds remediation scripts, and creates XCCDF tailoring files.
 
 > **Note:** This is an independent community project and is not an official Red Hat product or affiliated with Red Hat, Inc.
 
@@ -32,8 +32,10 @@ command (and an Install button when a package manager is available).
 
 - Pick the content, profile and an optional saved tailoring policy, then run the scan.
   Content is every SCAP datastream (`*-ds.xml`) under `/usr/share/xml/scap/` ("Installed")
-  plus any datastream you uploaded ("Uploaded"). There is no typed content path.
+  plus any datastream you uploaded ("Uploaded").
 - View Compliance Guide opens the `oscap` guide for the selected profile and tailoring.
+  Download Remediation saves a Bash, Ansible or Puppet remediation for the whole profile,
+  without a scan.
 - Live `oscap` output while the scan runs, with a time-left estimate and Cancel.
 - Results: score, pass/fail counts, failing rules by severity, and per-rule details.
   Download the HTML report, results XML and ARF.
@@ -53,6 +55,24 @@ command (and an Install button when a package manager is available).
   tailoring file.
 - **SCAP Content**: the installed and uploaded datastreams; upload a vendor or custom
   datastream, or delete an upload.
+
+## Screenshots
+
+Scan results, with Scan History below them:
+
+![Host Scan results and Scan History](docs/screenshots/host-scan-results.png)
+
+Remediation Builder, with failing rules selected:
+
+![Remediation Builder](docs/screenshots/remediation-builder.png)
+
+Policy Tailoring editor:
+
+![Policy Tailoring editor](docs/screenshots/tailoring-editor.png)
+
+Saved Tailoring Policies and SCAP Content:
+
+![Saved Tailoring Policies and SCAP Content](docs/screenshots/tailoring-content.png)
 
 ## Storage
 
@@ -76,8 +96,7 @@ disabled until administrative access is turned on.
 
 ## Building from source
 
-React 18 + PatternFly 6, built with esbuild (same stack as `cockpit-podman` /
-`cockpit-bootc`).
+React 18 + PatternFly 6, built with esbuild (the same stack as `cockpit-podman`).
 
 ```bash
 git clone https://github.com/pbuchan-rh/cockpit-scap.git
@@ -89,5 +108,4 @@ make rpm        # or: sudo make install
 ## Troubleshooting
 
 See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for known issues on CIS-hardened hosts (masked
-service, `use_pty`, sudoers entries wiped after remediation). Its `umask 027` section applies
-to v3's `/var/lib/cockpit-scap/` storage only.
+Cockpit service, `use_pty`, sudoers entries removed by remediation).

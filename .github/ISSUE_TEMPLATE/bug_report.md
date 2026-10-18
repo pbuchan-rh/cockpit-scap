@@ -17,10 +17,12 @@ Steps to reproduce the behavior:
 What you expected to happen.
 
 **Environment**
-- RHEL version: (e.g. RHEL 10.0)
+- OS version: (e.g. RHEL 10.1)
 - Cockpit version: (`cockpit --version`)
 - cockpit-scap version: (`rpm -q cockpit-scap`)
 - SELinux mode: (`getenforce`)
+- openscap-scanner and scap-security-guide versions: (`rpm -q openscap-scanner scap-security-guide`)
+- Browser: (e.g. Firefox 140)
 
 **Browser console output**
 Open browser dev tools (F12 → Console) and paste any errors here.

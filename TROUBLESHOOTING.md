@@ -1,12 +1,14 @@
 # cockpit-scap — Troubleshooting
 
-These issues only surface on hosts with CIS Level 2 or similar hardening applied.
+Most of these issues appear only after CIS Level 2 or similar hardening has been applied to
+the host, often by cockpit-scap's own remediation.
 
 ## Cockpit service masked after hardening
 
-CIS profiles include rules that mask services considered non-essential, including Cockpit. This affects **any system where a CIS remediation has been applied** — RHEL, CentOS Stream, Fedora, Oracle Linux, and AlmaLinux are all affected.
-
-After remediation, both `cockpit.service` and `cockpit.socket` may be masked. The socket will fail to start with: `Socket service cockpit.service not loaded, refusing.`
+CIS profiles include rules that mask services considered non-essential, including Cockpit.
+After remediation, both `cockpit.service` and `cockpit.socket` may be masked, and the socket
+fails to start with: `Socket service cockpit.service not loaded, refusing.` The firewall rule
+for Cockpit (port 9090) may also be removed.
 
 Restore Cockpit with:
 
@@ -17,68 +19,51 @@ sudo firewall-cmd --add-service=cockpit --permanent
 sudo firewall-cmd --reload
 ```
 
-Note that the firewall rule for Cockpit (port 9090) may also be removed by remediation — all four commands are needed.
-
-**To prevent recurrence:** tailor the service-masking and firewall rules out of the profile in the Policy Tailoring tab before applying remediation. This is the recommended workflow — scan, review, tailor out rules that would break management access, then remediate.
+To prevent this, disable the service-masking and firewall rules in a tailoring policy
+(Policy Tailoring tab) before you remediate: scan, review, tailor out the rules that would
+break management access, then remediate.
 
 ## Privileged operations fail after hardening (`use_pty`)
 
-CIS hardening adds `Defaults use_pty` to `/etc/sudoers`, which prevents Cockpit's privileged bridge from operating correctly. Scans, Apply Now, and file writes will fail with a session error.
+CIS hardening adds `Defaults use_pty` to `/etc/sudoers`, which stops Cockpit's privileged
+bridge from working. Turning on administrative access, scans and Apply now then fail.
 
-Create `/etc/sudoers.d/cockpit-bridge` with the following content:
+Create `/etc/sudoers.d/cockpit-bridge` (mode `0440`) with this content:
 
 ```
 Defaults!/usr/bin/cockpit-bridge !use_pty
 ```
 
-## Sudoers entries wiped after running remediation scripts
+## Sudoers entries removed after remediation
 
-The CIS remediation script for sudoers rules overwrites `/etc/sudoers.d/` entries. After each remediation batch that includes sudoers rules, re-add the `/etc/sudoers.d/cockpit-bridge` file above.
+The CIS remediation for sudoers rules can rewrite the files in `/etc/sudoers.d/`. After a
+remediation that includes sudoers rules, check that `/etc/sudoers.d/cockpit-bridge` is still
+there and add it again if needed.
 
-## Sudoers exceptions silently ignored (bad file permissions)
+## Sudoers exceptions ignored (bad file permissions)
 
-If any file in `/etc/sudoers.d/` has permissions other than `0440`, sudo rejects the entire directory and all exceptions — including the `cockpit-bridge` entry above — are silently ignored. This can cause settings saves and privileged operations to fail even after the `use_pty` fix is applied.
-
-Check for bad permissions:
+If a file in `/etc/sudoers.d/` has the wrong permissions, sudo ignores it, including the
+`cockpit-bridge` entry above. Check with:
 
 ```bash
 sudo visudo -c
 ```
 
-If any file is flagged, fix it:
+Fix any file it flags:
 
 ```bash
 sudo chmod 440 /etc/sudoers.d/<filename>
 ```
 
-## Scan history empty, downloads failing, settings not saving (umask 027)
+## Apply now log in the journal
 
-CIS Level 2 hardening sets `Defaults umask=027` in sudoers, which causes all files written by the Cockpit bridge under `superuser: require` to be created as `root:root 640`. Non-privileged reads then fail silently, producing these symptoms:
-
-- History shows "No scans yet" immediately after a scan completes
-- Download Report, Download ARF, and Download Results XML buttons do nothing
-- Settings appear to save but are lost on reload
-- Remediation context headers are blank
-
-This was fixed in **v3.9**. If you are running an earlier version, upgrade via COPR:
-
-```bash
-sudo dnf upgrade --enablerepo=copr:copr.fedorainfracloud.org:pbuchan-rh:cockpit-scap cockpit-scap
-```
-
-To fix permissions on existing scan results without rescanning:
-
-```bash
-sudo find /var/lib/cockpit-scap -type f -exec chmod 644 {} +
-sudo find /var/lib/cockpit-scap -type d -exec chmod 755 {} +
-```
-
-## Viewing cockpit-scap syslog entries
-
-Remediation apply events are written to syslog via `logger -t cockpit-scap`. To view them:
+Apply now writes a start and finish line (with the exit status) to the journal under the tag
+`cockpit-scap`:
 
 ```bash
 journalctl -t cockpit-scap
 ```
 
-Add `-f` to follow live, or `-n 50` to limit to the last 50 lines.
+The run itself is a transient systemd unit named `cockpit-scap-remediate-<timestamp>`; its
+full output is kept with the scan in Scan History. If that log cannot be written, the journal
+says so and the output stays in `/tmp/cockpit-scap-remediate-XXXXXX`.
