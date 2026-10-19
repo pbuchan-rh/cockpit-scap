@@ -7,8 +7,16 @@ on, shows the results, builds remediation scripts, and creates XCCDF tailoring f
 
 ## Installation
 
-Install the RPM from the [GitHub releases](https://github.com/pbuchan-rh/cockpit-scap/releases)
-page:
+From [COPR](https://copr.fedorainfracloud.org/coprs/pbuchan-rh/cockpit-scap/) (RHEL 10,
+CentOS Stream 10, Fedora):
+
+```bash
+sudo dnf copr enable pbuchan-rh/cockpit-scap
+sudo dnf install cockpit-scap
+```
+
+Or download the RPM from the [GitHub releases](https://github.com/pbuchan-rh/cockpit-scap/releases)
+page and install it:
 
 ```bash
 sudo dnf install ./cockpit-scap-4.6.0-1.el10.noarch.rpm
