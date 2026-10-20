@@ -501,8 +501,10 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
         });
     }
 
+    // Deltas compare against the value the base profile sets (`current`),
+    // so choosing the benchmark default where the profile differs is a change.
     function updateValue(value, newVal) {
-        const base = value.current || value.default || '';
+        const base = value.current ?? value.default ?? '';
         setValueChanges(prev => {
             const next = { ...prev };
             if (newVal === base) delete next[value.id];
@@ -834,7 +836,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                         <div className="ct-tailor-values-grid">
                                             {visibleValues.map(val => {
                                                 const isModified = val.id in valueChanges;
-                                                const baseValue = val.current || val.default || '';
+                                                const baseValue = val.current ?? val.default ?? '';
                                                 const activeValue = isModified ? valueChanges[val.id] : baseValue;
                                                 return (
                                                     <FormGroup

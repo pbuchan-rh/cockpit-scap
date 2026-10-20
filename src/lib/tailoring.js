@@ -28,14 +28,23 @@ export const PY_EXTRACT_PROFILE = [
     '    if el.tag == tag("Benchmark"): bench = el; break',
     'if bench is None: print("{}"); sys.exit(1)',
     'sel_map, val_map, ptitle, pdesc = {}, {}, pid, ""',
-    'for p in bench.findall(tag("Profile")):',
-    '    if p.get("id") != pid: continue',
-    '    t = p.find(tag("title")); ptitle = text(t)',
+    // The profile's own select/refine-value/set-value apply on top of the
+    // profiles it extends (parent first). refine-value names a selector of
+    // the Value (SSG sets variables this way), set-value a literal; val_map
+    // holds ("sel", selector) or ("lit", value).
+    'profs = {p.get("id"): p for p in bench.findall(tag("Profile"))}',
+    'chain, cur = [], profs.get(pid)',
+    'while cur is not None and cur not in chain:',
+    '    chain.insert(0, cur); cur = profs.get(cur.get("extends"))',
+    'if chain:',
+    '    p = chain[-1]; t = p.find(tag("title")); ptitle = text(t)',
     '    pd_el = p.find(tag("description"))',
     '    pdesc = " ".join("".join(pd_el.itertext()).split()) if pd_el is not None else ""',
-    '    for s in p.findall(tag("select")): sel_map[s.get("idref", "")] = s.get("selected", "true").lower() == "true"',
-    '    for sv in p.findall(tag("set-value")): val_map[sv.get("idref", "")] = text(sv)',
-    '    break',
+    'for p in chain:',
+    '    for c in p:',
+    '        if c.tag == tag("select"): sel_map[c.get("idref", "")] = c.get("selected", "true").lower() == "true"',
+    '        elif c.tag == tag("refine-value") and c.get("selector") is not None: val_map[c.get("idref", "")] = ("sel", c.get("selector"))',
+    '        elif c.tag == tag("set-value"): val_map[c.get("idref", "")] = ("lit", text(c))',
     'def is_sel(rid, d): return sel_map.get(rid, d)',
     'def proc_rule(el):',
     '    rid = el.get("id", ""); t = el.find(tag("title"))',
@@ -68,7 +77,10 @@ export const PY_EXTRACT_PROFILE = [
     '        s = v.get("selector", ""); vv = text(v)',
     '        if s == "": dv = vv',
     '        else: opts.append({"selector": s, "value": vv})',
-    '    vs.append({"id": vid, "title": text(vt), "type": vel.get("type", "string"), "current": val_map.get(vid, dv), "default": dv, "options": opts})',
+    // An unknown selector falls back to the default, as oscap does.
+    '    kind, pv = val_map.get(vid, ("lit", dv))',
+    '    cur = pv if kind == "lit" else next((o["value"] for o in opts if o["selector"] == pv), dv)',
+    '    vs.append({"id": vid, "title": text(vt), "type": vel.get("type", "string"), "current": cur, "default": dv, "options": opts})',
     'print(json.dumps({"profile": {"id": pid, "title": ptitle, "description": pdesc}, "groups": gs, "rules": rs, "values": vs}))',
 ].join('\n');
 
