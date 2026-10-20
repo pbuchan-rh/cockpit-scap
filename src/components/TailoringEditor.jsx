@@ -374,6 +374,9 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
             try {
                 const uploaded = await uploadContent(file.name, new Uint8Array(ev.target.result));
                 setContent(uploaded.path);
+                // Re-reads the profiles when the upload replaced the file
+                // already selected (same path, so setContent changes nothing).
+                setFormResetKey(k => k + 1);
                 onContentChanged?.();
             } catch (ex) {
                 setUploadError(ex.message || String(ex));

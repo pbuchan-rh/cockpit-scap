@@ -41,7 +41,6 @@ const FIX_TYPES = [
     { key: 'puppet', label: _("Puppet"), ext: '.pp', mimeType: 'text/plain', tooltip: _("Puppet manifest for Puppet-managed infrastructure") },
 ];
 
-
 function slugify(text) {
     return text.toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
@@ -57,6 +56,7 @@ export const ScanSetup = ({
     // { message, details? } shown on the Content file field when oscap
     // cannot read the chosen content.
     const [contentError, setContentError] = useState(null);
+    const [uploadKey, setUploadKey] = useState(0);
     const [profiles, setProfiles] = useState([]);
     const [profile, setProfile] = useState('');
     const [tailoringFiles, setTailoringFiles] = useState([]);
@@ -133,7 +133,7 @@ export const ScanSetup = ({
                     setLoadingProfiles(false);
                 });
         return () => { cancelled = true };
-    }, [content]);
+    }, [content, uploadKey]);
 
     function handleSelectContent(path) {
         setContentError(null);
@@ -200,6 +200,9 @@ export const ScanSetup = ({
                 const uploaded = await uploadContent(file.name, new Uint8Array(ev.target.result));
                 setContentError(null);
                 setContent(uploaded.path);
+                // Re-reads the profiles when the upload replaced the file
+                // already selected (same path, so setContent changes nothing).
+                setUploadKey(k => k + 1);
                 onContentChanged?.();
             } catch (ex) {
                 setUploadError(ex.message || String(ex));
