@@ -16,7 +16,7 @@
 // Fixtures as in v46-u4-tables (fabricated scans with and without a score
 // change, the v46-test policy, an uploaded content copy), removed again.
 const { test, expect } = require('@playwright/test');
-const { openModuleInShell, hostSpawn } = require('./helpers/cockpit');
+const { openModuleInShell, hostSpawn, SHELL_PATH } = require('./helpers/cockpit');
 const S = require('./helpers/scap');
 
 const TABLES = {
@@ -62,7 +62,7 @@ test.beforeAll(async ({ browser }) => {
     await S.createTestTailoring(frame);
     await hostSpawn(frame, ['sh', '-c', `mkdir -p "${home}/SCAP/content" && cp "${S.DS}" "${home}/SCAP/content/v46-test-t1-ds.xml"`]);
     await page.reload();
-    frame = await (await page.locator('iframe[name^="cockpit1:localhost/scap-dev"]').elementHandle()).contentFrame();
+    frame = await (await page.locator(`iframe[name="cockpit1:localhost${SHELL_PATH}"]`).elementHandle()).contentFrame();
     await frame.locator('table[aria-label="Scan history"] tbody tr').first()
             .waitFor({ timeout: 30000 });
 });

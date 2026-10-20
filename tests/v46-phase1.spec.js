@@ -11,7 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('@playwright/test');
-const { openModuleInShell, hostSpawn } = require('./helpers/cockpit');
+const { openModuleInShell, hostSpawn, SHELL_PATH } = require('./helpers/cockpit');
 const S = require('./helpers/scap');
 
 test.describe.configure({ mode: 'serial' });
@@ -21,7 +21,7 @@ const report = {};
 
 async function reopen() {
     await page.reload();
-    const iframe = page.locator('iframe[name^="cockpit1:localhost/scap-dev"]');
+    const iframe = page.locator(`iframe[name="cockpit1:localhost${SHELL_PATH}"]`);
     await iframe.waitFor({ state: 'attached', timeout: 30000 });
     frame = await (await iframe.elementHandle()).contentFrame();
     await frame.locator('.pf-v6-c-card').first()

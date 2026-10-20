@@ -8,7 +8,7 @@
 // datastream (~/SCAP/content/v46-test-wide-ds.xml), so every table has
 // worst-case rows on any host.
 const { test, expect } = require('@playwright/test');
-const { openModuleInShell, hostSpawn } = require('./helpers/cockpit');
+const { openModuleInShell, hostSpawn, SHELL_PATH } = require('./helpers/cockpit');
 const S = require('./helpers/scap');
 
 // Not serial: a failing size must not hide the others (a failure restarts
@@ -104,7 +104,7 @@ for (const scheme of ['light', 'dark']) {
             tmpBefore = await S.snapshotTmp(frame);
             await fixtures(frame);
             await page.reload();
-            frame = await (await page.locator('iframe[name^="cockpit1:localhost/scap-dev"]').elementHandle()).contentFrame();
+            frame = await (await page.locator(`iframe[name="cockpit1:localhost${SHELL_PATH}"]`).elementHandle()).contentFrame();
             await frame.getByRole('grid', { name: 'Scan history' }).locator('tbody tr')
                     .first()
                     .waitFor({ timeout: 30000 });

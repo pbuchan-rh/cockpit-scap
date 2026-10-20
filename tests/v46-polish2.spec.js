@@ -11,7 +11,7 @@
 // One real CIS L1 scan (deleted afterwards); no policy is saved.
 const { test, expect } = require('@playwright/test');
 const { PNG } = require('playwright-core/lib/utilsBundle');
-const { openModuleInShell } = require('./helpers/cockpit');
+const { openModuleInShell, SHELL_PATH } = require('./helpers/cockpit');
 const S = require('./helpers/scap');
 
 test.describe.configure({ mode: 'serial' });
@@ -131,7 +131,7 @@ test('W1: Variables header reads like Rules, every count says "modified"', async
  * down the card (where nothing covers the border), and contain the border
  * color. Without the fix the bar row shows the bar background instead. */
 async function borderBesideBar(pg, f, label) {
-    const ifr = await pg.locator('iframe[name^="cockpit1:localhost/scap-dev"]').boundingBox();
+    const ifr = await pg.locator(`iframe[name="cockpit1:localhost${SHELL_PATH}"]`).boundingBox();
     const g = await f.evaluate(() => {
         const card = document.querySelector('.ct-tailor-editor-card');
         const bar = card.querySelector('[data-ct-tailor-actionbar]');

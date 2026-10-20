@@ -4,7 +4,7 @@
 // footer, the drawer (presets, counts, search, downloads), and a saved
 // scan whose manifest predates rule_meta (results-file header/details).
 const { test, expect } = require('@playwright/test');
-const { openModuleInShell, hostSpawn } = require('./helpers/cockpit');
+const { openModuleInShell, hostSpawn, SHELL_PATH } = require('./helpers/cockpit');
 const S = require('./helpers/scap');
 
 test.describe.configure({ mode: 'serial' });
@@ -186,7 +186,7 @@ test('a saved scan without rule_meta still gets header, titles and chips', async
     await frame.locator('[data-ct-results]').getByRole('button', { name: 'Close', exact: true })
             .click();
     await page.reload();
-    const iframe = page.locator('iframe[name^="cockpit1:localhost/scap-dev"]');
+    const iframe = page.locator(`iframe[name="cockpit1:localhost${SHELL_PATH}"]`);
     frame = await (await iframe.elementHandle()).contentFrame();
     const row = frame.locator('tbody tr').first();
     await expect(row).toContainText('2099');

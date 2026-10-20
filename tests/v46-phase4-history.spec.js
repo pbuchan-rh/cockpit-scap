@@ -2,7 +2,7 @@
 // (/scap-dev), both browser projects. One real CIS L1 scan plus two older
 // copies of it (this spec's own, fabricated scores) for the score delta.
 const { test, expect } = require('@playwright/test');
-const { openModuleInShell, hostSpawn } = require('./helpers/cockpit');
+const { openModuleInShell, hostSpawn, SHELL_PATH } = require('./helpers/cockpit');
 const S = require('./helpers/scap');
 
 test.describe.configure({ mode: 'serial' });
@@ -40,7 +40,7 @@ test.beforeAll(async ({ browser }) => {
     await frame.locator('[data-ct-results]').getByRole('button', { name: 'Close', exact: true })
             .click();
     await page.reload();
-    frame = await (await page.locator('iframe[name^="cockpit1:localhost/scap-dev"]').elementHandle()).contentFrame();
+    frame = await (await page.locator(`iframe[name="cockpit1:localhost${SHELL_PATH}"]`).elementHandle()).contentFrame();
     await table().locator('tbody tr').first()
             .waitFor({ timeout: 30000 });
 });
