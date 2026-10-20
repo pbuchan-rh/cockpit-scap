@@ -53,6 +53,8 @@ bridge. `helpers/scap.js` drives the PatternFly pickers and runs a scan.
 - Changes the host: v46-apply-now (applies Bash fixes as root) and v46-missing-deps
   (removes and reinstalls `openscap-scanner` and `scap-security-guide`). Both refuse to run
   unless `COCKPIT_URL` points at the disposable host named in `helpers/apply-host.js`.
+  v46-review-lifecycle refuses the same way: besides real scans it starts Apply now as
+  root, though only with a fake, echo-only fix that leaves the host unchanged.
 
 ## Output
 
