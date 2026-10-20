@@ -123,7 +123,7 @@ export function generateTailoringXml(baseProfileId, newProfileId, newProfileTitl
         '<Tailoring xmlns="http://checklists.nist.gov/xccdf/1.2" id="xccdf_cockpit-scap_tailoring_default">',
         ...(sdsPath ? ['  <benchmark href="' + esc(sdsPath) + '"/>'] : []),
         '  <version time="' + ts + '">1</version>',
-        '  <Profile id="' + esc(newProfileId) + '" extends="' + esc(baseProfileId) + '">',
+        '  <Profile id="' + esc(newProfileId) + '"' + (baseProfileId ? ' extends="' + esc(baseProfileId) + '"' : '') + '>',
         '    <title>' + esc(newProfileTitle) + '</title>',
         '    <description>Created with cockpit-scap</description>',
     ];
@@ -156,23 +156,123 @@ export function matchBenchmarkContent(href, contentList) {
     return contentList.filter(c => c.path.split('/').pop() === base);
 }
 
-export function parseTailoringXml(xmlContent) {
-    const NS = 'http://checklists.nist.gov/xccdf/1.2';
+const XCCDF_NS = 'http://checklists.nist.gov/xccdf/1.2';
+
+/* The <Profile> with id `profileId` (the first one when no id is given or
+ * none matches), or null. */
+function findTailoringProfile(doc, profileId) {
+    const profiles = Array.from(doc.getElementsByTagNameNS(XCCDF_NS, 'Profile'));
+    return profiles.find(p => profileId && p.getAttribute('id') === profileId) || profiles[0] || null;
+}
+
+function childElements(parent, localName) {
+    return Array.from(parent.children).filter(el => el.namespaceURI === XCCDF_NS && el.localName === localName);
+}
+
+/* The <select>/<set-value> entries of one profile (`profileId`), or of the
+ * whole file when no id is given. */
+export function parseTailoringXml(xmlContent, profileId) {
     const doc = new DOMParser().parseFromString(xmlContent, 'application/xml');
     const ruleChanges = {};
     const valueChanges = {};
+    const profile = profileId ? findTailoringProfile(doc, profileId) : null;
+    const all = localName => (profile
+        ? childElements(profile, localName)
+        : Array.from(doc.getElementsByTagNameNS(XCCDF_NS, localName)));
 
-    Array.from(doc.getElementsByTagNameNS(NS, 'select')).forEach(el => {
+    all('select').forEach(el => {
         const idref = el.getAttribute('idref');
         if (idref) ruleChanges[idref] = el.getAttribute('selected') === 'true';
     });
 
-    Array.from(doc.getElementsByTagNameNS(NS, 'set-value')).forEach(el => {
+    all('set-value').forEach(el => {
         const idref = el.getAttribute('idref');
         if (idref) valueChanges[idref] = el.textContent || '';
     });
 
     return { ruleChanges, valueChanges };
+}
+
+/* Applies the editor's state to an existing tailoring file in place: in the
+ * profile `profileId`, sets the title and makes the <select>/<set-value>
+ * entries match ruleChanges/valueChanges. Everything else in the file
+ * (refine-rule, refine-value, other profiles, version, status, extends) is
+ * kept as it was, so an uploaded policy survives being edited (F5). */
+export function updateTailoringXml(xmlContent, profileId, title, ruleChanges, valueChanges) {
+    const doc = new DOMParser().parseFromString(xmlContent, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length)
+        throw new Error('The tailoring file is not valid XML.');
+    const profile = findTailoringProfile(doc, profileId);
+    if (!profile)
+        throw new Error('The tailoring file has no Profile to update.');
+
+    const prefix = profile.prefix ? profile.prefix + ':' : '';
+    const isBlank = node => node?.nodeType === Node.TEXT_NODE && !node.data.trim();
+    const indent = (isBlank(profile.previousSibling) && /\n([ \t]*)$/.exec(profile.previousSibling.data)?.[1]) || '  ';
+    const childIndent = '\n' + indent + '  ';
+    // Puts `el` on its own line before `node` (null: at the end of the
+    // profile, before its closing tag's indentation).
+    function insertBefore(el, node) {
+        let anchor = node ?? (isBlank(profile.lastChild) ? profile.lastChild : null);
+        if (node && isBlank(node.previousSibling)) anchor = node.previousSibling;
+        profile.insertBefore(doc.createTextNode(childIndent), anchor);
+        profile.insertBefore(el, anchor);
+    }
+    function insertAfter(el, node) {
+        profile.insertBefore(el, node.nextSibling);
+        profile.insertBefore(doc.createTextNode(childIndent), el);
+    }
+    function remove(el) {
+        if (isBlank(el.previousSibling)) el.previousSibling.remove();
+        el.remove();
+    }
+
+    const titleEl = childElements(profile, 'title')[0];
+    if (titleEl) {
+        titleEl.textContent = title;
+    } else {
+        // title follows status, dc-status and version
+        const t = doc.createElementNS(XCCDF_NS, prefix + 'title');
+        t.textContent = title;
+        insertBefore(t, Array.from(profile.children).find(el => !['status', 'dc-status', 'version'].includes(el.localName)) || null);
+    }
+
+    function sync(localName, changes, apply) {
+        const seen = new Set();
+        childElements(profile, localName).forEach(el => {
+            const idref = el.getAttribute('idref');
+            if (!(idref in changes) || seen.has(idref)) {
+                remove(el);
+            } else {
+                seen.add(idref);
+                apply(el, changes[idref]);
+            }
+        });
+        Object.entries(changes).forEach(([idref, val]) => {
+            if (seen.has(idref)) return;
+            const el = doc.createElementNS(XCCDF_NS, prefix + localName);
+            el.setAttribute('idref', idref);
+            apply(el, val);
+            // After the last of its kind; a first select goes before the
+            // set-values, a first set-value after the selects (the order
+            // generateTailoringXml writes); else before <signature>, the
+            // last element a Profile may hold, else at the end.
+            const last = childElements(profile, localName).pop() ||
+                (localName === 'set-value' ? childElements(profile, 'select').pop() : null);
+            if (last)
+                insertAfter(el, last);
+            else
+                insertBefore(el, (localName === 'select' && childElements(profile, 'set-value')[0]) ||
+                                 childElements(profile, 'signature')[0] || null);
+        });
+    }
+    sync('select', ruleChanges, (el, sel) => el.setAttribute('selected', String(sel)));
+    sync('set-value', valueChanges, (el, val) => { el.textContent = String(val) });
+
+    const decl = /^\s*<\?xml[^>]*\?>\s*/.exec(xmlContent)?.[0] || '';
+    // Firefox writes a declaration of its own, Chrome none: keep the file's.
+    return decl + new XMLSerializer().serializeToString(doc)
+            .replace(/^<\?xml[^>]*\?>\s*/, '');
 }
 
 function safeSlug(title) {
@@ -269,7 +369,7 @@ export async function updateTailoringFile(sidecar, { newProfileTitle, ruleChange
     }
 
     const title = newProfileTitle.trim() || sidecar.name;
-    const xml = generateTailoringXml(sidecar.base_profile_id, sidecar.profile_id, title, ruleChanges, valueChanges, sidecar.sds_path);
+    const xml = updateTailoringXml(await readTailoringXml(sidecar.path), sidecar.profile_id, title, ruleChanges, valueChanges);
     const jsonPath = sidecar.path.replace(/\.xml$/, '.json');
     const updatedSidecar = {
         ...sidecar,
@@ -290,7 +390,7 @@ export async function saveUploadedTailoring({ xmlContent, sdsPath, profileId, ba
     const xmlPath = `${dir}/${filename}.xml`;
     const jsonPath = `${dir}/${filename}.json`;
 
-    const { ruleChanges } = parseTailoringXml(xmlContent);
+    const { ruleChanges } = parseTailoringXml(xmlContent, profileId);
     const sidecar = {
         name,
         base_profile_id: baseProfileId,

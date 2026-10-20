@@ -430,7 +430,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
         setTailorData(null);
 
         Promise.all([
-            readTailoringXml(editingSidecar.path).then(parseTailoringXml),
+            readTailoringXml(editingSidecar.path).then(xml => parseTailoringXml(xml, editingSidecar.profile_id)),
             extractProfile(editingSidecar.base_profile_id, editingSidecar.sds_path),
         ])
                 .then(([changes, data]) => {
