@@ -49,7 +49,9 @@ const ResultIcon = ({ result }) => {
 export function formatClock(seconds) {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    // ${n}: a bare "$0s" would be read as a placeholder named "0s".
+    // ${n}: a bare "$0s" would be read as a placeholder named "0s". These are
+    // cockpit.format() placeholders, not template literals.
+    // eslint-disable-next-line no-template-curly-in-string
     return m > 0 ? cockpit.format(_("${0}m ${1}s"), m, String(s).padStart(2, '0')) : cockpit.format(_("${0}s"), s);
 }
 
@@ -94,10 +96,10 @@ export const ScanProgress = ({ output, info, onCancel }) => {
     useEffect(() => {
         let cancelled = false;
         cockpit.spawn(['hostname'], { err: 'ignore' })
-                .then(out => { if (!cancelled) setHostname(out.trim()) })
+                .then(out => { if (!cancelled) setHostname(out.trim()); })
                 .catch(() => {});
         if (config.content) {
-            getContentVersion(config.content).then(v => { if (!cancelled) setContentVersion(v) });
+            getContentVersion(config.content).then(v => { if (!cancelled) setContentVersion(v); });
         }
         return () => { cancelled = true };
     }, [config.content]);

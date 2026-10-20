@@ -96,7 +96,7 @@ export function useRemediationRun(adminAllowed) {
 
     useEffect(() => {
         discover();
-        const onVisible = () => { if (!document.hidden) discover() };
+        const onVisible = () => { if (!document.hidden) discover(); };
         document.addEventListener('visibilitychange', onVisible);
         return () => {
             document.removeEventListener('visibilitychange', onVisible);
@@ -370,8 +370,8 @@ export const ApplyNowDialog = ({ request, run, adminAllowed, scanRunning, onStar
         setScript(null);
         setGenError(null);
         generateScopedFix(source.scope, source.rules.map(r => r.id), 'bash')
-                .then(text => { if (!cancelled) setScript(text) })
-                .catch(ex => { if (!cancelled) setGenError(ex.message || String(ex)) });
+                .then(text => { if (!cancelled) setScript(text); })
+                .catch(ex => { if (!cancelled) setGenError(ex.message || String(ex)); });
         return () => { cancelled = true };
     }, [source]);
 

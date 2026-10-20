@@ -69,7 +69,7 @@ export const App = () => {
 
     useEffect(() => {
         let cancelled = false;
-        isOscapInstalled().then(found => { if (!cancelled) setOscapInstalled(found) });
+        isOscapInstalled().then(found => { if (!cancelled) setOscapInstalled(found); });
         return () => { cancelled = true };
     }, [prereqKey]);
 
@@ -404,7 +404,7 @@ export const App = () => {
                                 <RemediationAlert
                                     run={remediation.run}
                                     onView={() => setShowRun(true)}
-                                    onDismiss={remediation.dismiss}
+                                    onDismiss={() => remediation.dismiss()}
                                 />
                             )}
 

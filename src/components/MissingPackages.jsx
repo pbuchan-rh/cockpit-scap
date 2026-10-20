@@ -27,8 +27,8 @@ function usePackageManagerAvailable() {
     useEffect(() => {
         let cancelled = false;
         getPackageManager()
-                .then(() => { if (!cancelled) setAvailable(true) })
-                .catch(() => { if (!cancelled) setAvailable(false) });
+                .then(() => { if (!cancelled) setAvailable(true); })
+                .catch(() => { if (!cancelled) setAvailable(false); });
         return () => { cancelled = true };
     }, []);
     return available;
