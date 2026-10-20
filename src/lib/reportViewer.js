@@ -1,8 +1,7 @@
 // Opens a same-origin popup now (synchronous, avoids popup-blocker), then
 // resolves htmlPromise and hands the HTML off via IndexedDB to viewer.html,
-// which gets Cockpit's real page CSP. A blob: URL isn't used directly here —
-// it inherits a stripped-down CSP (no unsafe-inline) that blocks the
-// report's inline <style>/<script>.
+// which writes it into its own page. The report's styles apply there; its
+// scripts are blocked by the package CSP on purpose (see viewer.js).
 //
 // Returns false if the popup was blocked, so the caller can surface a
 // visible error instead of the underlying fetch resolving successfully with
