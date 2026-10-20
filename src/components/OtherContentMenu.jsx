@@ -10,7 +10,7 @@ const _ = cockpit.gettext;
  * instead of a row of blue links. Items appear only when their handler is
  * given: Upload content…, Manage content (brings the SCAP Content card
  * into view). */
-export const OtherContentMenu = ({ id, onUpload, uploading, onManage }) => {
+export const OtherContentMenu = ({ id, onUpload, uploading, isUploadDisabled, onManage }) => {
     const [isOpen, setIsOpen] = useState(false);
     return (
         <Dropdown
@@ -30,7 +30,7 @@ export const OtherContentMenu = ({ id, onUpload, uploading, onManage }) => {
             <DropdownList>
                 {onUpload && (
                     <DropdownItem
-                        value="upload" isDisabled={uploading} onClick={onUpload}
+                        value="upload" isDisabled={uploading || isUploadDisabled} onClick={onUpload}
                         description={_("Add a SCAP datastream (.xml) from this computer")}
                     >
                         {_("Upload content…")}

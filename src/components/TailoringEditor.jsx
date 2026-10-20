@@ -41,8 +41,6 @@ const SEVERITY_COLOR = {
 
 const SEVERITY_ORDER = { high: 0, medium: 1, low: 2, unknown: 3 };
 
-
-
 function ruleVisible(rule, filters, ruleChanges) {
     const term = filters.search.trim().toLowerCase();
     if (term && !(rule.title || rule.id).toLowerCase().includes(term)) return false;
@@ -343,6 +341,8 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
     // What the editor started from (loaded policy, or an empty new one),
     // so Cancel only asks when something actually changed.
     const savedStateRef = useRef(null);
+    // Only the latest Load Rules may land (a slower earlier one is dropped).
+    const loadSeqRef = useRef(0);
 
     const isEditing = !!editingSidecar;
 
@@ -481,12 +481,15 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
         setRulesOpen(true);
         setValuesOpen(false);
         savedStateRef.current = editorState('', {}, {});
+        const seq = ++loadSeqRef.current;
         extractProfile(profileId, content)
                 .then(data => {
+                    if (seq !== loadSeqRef.current) return;
                     setTailorData(data);
                     setLoadingTree(false);
                 })
                 .catch(ex => {
+                    if (seq !== loadSeqRef.current) return;
                     setLoadError(ex.message || String(ex));
                     setLoadingTree(false);
                 });
@@ -514,6 +517,8 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
     }
 
     function resetForm() {
+        loadSeqRef.current++;
+        setLoadingTree(false);
         setContent(defaultContentRef.current);
         setFormResetKey(k => k + 1);
         setProfileId('');
@@ -528,6 +533,10 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
         setStatusFilter('all');
         savedStateRef.current = null;
     }
+
+    // The rules shown (and the changes made) belong to this content and
+    // profile: both stay fixed until Cancel, which asks if anything changed.
+    const pickersLocked = loadingTree || !!tailorData;
 
     const isDirty = !!tailorData && !!savedStateRef.current &&
         editorState(name, ruleChanges, valueChanges) !== savedStateRef.current;
@@ -683,6 +692,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                             value={content}
                                             onChange={setContent}
                                             contentList={contentList}
+                                            isDisabled={pickersLocked}
                                             validated={contentError ? 'error' : 'default'}
                                             ariaDescribedBy={contentError ? 'ct-tailor-content-error' : undefined}
                                             emptyLabel={_("Select content…")}
@@ -692,6 +702,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                             id="ct-tailor-other-content"
                                             onUpload={handleUploadClick}
                                             uploading={uploading}
+                                            isUploadDisabled={pickersLocked}
                                             onManage={onManageContent}
                                         />
                                         <input
@@ -707,11 +718,11 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
                                             onChange={setProfileId}
                                             options={profiles.map(p => ({ value: p.id, label: p.title || p.id }))}
                                             placeholder={_("Select content first")}
-                                            isDisabled={!content || profiles.length === 0}
+                                            isDisabled={!content || profiles.length === 0 || pickersLocked}
                                         />
                                     </FormGroup>
                                     <Button
-                                        variant="secondary" isDisabled={!profileId || !content}
+                                        variant="secondary" isDisabled={!profileId || !content || pickersLocked}
                                         isLoading={loadingTree} onClick={handleLoad}
                                     >
                                         {_("Load Rules")}
