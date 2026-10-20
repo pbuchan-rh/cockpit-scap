@@ -55,6 +55,11 @@ bridge. `helpers/scap.js` drives the PatternFly pickers and runs a scan.
   unless `COCKPIT_URL` points at the disposable host named in `helpers/apply-host.js`.
   v46-review-lifecycle refuses the same way: besides real scans it starts Apply now as
   root, though only with a fake, echo-only fix that leaves the host unchanged.
+- Release upgrade: v46-release-upgrade (apply host only, `SCAP_SHELL_PATH=/scap`) skips unless
+  `UPGRADE_PHASE` is set. `UPGRADE_PHASE=seed` with the previous release's RPM installed creates a
+  scan and two tailorings; then `dnf upgrade` to the candidate; then `UPGRADE_PHASE=verify` checks
+  the RPM, that the upgrade changed no ~/SCAP file, and that the old data opens, edits and scans.
+  The phases share `tests/test-results/upgrade-state.json`; the data stays in ~/SCAP afterwards.
 
 ## Output
 
