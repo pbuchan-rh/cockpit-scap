@@ -122,7 +122,9 @@ export const App = () => {
                     return null;
                 });
         const tailoringChanges = config.tailoring
-            ? readTailoringXml(config.tailoring).then(parseTailoringXml)
+            // Only the scanned profile's entries: a tailoring file can hold
+            // several profiles (X1).
+            ? readTailoringXml(config.tailoring).then(xml => parseTailoringXml(xml, config.profile))
                     .catch(() => null)
             : Promise.resolve(null);
         Promise.all([extractedPromise, tailoringChanges]).then(([extracted, changes]) => {
