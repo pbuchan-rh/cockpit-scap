@@ -2,6 +2,9 @@
 // REINSTALLS PACKAGES (openscap-scanner, scap-security-guide and the
 // dependent openscap-utils): ONLY against the disposable scap-apply10.
 // afterAll reinstalls whatever was installed before, even on failure.
+// Skips while the cockpit-scap RPM is installed: the RPM Requires
+// openscap-scanner, so `dnf remove openscap-scanner` removes the module too
+// (and nothing reinstalls it), and the RPM can never be without the scanner.
 const { requireApplyHost, sshApplyHost, scpFromApplyHost } = require('./helpers/apply-host');
 requireApplyHost();
 
@@ -72,6 +75,8 @@ async function expectNoRawErrors() {
 
 test.beforeAll(async ({ browser }, info) => {
     project = info.project.name;
+    const rpm = sshApplyHost('rpm -q cockpit-scap >/dev/null 2>&1 && echo installed || echo absent').trim();
+    test.skip(rpm === 'installed', 'the cockpit-scap RPM is installed; removing openscap-scanner would remove it too');
     installedBefore = installed();
     expect(names(installedBefore), 'scanner and content installed at the start').toEqual(expect.arrayContaining(PACKAGES.slice(0, 2)));
     // A copy of the SSG datastream to upload once the package is gone.
@@ -88,6 +93,7 @@ test.beforeAll(async ({ browser }, info) => {
 });
 
 test.afterAll(async () => {
+    if (!installedBefore) return; // skipped: nothing was removed
     // Restore the original versions, even after a failure.
     restorePackages();
     sshApplyHost(`rm -f ~/SCAP/content/${UPLOAD_NAME}`);
