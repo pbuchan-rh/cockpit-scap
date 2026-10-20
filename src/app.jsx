@@ -30,7 +30,6 @@ export const App = () => {
     const [error, setError] = useState(null);
     const [output, setOutput] = useState([]);
     const [scanProc, setScanProc] = useState(null);
-    const [tmpdir, setTmpdir] = useState(null);
     const [scanResult, setScanResult] = useState(null);
     const [tailoringRefreshKey, setTailoringRefreshKey] = useState(0);
     const [editingSidecar, setEditingSidecar] = useState(null);
@@ -133,7 +132,6 @@ export const App = () => {
         let dir = null;
         try {
             dir = await makeTmpdir();
-            setTmpdir(dir);
 
             const proc = startScan(config, dir, line => setOutput(o => [...o, line]));
             setScanProc(proc);
@@ -148,7 +146,6 @@ export const App = () => {
                     setPhase('setup');
                     setScanProc(null);
                     cleanupTmpdir(dir).catch(() => {});
-                    setTmpdir(null);
                     return;
                 } else {
                     throw ex;
@@ -160,6 +157,10 @@ export const App = () => {
             console.debug('Scan finished, hasFindings:', hasFindings);
 
             const [files, extracted] = await Promise.all([readResults(dir), extractedPromise]);
+            // Everything is in memory now (and saved under ~/SCAP below);
+            // nothing reads the root-owned tmpdir again (L4).
+            await cleanupTmpdir(dir);
+            dir = null;
             const ruleMeta = {};
             if (extracted) {
                 flattenProfileRules(extracted).forEach(r => {
@@ -216,10 +217,7 @@ export const App = () => {
             setError(ex.message || String(ex));
             setPhase('setup');
             setScanProc(null);
-            if (dir) {
-                cleanupTmpdir(dir).catch(() => {});
-                setTmpdir(null);
-            }
+            if (dir) cleanupTmpdir(dir).catch(() => {});
         }
     }, []);
 
@@ -228,16 +226,12 @@ export const App = () => {
     }, [scanProc]);
 
     const handleNewScan = useCallback(() => {
-        if (tmpdir) {
-            cleanupTmpdir(tmpdir).catch(() => {});
-            setTmpdir(null);
-        }
         setBuilder(null);
         setScanResult(null);
         setError(null);
         setOutput([]);
         setPhase('setup');
-    }, [tmpdir]);
+    }, []);
 
     const handleViewSavedScan = useCallback(async (manifest) => {
         const files = await readSavedScanFiles(manifest);
@@ -261,7 +255,6 @@ export const App = () => {
             scanId: manifest.timestamp,
         });
         setBuilder(null);
-        setTmpdir(null);
         setPhase('results');
         setResultsFocusKey(k => k + 1);
     }, []);
