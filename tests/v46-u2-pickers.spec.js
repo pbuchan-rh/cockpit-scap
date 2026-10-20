@@ -1,15 +1,17 @@
 // UAT batch 1, U2: every picker in the module is a PF6 Select (MenuToggle +
 // SelectList), not a native <select> whose open list the browser draws.
 // INSIDE the Cockpit shell (/scap-dev), both browser projects, light and
-// dark. Read only: it opens pickers and changes selections in the forms,
-// never saves or scans. Uses the host's own content and tailoring.
+// dark. It opens pickers and changes selections in the forms, never saves
+// or scans. Uses the host's own content; fixture: the v46-test tailoring
+// policy for RHEL 10 content (removed again by cleanupCreated), so the
+// Tailoring picker has a policy on any host.
 const { test, expect } = require('@playwright/test');
-const { openModuleInShell } = require('./helpers/cockpit');
+const { openModuleInShell, shellFrame } = require('./helpers/cockpit');
 const S = require('./helpers/scap');
 
 test.describe.configure({ mode: 'serial' });
 
-let context, page, frame;
+let context, page, frame, before;
 const SHOTS = 'tests/test-results/uat1';
 
 for (const scheme of ['light', 'dark']) {
@@ -18,10 +20,17 @@ for (const scheme of ['light', 'dark']) {
             context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: scheme, ignoreHTTPSErrors: true });
             page = await context.newPage();
             frame = await openModuleInShell(page);
+            before = await S.snapshotScans(frame);
+            await S.createTestTailoring(frame);
+            await page.reload();
+            frame = await shellFrame(page);
             await expect(frame.locator('#ct-scap-content')).toBeVisible({ timeout: 30000 });
             await expect(frame.getByRole('progressbar', { name: 'Loading profiles' })).toHaveCount(0, { timeout: 60000 });
         });
-        test.afterAll(async () => { await context?.close() });
+        test.afterAll(async () => {
+            if (frame) await S.cleanupCreated(frame, before);
+            await context?.close();
+        });
 
         const menu = () => frame.locator('.pf-v6-c-menu').filter({ has: frame.locator('[role="listbox"]') });
 

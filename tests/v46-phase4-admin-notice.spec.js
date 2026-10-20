@@ -2,13 +2,32 @@
 // "Administrative access required" notice sits in the SCAP Security Scan
 // card header, right of the title, not as a page banner above the tabs.
 // Run Scan is aria-disabled with a tooltip; turning admin on removes both.
+// Fixture: a fabricated saved scan of the RHEL 10 datastream (CIS L1), so the
+// setup page preselects a profile (R4) and Run Scan can enable on any host.
 const { test, expect } = require('@playwright/test');
-const { requestAdmin, COCKPIT_URL } = require('./helpers/cockpit');
+const { requestAdmin, COCKPIT_URL, openModuleInShell } = require('./helpers/cockpit');
+const S = require('./helpers/scap');
 
 const USER = process.env.COCKPIT_USER || 'pbuchan';
 const PASS = process.env.COCKPIT_PASS || '';
 const SHELL_PATH = process.env.SCAP_SHELL_PATH || '/scap-dev';
 const NOTICE = 'Administrative access required to run a scan';
+
+let before;
+test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    const frame = await openModuleInShell(page);
+    before = await S.snapshotScans(frame);
+    await S.createTestScan(frame);
+    await page.close();
+});
+
+test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    const frame = await openModuleInShell(page);
+    await S.cleanupCreated(frame, before);
+    await page.close();
+});
 
 // Log in WITHOUT elevating, then open the module inside the shell.
 async function openLimited(page) {

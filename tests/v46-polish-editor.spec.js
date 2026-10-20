@@ -7,7 +7,7 @@
 // filters. Rules starts open. The sticky name + actions bar
 // stays pinned after scrolling past both sections.
 const { test, expect } = require('@playwright/test');
-const { openModuleInShell } = require('./helpers/cockpit');
+const { openModuleInShell, SHELL_PATH } = require('./helpers/cockpit');
 const S = require('./helpers/scap');
 
 test.describe.configure({ mode: 'serial' });
@@ -124,9 +124,19 @@ test('E2: Rules header toggles; Expand all / Collapse all act on the groups', as
 test('E3: action bar stays sticky after scrolling past both sections', async () => {
     // Still open from the search test above.
     if (await varsToggle().getAttribute('aria-expanded') !== 'true') await varsToggle().click();
-    await expect(varsToggle()).toHaveAttribute('aria-expanded', 'true');
-    await editor().getByRole('heading', { name: 'Changes from base profile' })
-            .evaluate(el => el.scrollIntoView({ block: 'start' }));
+    // Host-independent scroll: a 700 px tall window, and the page scrolled
+    // until the Variables box ends 100 px below the top. Scrolling the
+    // "Changes from base profile" heading to the top depended on how much
+    // follows the editor (Saved Policies, SCAP Content): on a host with
+    // none the scroll ended with the box 264 px down, and when the heading
+    // does reach the top only ~65 px of the editor card is left, less than
+    // the 76 px bar, so the card itself pushes the bar up.
+    await page.setViewportSize({ width: 1440, height: 700 });
+    await page.waitForTimeout(500);
+    await frame.evaluate(() => {
+        const main = document.querySelector('.pf-v6-c-page__main');
+        main.scrollTop += document.querySelector('.ct-tailor-values-box').getBoundingClientRect().bottom - 100;
+    });
     const pos = await frame.evaluate(() => {
         const r = s => document.querySelector(s).getBoundingClientRect();
         return { bar: r('[data-ct-tailor-actionbar]').top, vars: r('.ct-tailor-values-box').bottom, scrolled: document.querySelector('.pf-v6-c-page__main').scrollTop };
@@ -139,12 +149,13 @@ test('E3: action bar stays sticky after scrolling past both sections', async () 
     await bar().getByRole('button', { name: 'Cancel' })
             .click();
     await expect(bar()).toHaveCount(0);
+    await page.setViewportSize({ width: 1440, height: 900 });
 });
 
 test('E1: editing a policy that changes variables opens Variables', async () => {
     await S.createTestTailoring(frame);
     await page.reload();
-    frame = await (await page.locator('iframe[name^="cockpit1:localhost/scap-dev"]').elementHandle()).contentFrame();
+    frame = await (await page.locator(`iframe[name="cockpit1:localhost${SHELL_PATH}"]`).elementHandle()).contentFrame();
     await frame.getByRole('tab', { name: 'Policy Tailoring' }).click();
     const row = frame.locator('.pf-v6-c-card').filter({ has: frame.getByRole('heading', { name: 'Saved Tailoring Policies' }) })
             .locator('tbody tr')

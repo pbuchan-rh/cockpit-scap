@@ -72,6 +72,29 @@ async function createTestTailoring(frame) {
     return `${base}.xml`;
 }
 
+/* Writes a fabricated saved scan (manifest.json only, the shape
+ * lib/scanHistory.js saves) of the RHEL 10 datastream with CIS L1, under a
+ * far-future timestamp so it is the newest. For specs that need one Scan
+ * History row; cleanupCreated() removes it as a scan not in `before`. */
+async function createTestScan(frame, ts = '2099-01-03T00-00-00') {
+    const home = await homeDir(frame);
+    const dir = `${home}/SCAP/scans/${ts}`;
+    const manifest = {
+        timestamp: ts,
+        sds_file: DS,
+        profile_id: PROFILE_L1,
+        profile_title: 'v46-test CIS Red Hat Enterprise Linux 10 Benchmark for Level 1 - Server',
+        score: 64,
+        counts: { pass: 120, fail: 68 },
+        rule_meta: {},
+    };
+    await hostSpawn(frame, ['mkdir', '-p', dir]);
+    await frame.evaluate(async ({ dir, manifest }) => {
+        await window.cockpit.file(`${dir}/manifest.json`).replace(JSON.stringify(manifest, null, 2));
+    }, { dir, manifest });
+    return ts;
+}
+
 async function snapshotTmp(frame) {
     const out = await hostSpawn(frame, ['sh', '-c', 'ls -1d /tmp/cockpit-scap-* 2>/dev/null || true']);
     return out.split('\n').filter(Boolean);
@@ -236,7 +259,7 @@ function countFixBlocks(text) {
 
 module.exports = {
     DS, RULE, PROFILE_L1, TEST_TAILORING_NAME, TEST_TAILORED_PROFILE, DESELECTED, SET_VALUES, NO_ANSIBLE_RULES,
-    homeDir, snapshotScans, snapshotTmp, createTestTailoring, cleanupCreated, expectDownload, runScan,
+    homeDir, snapshotScans, snapshotTmp, createTestScan, createTestTailoring, cleanupCreated, expectDownload, runScan,
     pick, pickContentAndProfile, pickerOptions, pickOther,
     openBuilder, closeBuilder, builderDownload, resultsDownload,
     fixVariables, diffVariables, countFixBlocks,

@@ -1,18 +1,31 @@
 // V4.6 list cards (Peter 2026-10-15): "N items · size" beside the title,
 // no footer row, no divider between title and table, an Actions column
 // header on every table, action links on the row text line, and history
-// actions as View · Download · Delete links (Delete red). Read only: uses
-// whatever history, policies and content the host already has.
+// actions as View · Download · Delete links (Delete red). Fixtures, so
+// every card has a row on any host: a fabricated saved scan and the v46-test
+// tailoring policy (removed again by cleanupCreated); content is the host's
+// own RHEL 10 datastream.
 const { test, expect } = require("@playwright/test");
-const { openModuleInShell } = require("./helpers/cockpit");
+const { openModuleInShell, shellFrame } = require("./helpers/cockpit");
+const S = require("./helpers/scap");
 
-let page, frame;
+let page, frame, before;
 test.describe.configure({ mode: "serial" });
 test.beforeAll(async ({ browser }) => {
     page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     frame = await openModuleInShell(page);
+    before = await S.snapshotScans(frame);
+    await S.createTestScan(frame);
+    await S.createTestTailoring(frame);
+    await page.reload();
+    frame = await shellFrame(page);
+    await frame.locator(".pf-v6-c-card").first()
+            .waitFor({ timeout: 30000 });
 });
-test.afterAll(async () => { await page.close(); });
+test.afterAll(async () => {
+    if (frame) await S.cleanupCreated(frame, before);
+    await page?.close();
+});
 
 const CARDS = [
     { name: "history", tab: "Host Scan", title: "Scan History", links: ["View", "Download", "Delete"] },

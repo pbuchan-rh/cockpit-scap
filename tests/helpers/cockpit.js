@@ -52,6 +52,15 @@ async function openModuleInShell(page, shellPath = SHELL_PATH) {
     return frame;
 }
 
+/* The module's Frame in the shell page, e.g. again after page.reload().
+ * Matches the iframe by its exact name: the shell keeps other pages'
+ * iframes (Overview, Services, ...) loaded next to it. */
+async function shellFrame(page, shellPath = SHELL_PATH) {
+    const iframe = page.locator(`iframe[name="cockpit1:localhost${shellPath}"]`);
+    await iframe.waitFor({ state: 'attached', timeout: 30000 });
+    return (await iframe.elementHandle()).contentFrame();
+}
+
 /* Run a command on the test host through the module frame's own cockpit
  * bridge (as the logged-in user; superuser only when asked). */
 async function hostSpawn(frame, args, { superuser = false } = {}) {
@@ -120,5 +129,5 @@ async function canDoPrivilegedWrite(page) {
 
 module.exports = {
     loginToCockpit, getModuleFrame, requestAdmin, canDoPrivilegedWrite, COCKPIT_URL,
-    openModuleInShell, hostSpawn, SHELL_PATH,
+    openModuleInShell, shellFrame, hostSpawn, SHELL_PATH,
 };
