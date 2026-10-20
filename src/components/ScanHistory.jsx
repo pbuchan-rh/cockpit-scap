@@ -9,6 +9,7 @@ import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/comp
 import { MenuToggle } from "@patternfly/react-core/dist/esm/components/MenuToggle/index.js";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@patternfly/react-core/dist/esm/components/Modal/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
+import { Tooltip } from "@patternfly/react-core/dist/esm/components/Tooltip/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { CaretDownIcon } from "@patternfly/react-icons/dist/esm/icons/caret-down-icon.js";
 import { CaretUpIcon } from "@patternfly/react-icons/dist/esm/icons/caret-up-icon.js";
@@ -73,16 +74,28 @@ const ScoreDelta = ({ delta }) => {
     );
 };
 
-const RowActions = ({ sc, busy, disabled, onView, onDownload, onDelete }) => {
+const RowActions = ({ sc, busy, disabled, scanRunning, onView, onDownload, onDelete }) => {
     const [downloadOpen, setDownloadOpen] = useState(false);
     const [kebabOpen, setKebabOpen] = useState(false);
     const when = formatTimestamp(sc.timestamp);
     return (
         <Flex spaceItems={{ default: 'spaceItemsSm' }} flexWrap={{ default: 'nowrap' }} alignItems={{ default: 'alignItemsCenter' }}>
             <FlexItem>
-                <Button variant="link" isInline isLoading={busy === 'view'} isDisabled={disabled} onClick={onView}>
-                    {_("View")}
-                </Button>
+                {scanRunning
+                    ? (
+                        // Viewing would replace the running scan and its
+                        // Cancel (L3); Download and Delete stay available.
+                        <Tooltip content={_("A scan is running. View saved scans when it has finished.")}>
+                            <Button variant="link" isInline isAriaDisabled>
+                                {_("View")}
+                            </Button>
+                        </Tooltip>
+                    )
+                    : (
+                        <Button variant="link" isInline isLoading={busy === 'view'} isDisabled={disabled} onClick={onView}>
+                            {_("View")}
+                        </Button>
+                    )}
             </FlexItem>
             <FlexItem className="ct-history-download">
                 <Dropdown
@@ -157,10 +170,11 @@ const RowActions = ({ sc, busy, disabled, onView, onDownload, onDelete }) => {
 };
 
 // props: refreshKey (bump to reload), onView(manifest) => Promise: app.jsx
-// feeds the saved scan into ScanResults and scrolls to it. onChanged()
+// feeds the saved scan into ScanResults and scrolls to it. scanRunning:
+// a scan is in progress, so View is off until it ends. onChanged()
 // after a delete so app.jsx refreshes the size. diskUsage: bytes used by
 // ~/SCAP/scans, fetched by app.jsx.
-export const ScanHistory = ({ refreshKey, onView, onChanged, diskUsage }) => {
+export const ScanHistory = ({ refreshKey, onView, scanRunning, onChanged, diskUsage }) => {
     const [scans, setScans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -283,6 +297,7 @@ export const ScanHistory = ({ refreshKey, onView, onChanged, diskUsage }) => {
                                                     sc={sc}
                                                     busy={busy?.dir === sc.dir ? busy.what : null}
                                                     disabled={!!busy}
+                                                    scanRunning={scanRunning}
                                                     onView={() => handleView(sc)}
                                                     onDownload={kind => handleDownload(sc, kind)}
                                                     onDelete={() => setDeleteTarget(sc)}

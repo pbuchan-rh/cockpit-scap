@@ -1,5 +1,5 @@
 import cockpit from 'cockpit';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Drawer, DrawerContent, DrawerContentBody } from "@patternfly/react-core/dist/esm/components/Drawer/index.js";
@@ -30,6 +30,9 @@ export const App = () => {
     const [error, setError] = useState(null);
     const [output, setOutput] = useState([]);
     const [scanProc, setScanProc] = useState(null);
+    // True from Run Scan until that scan's results (or error) are shown:
+    // nothing may replace the running view meanwhile (L3).
+    const scanActiveRef = useRef(false);
     const [scanResult, setScanResult] = useState(null);
     const [tailoringRefreshKey, setTailoringRefreshKey] = useState(0);
     const [editingSidecar, setEditingSidecar] = useState(null);
@@ -99,6 +102,8 @@ export const App = () => {
     }, [tailoringRefreshKey]);
 
     const handleScan = useCallback(async (config) => {
+        if (scanActiveRef.current) return;
+        scanActiveRef.current = true;
         setError(null);
         setOutput([]);
         const startedAt = Date.now();
@@ -218,6 +223,8 @@ export const App = () => {
             setPhase('setup');
             setScanProc(null);
             if (dir) cleanupTmpdir(dir).catch(() => {});
+        } finally {
+            scanActiveRef.current = false;
         }
     }, []);
 
@@ -234,7 +241,11 @@ export const App = () => {
     }, []);
 
     const handleViewSavedScan = useCallback(async (manifest) => {
+        // History disables View while a scan runs; this also covers a
+        // click that was already on its way.
+        if (scanActiveRef.current) throw new Error(_("A scan is running. View saved scans when it has finished."));
         const files = await readSavedScanFiles(manifest);
+        if (scanActiveRef.current) throw new Error(_("A scan is running. View saved scans when it has finished."));
         const parsed = parseResults(files.resultsXml);
         setError(null);
         setScanResult({
@@ -447,6 +458,7 @@ export const App = () => {
                                         <ScanHistory
                                 refreshKey={historyRefreshKey}
                                 onView={handleViewSavedScan}
+                                scanRunning={phase === 'running'}
                                 onChanged={handleHistoryChanged}
                                 diskUsage={scanDiskUsage}
                                         />
