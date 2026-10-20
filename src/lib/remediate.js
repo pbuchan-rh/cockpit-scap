@@ -1,6 +1,7 @@
 import cockpit from 'cockpit';
 
 import { getUser, makeTimestamp } from './homedir.js';
+import { parseRunState } from './runState.js';
 import { getScanHistoryDir } from './scanHistory.js';
 
 /* "Apply now" (PLAN_V4.5_APPLY_NOW.md, amendments 2026-10-15 item 4).
@@ -72,22 +73,13 @@ export async function listRemediationRuns() {
     return Promise.all(units.map(async unit => ({ unit, ...(await getRunState(unit)) })));
 }
 
-/* { running, dir, startedAt } for one unit. A --no-block start leaves the
- * unit loaded but inactive with no start time for a moment: that counts as
- * running. Once it ends, --collect unloads it (LoadState=not-found). */
+/* { running, dir, startedAt } for one unit (lib/runState.js). */
 export async function getRunState(unit) {
     const out = await cockpit.spawn(
-        ['systemctl', 'show', '--timestamp=unix', '-p', 'LoadState', '-p', 'ActiveState',
+        ['systemctl', 'show', '-p', 'LoadState', '-p', 'ActiveState',
             '-p', 'ExecMainStartTimestamp', '-p', 'Environment', unit],
-        { err: 'message' });
-    const prop = name => (out.match(new RegExp(`^${name}=(.*)$`, 'm'))?.[1] ?? '').trim();
-    const load = prop('LoadState');
-    const active = prop('ActiveState');
-    const started = prop('ExecMainStartTimestamp').match(/^@(\d+)/);
-    const dir = prop('Environment').match(/COCKPIT_SCAP_RUN_DIR=(\S+)/)?.[1] ?? null;
-    const running = load === 'loaded' &&
-        (['activating', 'active', 'deactivating', 'reloading'].includes(active) || (active === 'inactive' && !started));
-    return { running, dir: dir && RUN_DIR_RE.test(dir) ? dir : null, startedAt: started ? Number(started[1]) * 1000 : null };
+        { err: 'message', environ: ['TZ=UTC', 'LC_ALL=C'] });
+    return parseRunState(out, RUN_DIR_RE);
 }
 
 export async function readRunMeta(dir) {
