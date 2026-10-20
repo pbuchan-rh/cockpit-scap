@@ -56,7 +56,7 @@ export const App = () => {
     // Apply now: the confirm request ({ source }) while the dialog asks,
     // the run (useRemediationRun) once started, and whether the dialog is
     // showing that run (closed while it runs -> RemediationAlert instead).
-    const remediation = useRemediationRun();
+    const remediation = useRemediationRun(adminAllowed);
     const [applyRequest, setApplyRequest] = useState(null);
     const [showRun, setShowRun] = useState(false);
     const [hostname, setHostname] = useState('');

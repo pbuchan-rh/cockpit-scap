@@ -40,8 +40,10 @@ export function scanAgeText(startTime, now = Date.now()) {
 /* The one remediation run this page knows about, if any:
  * { meta, status: 'running'|'done', output, limited, exitCode, logWritten,
  * finishedAt }. Finds a run already in progress when the page loads (or
- * becomes visible again), follows its output and notices when it ends. */
-export function useRemediationRun() {
+ * becomes visible again), follows its output and notices when it ends.
+ * A run found without admin access is `limited` (its meta is root-only);
+ * when `adminAllowed` turns on while it runs, it is attached fully (L2). */
+export function useRemediationRun(adminAllowed) {
     const [run, setRun] = useState(null);
     const runRef = useRef(null);
     const followRef = useRef(null);
@@ -63,8 +65,12 @@ export function useRemediationRun() {
         }));
     }, []);
 
+    // A full run needs nothing more; a limited one is upgraded once its
+    // meta can be read.
+    const settled = () => runRef.current?.status === 'running' && !runRef.current.limited;
+
     const discover = useCallback(async () => {
-        if (runRef.current?.status === 'running') return;
+        if (settled()) return;
         let runs = [];
         try {
             runs = await listRemediationRuns();
@@ -73,7 +79,7 @@ export function useRemediationRun() {
             return;
         }
         const active = runs.find(r => r.running);
-        if (!active || runRef.current?.meta.unit === active.unit) return;
+        if (!active || (runRef.current?.meta.unit === active.unit && !runRef.current.limited)) return;
         let meta = null;
         if (active.dir) {
             try {
@@ -82,9 +88,10 @@ export function useRemediationRun() {
                 meta = null; // limited access, or another session's run that already ended
             }
         }
-        if (runRef.current?.status === 'running') return;
+        if (settled()) return;
         if (meta) attach(meta, false);
-        else attach({ unit: active.unit, startedAt: active.startedAt || Date.now(), rules: [] }, true);
+        else if (runRef.current?.meta.unit !== active.unit)
+            attach({ unit: active.unit, startedAt: active.startedAt || Date.now(), rules: [] }, true);
     }, [attach]);
 
     useEffect(() => {
@@ -97,8 +104,18 @@ export function useRemediationRun() {
         };
     }, [discover]);
 
+    // Admin turned on (not the first render: the mount effect above has
+    // already looked): a limited run can now be followed.
+    const adminRef = useRef(adminAllowed);
+    useEffect(() => {
+        const was = adminRef.current;
+        adminRef.current = adminAllowed;
+        if (adminAllowed && !was && runRef.current?.limited && runRef.current.status === 'running') discover();
+    }, [adminAllowed, discover]);
+
     const status = run?.status;
     const unit = run?.meta.unit;
+    const limited = run?.limited;
     useEffect(() => {
         if (status !== 'running') return;
         const meta = runRef.current.meta;
@@ -109,7 +126,13 @@ export function useRemediationRun() {
             checking = true;
             try {
                 const state = await getRunState(meta.unit);
-                if (stopped || state.running) return;
+                if (stopped) return;
+                if (state.running) {
+                    // Admin is on but the upgrade's meta read failed (e.g.
+                    // the superuser bridge was not ready yet): try again.
+                    if (limited && adminRef.current) discover();
+                    return;
+                }
                 stopped = true;
                 clearInterval(timer);
                 const result = meta.logPath
@@ -129,7 +152,7 @@ export function useRemediationRun() {
             stopped = true;
             clearInterval(timer);
         };
-    }, [status, unit]);
+    }, [status, unit, limited, discover]);
 
     const start = useCallback(async (source, script) => {
         const meta = await startRemediation(source, script);
