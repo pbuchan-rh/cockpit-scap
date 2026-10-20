@@ -1,7 +1,7 @@
 import cockpit from 'cockpit';
 
 import { diskUsageBytes } from './format.js';
-import { ensureUserDir, getUser, makeTimestamp, writeBinaryFile } from './homedir.js';
+import { ensureUserDir, getUser, makeTimestamp, readUserFile, spawnUserRead, writeBinaryFile } from './homedir.js';
 
 const SCAN_HISTORY_SUBDIR = 'SCAP/scans';
 
@@ -25,7 +25,7 @@ async function writeManifest(path, manifest) {
     await cockpit.file(path).replace(content);
     await cockpit.spawn(['chmod', '600', path], { err: 'message' });
 
-    const written = await cockpit.file(path, { superuser: 'try' }).read();
+    const written = await readUserFile(path);
     if (written !== content) {
         throw new Error(
             'Scan manifest was not written correctly. On hardened systems, add ' +
@@ -101,7 +101,7 @@ export async function listScans() {
     const rootDir = await getScanHistoryDir();
     let output;
     try {
-        output = await cockpit.spawn(['ls', rootDir], { superuser: 'try', err: 'ignore' });
+        output = await spawnUserRead(['ls', rootDir]);
     } catch {
         return [];
     }
@@ -115,7 +115,7 @@ export async function listScans() {
             // throwing — so a directory left behind by a failed/interrupted
             // save (mkdir succeeded, manifest.json write never reached)
             // would otherwise pass through as {dir} and render a blank row.
-            const content = await cockpit.file(`${dir}/manifest.json`, { superuser: 'try' }).read();
+            const content = await readUserFile(`${dir}/manifest.json`);
             const manifest = JSON.parse(content);
             if (!manifest || typeof manifest !== 'object') throw new Error('empty manifest');
             return { ...manifest, dir };
@@ -132,9 +132,8 @@ export async function listScans() {
  * opening tag is read: grep -m1 stops gzip right after it. */
 async function resultsDurationS(dir) {
     try {
-        const tag = await cockpit.spawn(
-            ['sh', '-c', 'gzip -dc -- "$1" | grep -m1 -oE "<([A-Za-z0-9_.-]+:)?TestResult [^>]*>"', 'sh', `${dir}/results.xml.gz`],
-            { superuser: 'try', err: 'ignore' }
+        const tag = await spawnUserRead(
+            ['sh', '-c', 'gzip -dc -- "$1" | grep -m1 -oE "<([A-Za-z0-9_.-]+:)?TestResult [^>]*>"', 'sh', `${dir}/results.xml.gz`]
         );
         const start = tag.match(/start-time="([^"]+)"/)?.[1];
         const end = tag.match(/end-time="([^"]+)"/)?.[1];
@@ -154,7 +153,7 @@ export async function findPriorScanDuration({ profileId, sdsPath, tailoringPath 
     const rootDir = await getScanHistoryDir();
     let output;
     try {
-        output = await cockpit.spawn(['ls', rootDir], { superuser: 'try', err: 'ignore' });
+        output = await spawnUserRead(['ls', rootDir]);
     } catch {
         return null;
     }
@@ -166,7 +165,7 @@ export async function findPriorScanDuration({ profileId, sdsPath, tailoringPath 
         const dir = `${rootDir}/${ts}`;
         let manifest;
         try {
-            manifest = JSON.parse(await cockpit.file(`${dir}/manifest.json`, { superuser: 'try' }).read());
+            manifest = JSON.parse(await readUserFile(`${dir}/manifest.json`));
         } catch {
             continue;
         }
@@ -191,10 +190,10 @@ export async function readSavedScanFiles(manifest) {
         throw new Error('Refusing to read a scan directory outside ' + rootDir);
     }
     const [reportHtml, resultsXmlGz, arfXmlGz, resultsXml] = await Promise.all([
-        cockpit.spawn(['cat', `${manifest.dir}/report.html`], { binary: true, superuser: 'try', err: 'message' }),
-        cockpit.spawn(['cat', `${manifest.dir}/results.xml.gz`], { binary: true, superuser: 'try', err: 'message' }),
-        cockpit.spawn(['cat', `${manifest.dir}/arf.xml.gz`], { binary: true, superuser: 'try', err: 'message' }),
-        cockpit.spawn(['gzip', '-dc', `${manifest.dir}/results.xml.gz`], { superuser: 'try', err: 'message' }),
+        spawnUserRead(['cat', `${manifest.dir}/report.html`], { binary: true }),
+        spawnUserRead(['cat', `${manifest.dir}/results.xml.gz`], { binary: true }),
+        spawnUserRead(['cat', `${manifest.dir}/arf.xml.gz`], { binary: true }),
+        spawnUserRead(['gzip', '-dc', `${manifest.dir}/results.xml.gz`]),
     ]);
     return { reportHtml, resultsXmlGz, arfXmlGz, resultsXml };
 }

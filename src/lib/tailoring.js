@@ -1,7 +1,7 @@
 import cockpit from 'cockpit';
 
 import { diskUsageBytes } from './format.js';
-import { ensureUserDir, getUser, makeTimestamp } from './homedir.js';
+import { ensureUserDir, getUser, makeTimestamp, readUserFile, spawnUserRead } from './homedir.js';
 import { REF_KEEP } from './results.js';
 
 const TAILORING_SUBDIR = 'SCAP/tailoring';
@@ -302,7 +302,7 @@ async function writeTailoringFiles(xmlPath, jsonPath, xmlContent, sidecar) {
     ]);
     await cockpit.spawn(['chmod', '600', xmlPath, jsonPath], { err: 'message' });
 
-    const written = await cockpit.file(xmlPath, { superuser: 'try' }).read();
+    const written = await readUserFile(xmlPath);
     if (written !== xmlContent) {
         throw new Error(
             'Tailoring file was not written correctly. On hardened systems, add ' +
@@ -315,7 +315,7 @@ export async function listTailoringFiles() {
     const dir = await getTailoringDir();
     let output;
     try {
-        output = await cockpit.spawn(['ls', dir], { superuser: 'try', err: 'ignore' });
+        output = await spawnUserRead(['ls', dir]);
     } catch {
         return [];
     }
@@ -323,7 +323,7 @@ export async function listTailoringFiles() {
             .filter(f => f && f.endsWith('.json'));
     const sidecars = await Promise.all(files.map(async f => {
         try {
-            const content = await cockpit.file(`${dir}/${f}`, { superuser: 'try' }).read();
+            const content = await readUserFile(`${dir}/${f}`);
             return JSON.parse(content);
         } catch {
             return null;
@@ -333,7 +333,7 @@ export async function listTailoringFiles() {
 }
 
 export async function readTailoringXml(path) {
-    return cockpit.file(path, { superuser: 'try' }).read();
+    return readUserFile(path);
 }
 
 export async function saveNewTailoring({ baseProfileId, baseProfileTitle, newProfileTitle, sdsPath, ruleChanges, valueChanges }) {

@@ -38,3 +38,33 @@ export async function writeBinaryFile(path, data) {
     proc.input(data);
     await proc;
 }
+
+/* Reads of the user's own ~/SCAP files run as the user, like the writes
+ * above: with admin on, a superuser read fails on an NFS home with
+ * root_squash (L10). Only a permission error (a file still owned by root,
+ * e.g. from V4.1/V4.2, which wrote as root and then chowned) retries with
+ * superuser 'try'. */
+function isPermissionDenied(ex) {
+    return ex?.problem === 'access-denied' || /permission denied/i.test(ex?.message || '');
+}
+
+export async function readUserFile(path) {
+    try {
+        return await cockpit.file(path).read();
+    } catch (ex) {
+        if (!isPermissionDenied(ex)) throw ex;
+        return cockpit.file(path, { superuser: 'try' }).read();
+    }
+}
+
+/* cockpit.spawn() as the user (stderr kept for the error), retried with
+ * superuser 'try' on a permission error. `options` as for cockpit.spawn,
+ * e.g. { binary: true }. */
+export async function spawnUserRead(args, options = {}) {
+    try {
+        return await cockpit.spawn(args, { ...options, err: 'message' });
+    } catch (ex) {
+        if (!isPermissionDenied(ex)) throw ex;
+        return cockpit.spawn(args, { ...options, superuser: 'try', err: 'message' });
+    }
+}
