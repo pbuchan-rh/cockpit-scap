@@ -269,10 +269,58 @@ export function updateTailoringXml(xmlContent, profileId, title, ruleChanges, va
     sync('select', ruleChanges, (el, sel) => el.setAttribute('selected', String(sel)));
     sync('set-value', valueChanges, (el, val) => { el.textContent = String(val) });
 
-    const decl = /^\s*<\?xml[^>]*\?>\s*/.exec(xmlContent)?.[0] || '';
-    // Firefox writes a declaration of its own, Chrome none: keep the file's.
-    return decl + new XMLSerializer().serializeToString(doc)
-            .replace(/^<\?xml[^>]*\?>\s*/, '');
+    // Only the root element is serialized; the text around it (declaration,
+    // comments, PIs, blank lines, line endings, final newline) is copied
+    // from the file as it was, which XMLSerializer does not keep (P1).
+    const [start, end] = rootElementSpan(xmlContent);
+    return xmlContent.slice(0, start) +
+        new XMLSerializer().serializeToString(doc.documentElement) +
+        xmlContent.slice(end);
+}
+
+/* [offset of the root element's start tag, offset just past its end tag]
+ * in well-formed XML source. Skips the declaration, comments, PIs, a
+ * DOCTYPE and CDATA, and quoted attribute values (which may hold '>'). */
+export function rootElementSpan(src) {
+    const past = (s, from) => {
+        const j = src.indexOf(s, from);
+        if (j < 0) throw new Error('The tailoring file is not valid XML.');
+        return j + s.length;
+    };
+    const tag = /<(\/?)[^\s/>]+(?:\s+[^\s=]+\s*=\s*(?:"[^"]*"|'[^']*'))*\s*(\/?)>/y;
+    let i = 0;
+    let depth = 0;
+    let start = -1;
+    for (;;) {
+        const lt = src.indexOf('<', i);
+        if (lt < 0) throw new Error('The tailoring file is not valid XML.');
+        if (src.startsWith('<!--', lt)) {
+            i = past('-->', lt + 4);
+        } else if (src.startsWith('<![CDATA[', lt)) {
+            i = past(']]>', lt + 9);
+        } else if (src.startsWith('<?', lt)) {
+            i = past('?>', lt + 2);
+        } else if (src.startsWith('<!', lt)) {
+            // DOCTYPE, maybe with an internal subset holding '>'
+            let j = lt + 2;
+            for (let open = 0; src[j] !== '>' || open; j++) {
+                if (j >= src.length) throw new Error('The tailoring file is not valid XML.');
+                if (src[j] === '"' || src[j] === "'") j = past(src[j], j + 1) - 1;
+                else if (src.startsWith('<!--', j)) j = past('-->', j + 4) - 1;
+                else if (src[j] === '[') open++;
+                else if (src[j] === ']') open--;
+            }
+            i = j + 1;
+        } else {
+            tag.lastIndex = lt;
+            const m = tag.exec(src);
+            if (!m) throw new Error('The tailoring file is not valid XML.');
+            if (start < 0) start = lt;
+            depth += m[1] ? -1 : m[2] ? 0 : 1;
+            i = tag.lastIndex;
+            if (depth === 0) return [start, i];
+        }
+    }
 }
 
 function safeSlug(title) {
