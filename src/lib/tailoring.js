@@ -384,6 +384,46 @@ export async function readTailoringXml(path) {
     return readUserFile(path);
 }
 
+/* "Rules Modified" of a saved policy: the selects of its own profile
+ * (parseTailoringXml, F5), or null when the XML is not well-formed. */
+export function countTailoringRules(xmlContent, profileId) {
+    const doc = new DOMParser().parseFromString(xmlContent, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length) return null;
+    return Object.keys(parseTailoringXml(xmlContent, profileId).ruleChanges).length;
+}
+
+// path -> { stamp, count }; a sidecar is rewritten on every save, so its
+// content says whether the XML may have changed since it was counted.
+const ruleCountCache = new Map();
+
+/* Map of sidecar path -> "Rules Modified" counted from each policy's XML,
+ * each XML read once per sidecar version and page load. 4.6.0 stored a
+ * count that included other profiles' selects (P2); this shows the right
+ * one without rewriting the file. A policy whose XML cannot be read or
+ * parsed is left out, so the caller falls back to the stored count. */
+export async function tailoringRuleCounts(sidecars, read = readTailoringXml) {
+    const counts = new Map();
+    await Promise.all(sidecars.map(async sc => {
+        const stamp = JSON.stringify(sc);
+        const hit = ruleCountCache.get(sc.path);
+        if (hit?.stamp === stamp) {
+            counts.set(sc.path, hit.count);
+            return;
+        }
+        let count = null;
+        try {
+            count = countTailoringRules(await read(sc.path), sc.profile_id);
+        } catch {
+            // unreadable: the caller shows the stored count
+        }
+        // A failure is not cached; the next listing tries again.
+        if (count === null) return;
+        ruleCountCache.set(sc.path, { stamp, count });
+        counts.set(sc.path, count);
+    }));
+    return counts;
+}
+
 export async function saveNewTailoring({ baseProfileId, baseProfileTitle, newProfileTitle, sdsPath, ruleChanges, valueChanges }) {
     const dir = await getTailoringDir();
     const safeName = safeSlug(newProfileTitle);

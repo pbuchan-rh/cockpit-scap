@@ -15,7 +15,7 @@ import { listFooterText } from '../lib/format.js';
 import { detectContent, sdsDisplayName } from '../lib/oscap.js';
 import {
     deleteTailoringFile, listTailoringFiles, matchBenchmarkContent, readTailoringXml, saveUploadedTailoring,
-    tailoringBenchmarkHref,
+    tailoringBenchmarkHref, tailoringRuleCounts,
 } from '../lib/tailoring.js';
 import { ContentSelect } from './ContentSelect.jsx';
 
@@ -30,10 +30,19 @@ function formatCreated(ts) {
     return ts.slice(0, 10) + ' ' + ts.slice(11).replace(/-/g, ':');
 }
 
+// The rows and their "Rules Modified" counts arrive together, so a 4.6.0
+// policy never shows its stored, too high count first (P2).
+async function loadPolicies() {
+    const list = await listTailoringFiles();
+    return { list, counts: await tailoringRuleCounts(list) };
+}
+
 // diskUsage is the du -sh total for ~/SCAP/tailoring, fetched by app.jsx —
 // re-fetched there whenever onChanged() bumps refreshKey (upload/delete).
 export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, contentRefreshKey }) => {
     const [sidecars, setSidecars] = useState([]);
+    // sidecar path -> "Rules Modified" counted from the XML
+    const [ruleCounts, setRuleCounts] = useState(new Map());
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [contentList, setContentList] = useState([]);
@@ -49,8 +58,10 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
-        listTailoringFiles()
-                .then(list => { if (!cancelled) { setSidecars(list); setLoading(false) } })
+        loadPolicies()
+                .then(({ list, counts }) => {
+                    if (!cancelled) { setSidecars(list); setRuleCounts(counts); setLoading(false) }
+                })
                 .catch(ex => { if (!cancelled) { setError(ex.message || String(ex)); setLoading(false) } });
         return () => { cancelled = true };
     }, [refreshKey]);
@@ -114,8 +125,9 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
         setUploadError(null);
         try {
             await saveUploadedTailoring({ ...upload, sdsPath });
-            const list = await listTailoringFiles();
+            const { list, counts } = await loadPolicies();
             setSidecars(list);
+            setRuleCounts(counts);
             onChanged?.();
         } catch (ex) {
             setUploadError(ex.message || String(ex));
@@ -217,7 +229,7 @@ export const TailoringList = ({ refreshKey, onEdit, onChanged, diskUsage, conten
                                             <Td dataLabel={_("Name")} className="ct-stretch-col">{sc.name}</Td>
                                             <Td dataLabel={_("Content")} visibility={WIDE_ONLY} className="ct-fit-col">{sdsDisplayName(sc.sds_path)}</Td>
                                             <Td dataLabel={_("Base Profile")} className="ct-stretch-col">{sc.base_profile_title || sc.base_profile_id}</Td>
-                                            <Td dataLabel={_("Rules Modified")} className="ct-num-col">{sc.rules_modified ?? '—'}</Td>
+                                            <Td dataLabel={_("Rules Modified")} className="ct-num-col">{ruleCounts.get(sc.path) ?? sc.rules_modified ?? '—'}</Td>
                                             <Td dataLabel={_("Created")} visibility={WIDE_ONLY} className="ct-date-cell">{formatCreated(sc.created)}</Td>
                                             <Td dataLabel={_("Actions")} className="ct-actions-cell">
                                                 <Flex spaceItems={{ default: 'spaceItemsSm' }} flexWrap={{ default: 'nowrap' }}>

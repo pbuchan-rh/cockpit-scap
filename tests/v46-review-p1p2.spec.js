@@ -1,11 +1,14 @@
 // Release-gate findings P1 and P2 (job 4), both browser projects.
 //   P1: Update on a tailoring file keeps every byte outside the root element
 //       (declaration, comments, PIs, blank lines, line endings, final newline).
+//   P2: "Rules Modified" is counted from the policy's own profile in the XML,
+//       so a 4.6.0 sidecar's too high count is not shown; nothing is
+//       rewritten for it.
 // The "unit" tests run src/lib code in a blank page (helpers/lib-bundle.js),
 // no host. The others run INSIDE the Cockpit shell (/scap-dev); no scan.
 // Everything they create carries "v46-test" in its name and is removed.
 const { test, expect } = require('@playwright/test');
-const { openModuleInShell, hostSpawn } = require('./helpers/cockpit');
+const { openModuleInShell, shellFrame, hostSpawn } = require('./helpers/cockpit');
 const { loadLib } = require('./helpers/lib-bundle');
 const S = require('./helpers/scap');
 
@@ -86,6 +89,42 @@ test.describe('unit', () => {
         expect(await update(xml, { [`${S.RULE}package_aide_installed`]: true })).toBe(xml);
     });
 
+    test('P2: countTailoringRules counts the selects of the policy\'s own profile', async () => {
+        const xml = '<?xml version="1.0"?>\n' + rootXml() + '\n';
+        const counts = await page.evaluate(([xml, mine, other]) => [
+            window.lib.countTailoringRules(xml, mine),
+            window.lib.countTailoringRules(xml, other),
+            // an unknown id counts the first profile, as the editor loads it
+            window.lib.countTailoringRules(xml, 'xccdf_no_such_profile'),
+            window.lib.countTailoringRules(xml.replace('</Tailoring>', ''), mine),
+            window.lib.countTailoringRules('', mine),
+        ], [xml, PROFILE, OTHER]);
+        expect(counts).toEqual([1, 2, 1, null, null]);
+    });
+
+    test('P2: tailoringRuleCounts reads each XML once per sidecar version and skips what it cannot count', async () => {
+        const result = await page.evaluate(async ([files, mine]) => {
+            const reads = [];
+            const read = async path => {
+                reads.push(path);
+                if (!(path in files)) throw new Error('No such file');
+                return files[path];
+            };
+            const sc = (path, n, extra = {}) => ({ path, profile_id: mine, rules_modified: n, ...extra });
+            const list = [sc('/a.xml', 3), sc('/bad.xml', 4), sc('/gone.xml', 5)];
+            const first = await window.lib.tailoringRuleCounts(list, read);
+            const again = await window.lib.tailoringRuleCounts(list, read);
+            // a saved policy has a new sidecar: read again
+            const saved = await window.lib.tailoringRuleCounts([sc('/a.xml', 1, { modified: 'x' })], read);
+            return { first: [...first], again: [...again], saved: [...saved], reads };
+        }, [{ '/a.xml': rootXml(), '/bad.xml': '<Tailoring>' }, PROFILE]);
+        expect(result.first).toEqual([['/a.xml', 1]]);
+        expect(result.again).toEqual([['/a.xml', 1]]);
+        expect(result.saved).toEqual([['/a.xml', 1]]);
+        // failures are not cached, a count is
+        expect(result.reads).toEqual(['/a.xml', '/bad.xml', '/gone.xml', '/bad.xml', '/gone.xml', '/a.xml']);
+    });
+
     test('P1: rootElementSpan finds the root past look-alikes', async () => {
         const docs = [
             // prefixed root, '>' and '/>' in attribute values, end tag with a space
@@ -163,5 +202,58 @@ test.describe('in the shell', () => {
         expect(root).toContain(`<select idref="${S.RULE}package_sudo_installed" selected="true"/>`);
         const info = await hostSpawn(frame, ['sh', '-c', `oscap info "$(ls ${glob})" >/dev/null 2>&1; echo rc=$?`]);
         expect(info.trim()).toBe('rc=0');
+    });
+
+    test('P2: a 4.6.0 sidecar with a too high count shows the count from the XML, and nothing is rewritten', async () => {
+        // As 4.6.0 saved an uploaded two-profile file: rules_modified 3
+        // counts the other profile's 2 selects too. A second policy's XML is
+        // broken, so its stored count is shown as it is.
+        const dir = `${home}/SCAP/tailoring`;
+        const base = `${dir}/v46-test-p1p2-460-2026-10-20T00-00-00`;
+        const broken = `${dir}/v46-test-p1p2-broken-2026-10-20T00-00-01`;
+        const sidecar = (path, name, n) => ({
+            name, base_profile_id: '', base_profile_title: '', profile_id: PROFILE, sds_path: S.DS,
+            path, created: path.slice(-23, -4), rules_modified: n,
+        });
+        await frame.evaluate(async ({ files }) => {
+            for (const [path, text] of files) await window.cockpit.file(path).replace(text);
+            await window.cockpit.spawn(['chmod', '600', ...files.map(f => f[0])]);
+        }, {
+            files: [
+                [`${base}.xml`, '<?xml version="1.0" encoding="UTF-8"?>\n<!-- v46-test: 4.6.0 -->\n' + rootXml('\n', 'v46-test p1p2 460') + '\n'],
+                [`${base}.json`, JSON.stringify(sidecar(`${base}.xml`, 'v46-test p1p2 460', 3), null, 2)],
+                [`${broken}.xml`, '<Tailoring>'],
+                [`${broken}.json`, JSON.stringify(sidecar(`${broken}.xml`, 'v46-test p1p2 broken', 4), null, 2)],
+            ],
+        });
+        const md5 = () => hostSpawn(frame, ['sh', '-c', `md5sum "${dir}"/v46-test-p1p2-460-* "${dir}"/v46-test-p1p2-broken-*`]);
+        const seeded = await md5();
+
+        await page.reload();
+        frame = await shellFrame(page);
+        await frame.getByRole('tab', { name: 'Policy Tailoring' }).click();
+        await expect(policyRow('v46-test p1p2 460').getByRole('gridcell')
+                .nth(3)).toHaveText('1', { timeout: 30000 });
+        await expect(policyRow('v46-test p1p2 broken').getByRole('gridcell')
+                .nth(3)).toHaveText('4');
+        // An upload re-lists: still the counted value.
+        await policiesCard().locator('input[type=file]')
+                .setInputFiles({ name: 'v46-test-p1p2-b.xml', mimeType: 'text/xml', buffer: Buffer.from(rootXml('\n', 'v46-test p1p2 b')) });
+        await expect(policyRow('v46-test p1p2 b')).toHaveCount(1, { timeout: 30000 });
+        await expect(policyRow('v46-test p1p2 460').getByRole('gridcell')
+                .nth(3)).toHaveText('1');
+        expect(await md5()).toBe(seeded);
+
+        // An Update stores the right count, as it already did.
+        await policyRow('v46-test p1p2 460').getByRole('button', { name: 'Edit' })
+                .click();
+        await expect(bar()).toContainText('1 rule, 0 variables modified', { timeout: 120000 });
+        await bar().getByRole('button', { name: 'Update' })
+                .click();
+        await expect(editor().getByRole('heading', { name: 'New Tailoring Policy' })).toBeVisible();
+        const stored = JSON.parse(await hostSpawn(frame, ['cat', `${base}.json`]));
+        expect(stored.rules_modified).toBe(1);
+        await expect(policyRow('v46-test p1p2 460').getByRole('gridcell')
+                .nth(3)).toHaveText('1');
     });
 });
