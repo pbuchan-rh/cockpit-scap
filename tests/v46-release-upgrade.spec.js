@@ -14,7 +14,11 @@
 //                         work; the editor-made tailoring opens with its
 //                         deltas and CIS minlen now shows the profile's 14;
 //                         Update on both tailorings keeps what the editor
-//                         does not write; a scan with each tailoring runs.
+//                         does not write, and the uploaded file's bytes
+//                         outside its root (P1); the uploaded two-Profile
+//                         policy lists with the counted "Rules Modified",
+//                         not 4.6.0's stored one, its files untouched (P2);
+//                         a scan with each tailoring runs.
 //
 // Without UPGRADE_PHASE every test skips, so the spec is inert in a suite
 // run. The phases share tests/test-results/upgrade-state.json (gitignored).
@@ -33,7 +37,7 @@ test.describe.configure({ mode: 'serial' });
 const PHASE = process.env.UPGRADE_PHASE || '';
 const STATE = `${__dirname}/test-results/upgrade-state.json`;
 const OLD_NVR = /^cockpit-scap-4\.6\.0-1\.el10\.noarch$/;
-const NEW_NVR = /^cockpit-scap-4\.6\.1-0\.1\.rc1\.el10\.noarch$/;
+const NEW_NVR = /^cockpit-scap-4\.6\.1-(0\.\d+\.rc\d+|1)\.el10\.noarch$/;
 
 const PROFILE_CIS = 'xccdf_org.ssgproject.content_profile_cis';
 const VAL = 'xccdf_org.ssgproject.content_value_';
@@ -257,6 +261,17 @@ test.describe('verify (after dnf upgrade to the release candidate)', () => {
         expect(arf.buffer[0]).toBe(0x1f);
     });
 
+    test('the uploaded two-Profile policy lists 1 rule modified, not the 2 that 4.6.0 stored; nothing is rewritten', async () => {
+        await frame.getByRole('tab', { name: 'Policy Tailoring' }).click();
+        await expect(policyRow(UPLOAD_NAME).getByRole('gridcell')
+                .nth(3)).toHaveText('1', { timeout: 30000 });
+        await expect(policyRow(EDITOR_NAME).getByRole('gridcell')
+                .nth(3)).toHaveText('1');
+        const sidecar = JSON.parse(await hostSpawn(frame, ['cat', (await tailoringPath(UPLOAD_SLUG)).replace(/\.xml$/, '.json')]));
+        expect(sidecar.rules_modified).toBe(2);
+        expect(await md5s()).toEqual(readState().md5OnSeed);
+    });
+
     test('the editor-made tailoring opens with its deltas; minlen shows the CIS value 14; Update keeps them', async () => {
         const { denyNew } = readState();
         await frame.getByRole('tab', { name: 'Policy Tailoring' }).click();
@@ -316,6 +331,15 @@ test.describe('verify (after dnf upgrade to the release candidate)', () => {
         ]);
         const info = await hostSpawn(frame, ['sh', '-c', `oscap info "${path}" >/dev/null 2>&1; echo rc=$?`]);
         expect(info.trim()).toBe('rc=0');
+        // P1: the bytes outside the root are the uploaded file's.
+        const old = readState().uploadXmlOn460;
+        const outside = x => [x.slice(0, x.indexOf('<Tailoring ')), x.slice(x.lastIndexOf('</Tailoring>') + '</Tailoring>'.length)];
+        expect(outside(xml)).toEqual(outside(old));
+        expect(outside(old)).toEqual([UPLOAD_XML.slice(0, UPLOAD_XML.indexOf('<Tailoring ')), '\n']);
+        const sidecar = JSON.parse(await hostSpawn(frame, ['cat', path.replace(/\.xml$/, '.json')]));
+        expect(sidecar.rules_modified).toBe(2);
+        await expect(policyRow(UPLOAD_NAME).getByRole('gridcell')
+                .nth(3)).toHaveText('2');
         writeState({ uploadXmlAfterUpdate: xml });
     });
 
