@@ -77,7 +77,8 @@ test.describe('unit', () => {
                     .replace(`package_aide_installed" selected="true"/>`,
                              `package_aide_installed" selected="false"/>\n    <select idref="${S.RULE}package_sudo_installed" selected="true"/>`));
             const parsed = await page.evaluate(([out, profile]) => ({
-                error: new DOMParser().parseFromString(out, 'application/xml').getElementsByTagName('parsererror').length,
+                error: new DOMParser().parseFromString(out, 'application/xml')
+                        .getElementsByTagName('parsererror').length,
                 rules: window.lib.parseTailoringXml(out, profile).ruleChanges,
             }), [out, PROFILE]);
             expect(parsed).toEqual({ error: 0, rules });
@@ -212,8 +213,14 @@ test.describe('in the shell', () => {
         const base = `${dir}/v46-test-p1p2-460-2026-10-20T00-00-00`;
         const broken = `${dir}/v46-test-p1p2-broken-2026-10-20T00-00-01`;
         const sidecar = (path, name, n) => ({
-            name, base_profile_id: '', base_profile_title: '', profile_id: PROFILE, sds_path: S.DS,
-            path, created: path.slice(-23, -4), rules_modified: n,
+            name,
+            base_profile_id: '',
+            base_profile_title: '',
+            profile_id: PROFILE,
+            sds_path: S.DS,
+            path,
+            created: path.slice(-23, -4),
+            rules_modified: n,
         });
         await frame.evaluate(async ({ files }) => {
             for (const [path, text] of files) await window.cockpit.file(path).replace(text);

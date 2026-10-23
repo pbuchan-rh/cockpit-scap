@@ -45,7 +45,10 @@ bridge. `helpers/scap.js` drives the PatternFly pickers and runs a scan.
   v46-phase4-editor, v46-phase4-tables, v46-polish-editor, v46-u1-eta (fake `oscap`
   output), v46-u2-pickers, v46-u3-manual-removed, v46-u4-tables, v46-t1-alignment,
   v46-uat2, v46-review-tailoring (one single-rule `oscap xccdf eval` as the user, results in
-  /tmp). These create their own fixtures and remove them.
+  /tmp), v46-review-p1p2. These create their own fixtures and remove them.
+- No host: the `unit` tests in v46-review-p1p2 bundle a `src/lib` module with esbuild
+  (`helpers/lib-bundle.js`, `cockpit` stubbed) into a blank page, so DOMParser and
+  XMLSerializer code runs in each browser project: `--grep unit`.
 - Real scans: v46-phase1, v46-phase2, v46-phase3, v46-phase4-history, v46-phase4-layout,
   v46-phase4-downloads, v46-phase4-running, v46-polish-results, v46-polish2,
   v46-u1-scan-duration, v46-u3-detection. Each scan takes a minute or more and is saved to
