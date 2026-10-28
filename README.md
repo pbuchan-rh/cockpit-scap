@@ -19,7 +19,7 @@ Or download the RPM from the [GitHub releases](https://github.com/pbuchan-rh/coc
 page and install it:
 
 ```bash
-sudo dnf install ./cockpit-scap-4.6.0-1.el10.noarch.rpm
+sudo dnf install ./cockpit-scap-4.6.1-1.el10.noarch.rpm
 ```
 
 Then reload Cockpit and open **SCAP Security** in the sidebar.

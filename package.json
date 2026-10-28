@@ -1,7 +1,7 @@
 {
   "name": "scap",
   "description": "Cockpit UI for SCAP security compliance scanning",
-  "version": "4.6.0",
+  "version": "4.6.1",
   "type": "module",
   "main": "index.js",
   "repository": "https://github.com/pbuchan-rh/cockpit-scap.git",
