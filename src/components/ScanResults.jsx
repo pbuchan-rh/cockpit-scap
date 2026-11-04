@@ -1,5 +1,5 @@
 import cockpit from 'cockpit';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, AlertActionCloseButton } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardFooter, CardHeader } from "@patternfly/react-core/dist/esm/components/Card/index.js";
@@ -121,7 +121,9 @@ const RuleRemediation = ({ rule, info, scope }) => {
 };
 
 // expanded/onToggle come from ScanResults, so Expand all can drive them.
-const RuleRow = ({ rule, info, scope, showFix, expanded, onToggle }) => {
+// Memoized (props are stable per rule): one row's toggle re-renders that
+// row only, also with every row of a large scan open.
+const RuleRow = memo(({ rule, info, scope, showFix, expanded, onToggle }) => {
     const panelId = `ct-rule-panel-${rule.id}`;
     return (
         <div className="ct-rule-item" data-rule-id={rule.id}>
@@ -168,9 +170,10 @@ const RuleRow = ({ rule, info, scope, showFix, expanded, onToggle }) => {
             )}
         </div>
     );
-};
+});
+RuleRow.displayName = 'RuleRow';
 
-const RuleGroup = ({ group, isExpanded, onToggle, scope, details, ruleMeta, visibleIds, openRules, onToggleRule }) => {
+const RuleGroup = ({ group, isExpanded, onToggle, scope, infos, visibleIds, openRules, onToggleRule }) => {
     const rules = visibleIds ? group.rules.filter(r => visibleIds.has(r.id)) : group.rules;
     return (
         <ExpandableSection
@@ -192,7 +195,7 @@ const RuleGroup = ({ group, isExpanded, onToggle, scope, details, ruleMeta, visi
                 <React.Fragment key={rule.id}>
                     {i > 0 && <Divider className="ct-rule-divider" />}
                     <RuleRow
-                        rule={rule} info={ruleInfo(rule.id, details, ruleMeta)} scope={scope} showFix={group.isFailing}
+                        rule={rule} info={infos[rule.id]} scope={scope} showFix={group.isFailing}
                         expanded={openRules.has(rule.id)} onToggle={onToggleRule}
                     />
                 </React.Fragment>
@@ -237,6 +240,15 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
         return out;
     }, [failingRules, otherRules]);
 
+    // Each listed rule's display facts, once per result (stable objects for
+    // the memoized rows).
+    const infos = useMemo(() => {
+        const out = {};
+        for (const g of groups)
+            for (const r of g.rules) out[r.id] = ruleInfo(r.id, details, ruleMeta);
+        return out;
+    }, [groups, details, ruleMeta]);
+
     // Critical/high expanded by default (Peter); with none of those, the
     // first failing group, as v3 did. Not applicable / Not checked start
     // collapsed.
@@ -256,9 +268,9 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
         const ids = new Set();
         for (const g of groups)
             for (const r of g.rules)
-                if (ruleInfo(r.id, details, ruleMeta).searchText.includes(term)) ids.add(r.id);
+                if (infos[r.id].searchText.includes(term)) ids.add(r.id);
         return ids;
-    }, [term, groups, details, ruleMeta]);
+    }, [term, groups, infos]);
 
     function onSearch(value) {
         setSearch(value);
@@ -285,13 +297,13 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
         });
     }
 
-    function toggleRule(id) {
+    const toggleRule = useCallback(id => {
         setOpenRules(prev => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id); else next.add(id);
             return next;
         });
-    }
+    }, []);
 
     // Expand all / Collapse all covers the failing groups (and errors) and
     // their rules; Not applicable / Not checked keep their own state on
@@ -528,8 +540,7 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
                                         isExpanded={visibleIds ? true : expanded.has(g.key)}
                                         onToggle={() => toggleGroup(g.key)}
                                         scope={scope}
-                                        details={details}
-                                        ruleMeta={ruleMeta}
+                                        infos={infos}
                                         visibleIds={visibleIds}
                                         openRules={openRules}
                                         onToggleRule={toggleRule}
