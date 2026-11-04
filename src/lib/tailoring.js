@@ -273,9 +273,18 @@ export function updateTailoringXml(xmlContent, profileId, title, ruleChanges, va
     // comments, PIs, blank lines, line endings, final newline) is copied
     // from the file as it was, which XMLSerializer does not keep (P1).
     const [start, end] = rootElementSpan(xmlContent);
-    return xmlContent.slice(0, start) +
-        new XMLSerializer().serializeToString(doc.documentElement) +
-        xmlContent.slice(end);
+    let root = new XMLSerializer().serializeToString(doc.documentElement);
+    // The parser turns CRLF into LF: a root written with CRLF gets CRLF
+    // back, new lines included (4.6.2). LF files are left as they were.
+    if (usesCrlf(xmlContent.slice(start, end)))
+        root = root.replace(/\r?\n/g, '\r\n');
+    return xmlContent.slice(0, start) + root + xmlContent.slice(end);
+}
+
+/* True when most line breaks in `text` are CRLF. */
+export function usesCrlf(text) {
+    const crlf = (text.match(/\r\n/g) || []).length;
+    return crlf > 0 && crlf >= (text.match(/\n/g) || []).length - crlf;
 }
 
 /* [offset of the root element's start tag, offset just past its end tag]
