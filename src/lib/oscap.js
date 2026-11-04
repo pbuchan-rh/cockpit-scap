@@ -1,7 +1,7 @@
 import cockpit from 'cockpit';
 
 import { INSTALLED_CONTENT_ROOT, listInstalledContent, listUploadedContent } from './content.js';
-import { readTailoringXml } from './tailoring.js';
+import { extractProfile, readTailoringXml } from './tailoring.js';
 
 /* Merges installed content (every *-ds.xml under /usr/share/xml/scap, see
  * listInstalledContent) with the user's uploaded content (~/SCAP/content/,
@@ -171,6 +171,105 @@ export async function getProfiles(sdsPath) {
         }
     }
     return profiles;
+}
+
+/* Every profile of a datastream as [{id, title, description}], in one
+ * python3 pass that stops where the Benchmark's Profiles end (they come
+ * before its Values, Groups and Rules), so the rule tree and the OVAL are
+ * never parsed: ~55 ms and ~10 KB on the 22 MB RHEL 10 datastream, where
+ * `oscap info` takes ~550 ms and extractProfile() ~380 ms + 2.2 MB per
+ * description (4.6.2). Ids, titles and order are what `oscap info` lists
+ * (checked on every SSG RHEL 7-10 datastream); the description is the one
+ * extractProfile() gives. Only the plain shape is handled here: one data
+ * stream with one checklist holding an XCCDF 1.2 Benchmark, or a bare 1.2
+ * Benchmark. Anything else exits 3 and getProfileSummaries() falls back to
+ * `oscap info`. Args: sys.argv[1]=sdsPath. */
+export const PY_PROFILE_SUMMARIES = [
+    'import xml.etree.ElementTree as ET, json, sys',
+    'X = "{http://checklists.nist.gov/xccdf/1.2}"',
+    'DS = "{http://scap.nist.gov/schema/scap/source/1.2}"',
+    'LANG = "{http://www.w3.org/XML/1998/namespace}lang"',
+    // the title/description in the Benchmark's language, else the first
+    'def pick(p, name, lang):',
+    '    els = p.findall(X + name)',
+    '    return next((e for e in els if e.get(LANG) == lang), els[0] if els else None)',
+    'out, depth, bench, bdepth, lang = [], 0, None, 0, None',
+    'streams, refs, in_cl = 0, 0, False',
+    'for ev, el in ET.iterparse(sys.argv[1], events=("start", "end")):',
+    '    if ev == "start":',
+    '        depth += 1',
+    '        if depth == 1 and el.tag not in (DS + "data-stream-collection", X + "Benchmark"): sys.exit(3)',
+    '        if el.tag == DS + "data-stream": streams += 1',
+    '        elif el.tag == DS + "checklists": in_cl = True',
+    '        elif el.tag == DS + "component-ref" and in_cl: refs += 1',
+    '        elif el.tag == X + "Benchmark":',
+    '            if streams > 1 or (streams and refs != 1): sys.exit(3)',
+    '            bench, bdepth, lang = el, depth, el.get(LANG)',
+    '        elif bench is not None and depth == bdepth + 1 and el.tag in (X + "Value", X + "Group", X + "Rule"): break',
+    '        continue',
+    '    depth -= 1',
+    '    if el.tag == DS + "checklists": in_cl = False',
+    '    elif el.tag == X + "Profile" and bench is not None and depth == bdepth:',
+    '        t, d = pick(el, "title", lang), pick(el, "description", lang)',
+    '        out.append({"id": el.get("id", ""), "title": (t.text or "").strip() if t is not None else "",',
+    '                    "description": " ".join("".join(d.itertext()).split()) if d is not None else ""})',
+    '        el.clear()',
+    '    elif el.tag == X + "Benchmark": break',
+    'if bench is None: sys.exit(3)',
+    'print(json.dumps(out))',
+].join('\n');
+
+async function runProfileSummaries(sdsPath) {
+    try {
+        return JSON.parse(await cockpit.spawn(['python3', '-c', PY_PROFILE_SUMMARIES, sdsPath], { err: 'message' }));
+    } catch {
+        // Not the plain shape, or not parseable here: `oscap info` lists
+        // the profiles (and reports a broken file) as before; descriptions
+        // then come from extractProfile() (description null).
+        return (await getProfiles(sdsPath)).map(p => ({ ...p, description: null }));
+    }
+}
+
+// "<size> <mtime> <inode> <path>" -> Promise of the summaries, for the page
+// session only (nothing on disk). An upload replaces the file, which
+// changes the key.
+const summaryCache = new Map();
+
+async function statKey(sdsPath) {
+    return (await cockpit.spawn(['stat', '-L', '-c', '%s %Y %i', '--', sdsPath], { err: 'ignore' })).trim();
+}
+
+/* getProfiles() plus each profile's own description, parsed once per
+ * content file version: Host Scan's and Policy Tailoring's pickers and
+ * description panels share one call, and switching profiles costs nothing.
+ * `deps` ({ run, stat }) is for the unit tests. */
+export async function getProfileSummaries(sdsPath, { run = runProfileSummaries, stat = statKey } = {}) {
+    let key = null;
+    try {
+        key = (await stat(sdsPath)) + ' ' + sdsPath;
+    } catch {
+        // no key: parse uncached (oscap reports what is wrong with the file)
+    }
+    const hit = key && summaryCache.get(key);
+    if (hit) return hit;
+    const p = run(sdsPath);
+    if (key) {
+        summaryCache.set(key, p);
+        // a failure is not cached; the next call tries again
+        p.catch(() => summaryCache.delete(key));
+    }
+    return p;
+}
+
+/* A profile's own description: from getProfileSummaries() (cached), else
+ * (content oscap info had to list) from extractProfile(). "" when it has
+ * none. */
+export async function getProfileDescription(profileId, sdsPath) {
+    const list = await getProfileSummaries(sdsPath);
+    const p = list.find(x => x.id === profileId);
+    if (p && typeof p.description === 'string') return p.description;
+    if (!p && list.every(x => typeof x.description === 'string')) return '';
+    return (await extractProfile(profileId, sdsPath)).profile?.description || '';
 }
 
 export async function makeTmpdir() {

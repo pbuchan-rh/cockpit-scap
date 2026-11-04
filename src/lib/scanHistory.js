@@ -94,6 +94,49 @@ export async function saveScan({ profileId, profileTitle, sdsPath, tailoringFile
     return { ...manifest, dir };
 }
 
+const SCAN_PROFILE_FIELDS = ['timestamp', 'sds_file', 'profile_id', 'base_profile_id', 'profile_title'];
+
+/* Saved scans as [{dir, timestamp, sds_file, profile_id, base_profile_id,
+ * profile_title}], newest first, for Host Scan's preselected profile
+ * (4.6.2). One grep of the manifests' top-level lines (writeManifest
+ * indents them by two spaces) instead of reading them whole: a manifest
+ * carries its rule_meta, ~1.5 MB, and listScans() pulls all of them
+ * through the bridge. Root-owned scans: a manifest the user cannot read
+ * reports a permission error, so spawnUserRead() retries as superuser. */
+export async function listScanProfiles() {
+    const rootDir = await getScanHistoryDir();
+    const script = [
+        'denied() { echo "Permission denied" >&2; exit 2; }',
+        'cd -- "$1" 2>/dev/null || { [ -e "$1" ] && denied; exit 0; }',
+        'for d in */; do',
+        '    [ -d "$d" ] || continue',
+        '    { [ -r "$d" ] && [ -x "$d" ]; } || denied',
+        '    [ ! -e "$d/manifest.json" ] || [ -r "$d/manifest.json" ] || denied',
+        'done',
+        `grep -s -H -E '^  "(${SCAN_PROFILE_FIELDS.join('|')})": ' -- */manifest.json || true`,
+    ].join('\n');
+    let output;
+    try {
+        output = await spawnUserRead(['sh', '-c', script, 'sh', rootDir]);
+    } catch {
+        return [];
+    }
+    const scans = new Map();
+    for (const line of output.split('\n')) {
+        const m = line.match(/^([^/]+)\/manifest\.json: {2}("[a-z_]+": .*?),?$/);
+        if (!m) continue;
+        try {
+            const field = JSON.parse('{' + m[2] + '}');
+            if (!scans.has(m[1])) scans.set(m[1], { dir: `${rootDir}/${m[1]}` });
+            Object.assign(scans.get(m[1]), field);
+        } catch {
+            // not a plain one-line value: skip it
+        }
+    }
+    return [...scans.values()].filter(sc => sc.timestamp)
+            .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+}
+
 /* List all saved scans, newest first. Each entry is the manifest content
  * plus a runtime-only `dir` field (derived from rootDir + timestamp, not
  * persisted — the timestamp doubles as the directory name). */

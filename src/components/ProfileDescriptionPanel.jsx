@@ -2,14 +2,14 @@ import cockpit from 'cockpit';
 import React, { useEffect, useState } from 'react';
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
 
-import { extractProfile } from '../lib/tailoring.js';
+import { getProfileDescription } from '../lib/oscap.js';
 
 const _ = cockpit.gettext;
 
-/* Right-hand description column for a profile picker. Fetches the profile's
- * own <description> (distinct from any single rule's) via extractProfile()
- * unless the caller already has it loaded (`preloaded`), in which case no
- * extra spawn is made. */
+/* Right-hand description column for a profile picker. Shows the profile's
+ * own <description> (distinct from any single rule's) from
+ * getProfileDescription(), which shares the pickers' cached profile list
+ * (4.6.2), unless the caller already has it loaded (`preloaded`). */
 export const ProfileDescriptionPanel = ({ profileId, sdsPath, preloaded }) => {
     const [fetched, setFetched] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -22,8 +22,8 @@ export const ProfileDescriptionPanel = ({ profileId, sdsPath, preloaded }) => {
         if (preloaded || !profileId || !sdsPath) return;
         let cancelled = false;
         setLoading(true);
-        extractProfile(profileId, sdsPath)
-                .then(data => { if (!cancelled) setFetched(data.profile || null); })
+        getProfileDescription(profileId, sdsPath)
+                .then(description => { if (!cancelled) setFetched({ description }); })
                 .catch(() => { if (!cancelled) setFetched(null); })
                 .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true };

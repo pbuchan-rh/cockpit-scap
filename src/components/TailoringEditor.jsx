@@ -19,7 +19,7 @@ import { ArrowRightIcon } from "@patternfly/react-icons/dist/esm/icons/arrow-rig
 
 import { formatBytes, formatTimestamp } from '../lib/format.js';
 import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent } from '../lib/content.js';
-import { autoSelectContent, detectContent, getOsRelease, getProfiles, sdsDisplayName, stripOscapNoise } from '../lib/oscap.js';
+import { autoSelectContent, detectContent, getOsRelease, getProfileSummaries, sdsDisplayName, stripOscapNoise } from '../lib/oscap.js';
 import {
     extractProfile, flattenProfileRules, parseTailoringXml, readTailoringXml,
     saveNewTailoring, updateTailoringFile,
@@ -458,7 +458,7 @@ export const TailoringEditor = ({ editingSidecar, onSaved, onCancelEdit, content
         if (isEditing || !content) return;
         let cancelled = false;
         setContentError(null);
-        getProfiles(content).then(list => {
+        getProfileSummaries(content).then(list => {
             if (cancelled) return;
             setProfiles(list);
             setProfileId(list[0]?.id ?? '');

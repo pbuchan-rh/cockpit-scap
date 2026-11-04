@@ -22,9 +22,9 @@ import { checkUploadSize, sanitizeFilename, statExistingContent, uploadContent }
 import { downloadFile } from '../lib/download.js';
 import {
     autoSelectContent, cpeDisplayName, detectContent, generateGuide, generateProfileFix, getContentPlatform,
-    getOsRelease, getProfiles, isEmptyFix, isPlatformMismatch, stripOscapNoise,
+    getOsRelease, getProfileSummaries, isEmptyFix, isPlatformMismatch, stripOscapNoise,
 } from '../lib/oscap.js';
-import { listScans } from '../lib/scanHistory.js';
+import { listScanProfiles } from '../lib/scanHistory.js';
 import { listTailoringFiles } from '../lib/tailoring.js';
 import { openReportViewer } from '../lib/reportViewer.js';
 import { ContentFieldError, ContentSelect } from './ContentSelect.jsx';
@@ -59,6 +59,9 @@ export const ScanSetup = ({
     const [uploadKey, setUploadKey] = useState(0);
     const [profiles, setProfiles] = useState([]);
     const [profile, setProfile] = useState('');
+    // Newest saved scan of this content: its profile shows in the picker
+    // before the profile list is in (4.6.2).
+    const [lastScan, setLastScan] = useState(null);
     const [tailoringFiles, setTailoringFiles] = useState([]);
     const [tailoringSelection, setTailoringSelection] = useState('');
     const [loadingContent, setLoadingContent] = useState(true);
@@ -100,6 +103,7 @@ export const ScanSetup = ({
     useEffect(() => {
         setProfiles([]);
         setProfile('');
+        setLastScan(null);
         setTailoringSelection('');
         setContentCpe(null);
         if (!content) {
@@ -113,11 +117,20 @@ export const ScanSetup = ({
         // No silent default (R4): preselect only the profile of the newest
         // saved scan of this same content (Amendment 1: derived from
         // ~/SCAP/scans, no new storage), else "Select a profile…".
-        Promise.all([getProfiles(content), listScans().catch(() => [])])
-                .then(([list, scans]) => {
+        // listScanProfiles is newest first.
+        const lastScanPromise = listScanProfiles().catch(() => [])
+                .then(scans => scans.find(sc => sc.sds_file === content) || null);
+        // Shown as soon as it is known; Scan stays off until the list
+        // below confirms the profile is in this content (4.6.2).
+        lastScanPromise.then(last => {
+            if (cancelled || !last) return;
+            setLastScan(last);
+            setProfile(prev => prev || last.base_profile_id || last.profile_id);
+        });
+        Promise.all([getProfileSummaries(content), lastScanPromise])
+                .then(([list, last]) => {
                     if (cancelled) return;
                     setProfiles(list);
-                    const last = scans.find(sc => sc.sds_file === content); // listScans is newest first
                     const lastId = last && (last.base_profile_id || last.profile_id);
                     setProfile(list.some(p => p.id === lastId) ? lastId : '');
                     setLoadingProfiles(false);
@@ -168,6 +181,17 @@ export const ScanSetup = ({
     const activeProfileTitle = selectedTailoring
         ? selectedTailoring.name
         : (profiles.find(p => p.id === profile)?.title || profile);
+
+    // The picker's one option until the list is in: the last scan's profile
+    // with its title (an untailored scan's own, else its tailoring's base).
+    const pendingTitle = lastScan && profile === (lastScan.base_profile_id || lastScan.profile_id)
+        ? (lastScan.profile_id === profile
+            ? lastScan.profile_title
+            : tailoringFiles.find(sc => sc.profile_id === lastScan.profile_id && sc.sds_path === content)?.base_profile_title)
+        : null;
+    const profileOptions = loadingProfiles
+        ? (pendingTitle ? [{ value: profile, label: pendingTitle }] : [])
+        : profiles.map(p => ({ value: p.id, label: p.title || p.id }));
 
     // Nothing to scan with: an EmptyState instead of the form.
     const noContent = !loadingContent && contentList.length === 0;
@@ -417,19 +441,20 @@ export const ScanSetup = ({
                                 </FormGroup>
 
                                 <FormGroup label={_("Profile")} fieldId="ct-scap-profile">
-                                    {loadingProfiles
-                                        ? <Spinner size="sm" aria-label={_("Loading profiles")} />
-                                        : <SelectField
-                                            id="ct-scap-profile"
-                                            label={_("Profile")}
-                                            value={selectedTailoring ? selectedTailoring.base_profile_id : profile}
-                                            onChange={setProfile}
-                                            options={profiles.map(p => ({ value: p.id, label: p.title || p.id }))}
-                                            placeholder={profiles.length > 0
-                                                ? _("Select a profile…")
-                                                : contentReady ? _("No profiles found") : _("Select content first")}
-                                            isDisabled={!contentReady || profiles.length === 0 || !!selectedTailoring}
-                                        />}
+                                    {/* No spinner here: the last scan's profile shows
+                                        while the list loads (4.6.2); the description
+                                        panel has the spinner. */}
+                                    <SelectField
+                                        id="ct-scap-profile"
+                                        label={_("Profile")}
+                                        value={selectedTailoring ? selectedTailoring.base_profile_id : profile}
+                                        onChange={setProfile}
+                                        options={profileOptions}
+                                        placeholder={profiles.length > 0 || loadingProfiles
+                                            ? _("Select a profile…")
+                                            : contentReady ? _("No profiles found") : _("Select content first")}
+                                        isDisabled={!contentReady || loadingProfiles || profiles.length === 0 || !!selectedTailoring}
+                                    />
                                 </FormGroup>
 
                                 <FormGroup label={_("Tailoring policy")} fieldId="ct-scap-tailoring-select">
