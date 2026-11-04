@@ -1,5 +1,5 @@
 import cockpit from 'cockpit';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Alert, AlertActionCloseButton } from "@patternfly/react-core/dist/esm/components/Alert/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Card, CardBody, CardFooter, CardHeader } from "@patternfly/react-core/dist/esm/components/Card/index.js";
@@ -10,6 +10,7 @@ import { ExpandableSection } from "@patternfly/react-core/dist/esm/components/Ex
 import { Label, LabelGroup } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { MenuToggle } from "@patternfly/react-core/dist/esm/components/MenuToggle/index.js";
 import { SearchInput } from "@patternfly/react-core/dist/esm/components/SearchInput/index.js";
+import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { AngleDownIcon } from "@patternfly/react-icons/dist/esm/icons/angle-down-icon.js";
 import { AngleRightIcon } from "@patternfly/react-icons/dist/esm/icons/angle-right-icon.js";
@@ -119,14 +120,14 @@ const RuleRemediation = ({ rule, info, scope }) => {
     );
 };
 
-const RuleRow = ({ rule, info, scope, showFix }) => {
-    const [expanded, setExpanded] = useState(false);
+// expanded/onToggle come from ScanResults, so Expand all can drive them.
+const RuleRow = ({ rule, info, scope, showFix, expanded, onToggle }) => {
     const panelId = `ct-rule-panel-${rule.id}`;
     return (
         <div className="ct-rule-item" data-rule-id={rule.id}>
             <button
                 type="button" className="ct-rule-row" aria-expanded={expanded} aria-controls={panelId}
-                onClick={() => setExpanded(x => !x)}
+                onClick={() => onToggle(rule.id)}
             >
                 <span className="ct-rule-toggle-icon" aria-hidden="true">
                     {expanded ? <AngleDownIcon /> : <AngleRightIcon />}
@@ -169,7 +170,7 @@ const RuleRow = ({ rule, info, scope, showFix }) => {
     );
 };
 
-const RuleGroup = ({ group, isExpanded, onToggle, scope, details, ruleMeta, visibleIds }) => {
+const RuleGroup = ({ group, isExpanded, onToggle, scope, details, ruleMeta, visibleIds, openRules, onToggleRule }) => {
     const rules = visibleIds ? group.rules.filter(r => visibleIds.has(r.id)) : group.rules;
     return (
         <ExpandableSection
@@ -190,7 +191,10 @@ const RuleGroup = ({ group, isExpanded, onToggle, scope, details, ruleMeta, visi
             {isExpanded && rules.map((rule, i) => (
                 <React.Fragment key={rule.id}>
                     {i > 0 && <Divider className="ct-rule-divider" />}
-                    <RuleRow rule={rule} info={ruleInfo(rule.id, details, ruleMeta)} scope={scope} showFix={group.isFailing} />
+                    <RuleRow
+                        rule={rule} info={ruleInfo(rule.id, details, ruleMeta)} scope={scope} showFix={group.isFailing}
+                        expanded={openRules.has(rule.id)} onToggle={onToggleRule}
+                    />
                 </React.Fragment>
             ))}
         </ExpandableSection>
@@ -201,7 +205,7 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
     const {
         scorePercent, pass, fail, error: errorCount, notapplicable, notchecked, failingRules, otherRules,
         reportHtml, resultsXmlGz, arfXmlGz, ruleMeta, details, header, sdsPath, tailoringPath, scanProfileId,
-        allRuleIds, profileTitle, tailoringName,
+        allRuleIds, profileTitle, tailoringName, loadFile,
     } = result;
     const scope = useMemo(
         () => ({ sdsPath, profileId: scanProfileId, profileTitle, tailoringPath, allRuleIds }),
@@ -261,12 +265,49 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
         if (!value.trim()) setExpanded(defaultExpanded);
     }
 
+    // Open rule rows, by rule id. A group that closes closes its rows too,
+    // as when each row kept its own state.
+    const [openRules, setOpenRules] = useState(() => new Set());
+
     function toggleGroup(key) {
+        if (expanded.has(key)) {
+            const ids = groups.find(g => g.key === key)?.rules.map(r => r.id) ?? [];
+            setOpenRules(prev => {
+                const next = new Set(prev);
+                ids.forEach(id => next.delete(id));
+                return next;
+            });
+        }
         setExpanded(prev => {
             const next = new Set(prev);
             if (next.has(key)) next.delete(key); else next.add(key);
             return next;
         });
+    }
+
+    function toggleRule(id) {
+        setOpenRules(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    }
+
+    // Expand all / Collapse all covers the failing groups (and errors) and
+    // their rules; Not applicable / Not checked keep their own state on
+    // Expand all, and close on Collapse all.
+    const failingGroups = groups.filter(g => g.isFailing);
+    const allOpen = failingGroups.length > 0 &&
+        failingGroups.every(g => (visibleIds || expanded.has(g.key)) && g.rules.every(r => openRules.has(r.id)));
+
+    function toggleAll() {
+        if (allOpen) {
+            setExpanded(new Set());
+            setOpenRules(new Set());
+        } else {
+            setExpanded(prev => new Set([...prev, ...failingGroups.map(g => g.key)]));
+            setOpenRules(prev => new Set([...prev, ...failingGroups.flatMap(g => g.rules.map(r => r.id))]));
+        }
     }
 
     const fails = failingRules.filter(r => r.result === 'fail');
@@ -282,22 +323,54 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
             : fails.length > 0 ? 'warning' : 'success';
     const autoCritHigh = fails.filter(r => isCriticalOrHigh(r.severity) && ruleInfo(r.id, details, ruleMeta).automated).length;
 
+    // A fresh scan has its files in memory. A saved scan has its
+    // results.xml.gz; it reads the others from ~/SCAP/scans the first time
+    // View report or a Download needs them (loadFile, 4.6.2), and keeps
+    // them for this view.
+    const fileCache = useRef({});
+    const [fileBusy, setFileBusy] = useState(null); // 'view' | 'download'
+
+    const inMemory = kind => ({ html: reportHtml, xml: resultsXmlGz, arf: arfXmlGz }[kind]);
+    const mustLoad = kind => !!loadFile && inMemory(kind) === undefined;
+
+    function getFile(kind) {
+        if (!mustLoad(kind)) return Promise.resolve(inMemory(kind));
+        if (!fileCache.current[kind]) {
+            fileCache.current[kind] = loadFile(kind).catch(ex => {
+                delete fileCache.current[kind];
+                throw ex;
+            });
+        }
+        return fileCache.current[kind];
+    }
+
     function handleViewReport() {
         setActionError(null);
-        if (!openReportViewer(Promise.resolve(reportHtml)))
+        const html = getFile('html');
+        if (!openReportViewer(html)) {
             setActionError(_("Your browser blocked the report from opening in a new tab. Allow pop-ups for this site and try again."));
+            return;
+        }
+        if (!mustLoad('html')) return;
+        setFileBusy('view');
+        html.catch(ex => setActionError(ex.message || String(ex)))
+                .finally(() => setFileBusy(null));
     }
 
     async function handleDownload(kind) {
         setIsDownloadOpen(false);
         setActionError(null);
         const base = `scan-${slugify(profileTitle) || 'results'}`;
+        if (mustLoad(kind)) setFileBusy('download');
         try {
-            if (kind === 'html') await downloadFile(reportHtml, `${base}-report.html`);
-            else if (kind === 'xml') await downloadFile(resultsXmlGz, `${base}-results.xml.gz`);
-            else await downloadFile(arfXmlGz, `${base}-arf.xml.gz`);
+            const data = await getFile(kind);
+            if (kind === 'html') await downloadFile(data, `${base}-report.html`);
+            else if (kind === 'xml') await downloadFile(data, `${base}-results.xml.gz`);
+            else await downloadFile(data, `${base}-arf.xml.gz`);
         } catch (ex) {
             setActionError(ex.message || String(ex));
+        } finally {
+            setFileBusy(null);
         }
     }
 
@@ -437,6 +510,11 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
                                     resultsCount={visibleIds ? visibleIds.size : undefined}
                                     aria-label={_("Search rules")}
                                 />
+                                {failingGroups.length > 0 && (
+                                    <Button variant="link" className="ct-rules-expand-all" onClick={toggleAll}>
+                                        {allOpen ? _("Collapse all") : _("Expand all")}
+                                    </Button>
+                                )}
                             </div>
                             <Divider />
                             {visibleIds && visibleIds.size === 0 && (
@@ -453,6 +531,8 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
                                         details={details}
                                         ruleMeta={ruleMeta}
                                         visibleIds={visibleIds}
+                                        openRules={openRules}
+                                        onToggleRule={toggleRule}
                                     />
                                 </React.Fragment>
                             ))}
@@ -461,12 +541,21 @@ export const ScanResults = ({ result, onClose, onOpenBuilder }) => {
             </CardBody>
             <Divider />
             <CardFooter className="ct-results-footer">
-                <Button variant="secondary" onClick={handleViewReport}>{_("View report")}</Button>
+                <Button
+                    variant="secondary" onClick={handleViewReport}
+                    isLoading={fileBusy === 'view'} isDisabled={!!fileBusy}
+                >
+                    {_("View report")}
+                </Button>
                 <Dropdown
                     isOpen={isDownloadOpen}
                     onOpenChange={setIsDownloadOpen}
                     toggle={ref => (
-                        <MenuToggle ref={ref} variant="secondary" isExpanded={isDownloadOpen} onClick={() => setIsDownloadOpen(o => !o)}>
+                        <MenuToggle
+                            ref={ref} variant="secondary" isExpanded={isDownloadOpen} isDisabled={!!fileBusy}
+                            onClick={() => setIsDownloadOpen(o => !o)}
+                            icon={fileBusy === 'download' ? <Spinner size="sm" aria-label={_("Loading")} /> : undefined}
+                        >
                             {_("Download")}
                         </MenuToggle>
                     )}
