@@ -137,13 +137,15 @@ export async function listScanProfiles() {
             .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
 }
 
-/* A manifest without its rule_meta value, as JSON: awk drops the lines
- * between '  "rule_meta": {' and its closing '  }' (writeManifest indents
- * top-level keys by two spaces; JSON.stringify leaves no raw newline inside
- * a string, so no deeper line starts that way) and writes
- * '"rule_meta": null' in their place. One record per scan dir, each
- * starting with \x1e and the dir name on its own line. Same permission
- * checks as listScanProfiles(). */
+/* Each manifest without its rule_meta value, as JSON. A C-locale grep
+ * keeps the lines indented 0-4 spaces (fast; drops rule_meta's inner
+ * lines), then awk drops what is left between '  "rule_meta": {' and its
+ * closing '  }' and writes '"rule_meta": null' instead. writeManifest
+ * indents top-level keys by two spaces, and JSON.stringify leaves no raw
+ * newline inside a string. A manifest with another top-level value nested
+ * deeper comes out broken and is read whole by listScans(). One record per
+ * scan dir: \x1e, '<dir>/manifest.json', newline, the JSON. Same permission checks
+ * as listScanProfiles(). */
 const LIGHT_MANIFESTS_SCRIPT = [
     'denied() { echo "Permission denied" >&2; exit 2; }',
     'cd -- "$1" 2>/dev/null || { [ -e "$1" ] && denied; exit 0; }',
@@ -152,14 +154,15 @@ const LIGHT_MANIFESTS_SCRIPT = [
     '    { [ -r "$d" ] && [ -x "$d" ]; } || denied',
     '    [ ! -e "$d/manifest.json" ] || [ -r "$d/manifest.json" ] || denied',
     'done',
-    'set -- */manifest.json',
-    '[ -e "$1" ] || exit 0',
-    "exec awk '",
-    'FNR == 1 { skip = 0; d = FILENAME; sub(/\\/manifest\\.json$/, "", d); printf "\\036%s\\n", d }',
+    'for f in */manifest.json; do',
+    '    [ -e "$f" ] || continue',
+    '    printf "\\036%s\\n" "$f"',
+    "    LC_ALL=C grep -E '^ {0,4}[^ ]' -- \"$f\" | LC_ALL=C awk '",
     'skip { if ($0 ~ /^  }/) { skip = 0; print "  \\"rule_meta\\": null" ($0 ~ /,$/ ? "," : "") } next }',
     '/^  "rule_meta": \\{$/ { skip = 1; next }',
     '{ print }',
-    "' \"$@\"",
+    "'",
+    'done',
 ].join('\n');
 
 /* List all saved scans, newest first. Each entry is the manifest content
@@ -181,7 +184,7 @@ export async function listScans() {
     const manifests = await Promise.all(records.map(async record => {
         const nl = record.indexOf('\n');
         if (nl < 0) return null;
-        const dir = `${rootDir}/${record.slice(0, nl)}`;
+        const dir = `${rootDir}/${record.slice(0, nl).replace(/\/manifest\.json$/, '')}`;
         let manifest;
         try {
             manifest = JSON.parse(record.slice(nl + 1));
