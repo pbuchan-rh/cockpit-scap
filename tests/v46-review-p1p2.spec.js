@@ -71,11 +71,11 @@ test.describe('unit', () => {
             expect(root.endsWith('</Tailoring>')).toBe(true);
             // One declaration at most, the file's own.
             expect(out.split('<?xml ').length).toBe(xml.split('<?xml ').length);
-            // Inside the root, as before: the edit is applied, the parser
-            // turned CRLF into LF, nothing else changed.
-            expect(root).toBe(rootXml('\n')
+            // Inside the root: the edit is applied in the file's own line
+            // ending (CRLF kept since 4.6.2), nothing else changed.
+            expect(root).toBe(rootXml(nl)
                     .replace(`package_aide_installed" selected="true"/>`,
-                             `package_aide_installed" selected="false"/>\n    <select idref="${S.RULE}package_sudo_installed" selected="true"/>`));
+                             `package_aide_installed" selected="false"/>${nl}    <select idref="${S.RULE}package_sudo_installed" selected="true"/>`));
             const parsed = await page.evaluate(([out, profile]) => ({
                 error: new DOMParser().parseFromString(out, 'application/xml')
                         .getElementsByTagName('parsererror').length,

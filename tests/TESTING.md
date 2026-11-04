@@ -45,8 +45,9 @@ bridge. `helpers/scap.js` drives the PatternFly pickers and runs a scan.
   v46-phase4-editor, v46-phase4-tables, v46-polish-editor, v46-u1-eta (fake `oscap`
   output), v46-u2-pickers, v46-u3-manual-removed, v46-u4-tables, v46-t1-alignment,
   v46-uat2, v46-review-tailoring (one single-rule `oscap xccdf eval` as the user, results in
-  /tmp), v46-review-p1p2. These create their own fixtures and remove them.
-- No host: the `unit` tests in v46-review-p1p2 bundle a `src/lib` module with esbuild
+  /tmp), v46-review-p1p2, v46-462 (its root-owned scan test chowns one fixture scan dir
+  as root and removes it). These create their own fixtures and remove them.
+- No host: the `unit` tests in v46-review-p1p2 and v46-462 bundle a `src/lib` module with esbuild
   (`helpers/lib-bundle.js`, `cockpit` stubbed) into a blank page, so DOMParser and
   XMLSerializer code runs in each browser project: `--grep unit`.
 - Real scans: v46-phase1, v46-phase2, v46-phase3, v46-phase4-history, v46-phase4-layout,
@@ -58,6 +59,9 @@ bridge. `helpers/scap.js` drives the PatternFly pickers and runs a scan.
   unless `COCKPIT_URL` points at the disposable host named in `helpers/apply-host.js`.
   v46-review-lifecycle refuses the same way: besides real scans it starts Apply now as
   root, though only with a fake, echo-only fix that leaves the host unchanged.
+- Timing: v46-perf-scan-open skips unless `SCAP_PERF=1`. It opens `SCAP_SHELL_PATH` five
+  times (`SCAP_PERF_RUNS`) and prints the ms to the Profile picker, the description and Run
+  Scan; read-only, needs a saved scan of the host's content so a profile is preselected.
 - Release upgrade: v46-release-upgrade (apply host only, `SCAP_SHELL_PATH=/scap`) skips unless
   `UPGRADE_PHASE` is set. `UPGRADE_PHASE=seed` with the previous release's RPM installed creates a
   scan and two tailorings; then `dnf upgrade` to the candidate; then `UPGRADE_PHASE=verify` checks
