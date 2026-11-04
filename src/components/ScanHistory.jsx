@@ -19,7 +19,7 @@ import { Table, Thead, Tbody, Tr, Th, Td } from "@patternfly/react-table/dist/es
 import { downloadFile } from '../lib/download.js';
 import { ListCardTitle } from './ListCardTitle.jsx';
 import { formatTimestamp, listFooterText } from '../lib/format.js';
-import { deleteScan, listScans, readSavedScanFiles } from '../lib/scanHistory.js';
+import { deleteScan, listScans, readSavedScanFile } from '../lib/scanHistory.js';
 import { slugify } from '../lib/rules.js';
 
 const _ = cockpit.gettext;
@@ -173,8 +173,10 @@ const RowActions = ({ sc, busy, disabled, scanRunning, onView, onDownload, onDel
 // feeds the saved scan into ScanResults and scrolls to it. scanRunning:
 // a scan is in progress, so View is off until it ends. onChanged()
 // after a delete so app.jsx refreshes the size. diskUsage: bytes used by
-// ~/SCAP/scans, fetched by app.jsx.
-export const ScanHistory = ({ refreshKey, onView, scanRunning, onChanged, diskUsage }) => {
+// ~/SCAP/scans, fetched by app.jsx. deferred: hold the first load back
+// (spinner meanwhile) until Host Scan's profile list is in, so it does not
+// compete with it (4.6.2).
+export const ScanHistory = ({ refreshKey, onView, scanRunning, onChanged, diskUsage, deferred }) => {
     const [scans, setScans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -183,13 +185,14 @@ export const ScanHistory = ({ refreshKey, onView, scanRunning, onChanged, diskUs
     const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
+        if (deferred) return;
         let cancelled = false;
         setLoading(true);
         listScans()
                 .then(list => { if (!cancelled) { setScans(list); setLoading(false) } })
                 .catch(ex => { if (!cancelled) { setError(ex.message || String(ex)); setLoading(false) } });
         return () => { cancelled = true };
-    }, [refreshKey]);
+    }, [refreshKey, deferred]);
 
     const deltas = useMemo(() => scoreDeltas(scans), [scans]);
 
@@ -209,11 +212,12 @@ export const ScanHistory = ({ refreshKey, onView, scanRunning, onChanged, diskUs
         setBusy({ dir: sc.dir, what: 'download' });
         setError(null);
         try {
-            const files = await readSavedScanFiles(sc);
+            // Only the file asked for (4.6.2).
+            const data = await readSavedScanFile(sc, kind);
             const base = `scan-${slugify(sc.profile_title || sc.profile_id) || 'results'}-${sc.timestamp}`;
-            if (kind === 'html') await downloadFile(files.reportHtml, `${base}-report.html`);
-            else if (kind === 'xml') await downloadFile(files.resultsXmlGz, `scan-results-${sc.timestamp}.xml.gz`);
-            else await downloadFile(files.arfXmlGz, `${base}-arf.xml.gz`);
+            if (kind === 'html') await downloadFile(data, `${base}-report.html`);
+            else if (kind === 'xml') await downloadFile(data, `scan-results-${sc.timestamp}.xml.gz`);
+            else await downloadFile(data, `${base}-arf.xml.gz`);
         } catch (ex) {
             setError(ex.message || String(ex));
         } finally {

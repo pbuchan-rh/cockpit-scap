@@ -9,7 +9,9 @@ import { Tab, Tabs, TabTitleText } from "@patternfly/react-core/dist/esm/compone
 import { isOscapInstalled, makeTmpdir, startScan, readResults, cleanupTmpdir } from './lib/oscap.js';
 import { groupReferences, parseResults } from './lib/results.js';
 import { extractProfile, flattenProfileRules, getTailoringDiskUsage, parseTailoringXml, readTailoringXml } from './lib/tailoring.js';
-import { findPriorScanDuration, saveScan, readSavedScanFiles, getScanHistoryDiskUsage } from './lib/scanHistory.js';
+import {
+    findPriorScanDuration, saveScan, readSavedScanFile, readSavedScanResults, readScanManifest, getScanHistoryDiskUsage,
+} from './lib/scanHistory.js';
 import { ScanSetup } from './components/ScanSetup.jsx';
 import { ScanProgress } from './components/ScanProgress.jsx';
 import { ScanResults } from './components/ScanResults.jsx';
@@ -51,6 +53,12 @@ export const App = () => {
     // (seconds the newest matching saved scan took, null if none) is
     // undefined until looked up.
     const [scanInfo, setScanInfo] = useState(null);
+    // Scan History's first load waits until Host Scan's profile list is in,
+    // so the two do not compete for the bridge (4.6.2). Without the setup
+    // form (no scanner, or a scan/results showing) it loads at once; the
+    // timer makes sure it always loads.
+    const [historyReady, setHistoryReady] = useState(false);
+    const handleSetupReady = useCallback(() => setHistoryReady(true), []);
     // Bumped by history "View": scroll to and focus the results (R3).
     const [resultsFocusKey, setResultsFocusKey] = useState(0);
     // Apply now: the confirm request ({ source }) while the dialog asks,
@@ -72,6 +80,16 @@ export const App = () => {
         isOscapInstalled().then(found => { if (!cancelled) setOscapInstalled(found); });
         return () => { cancelled = true };
     }, [prereqKey]);
+
+    useEffect(() => {
+        if (historyReady) return;
+        if (oscapInstalled === false || phase !== 'setup') {
+            setHistoryReady(true);
+            return;
+        }
+        const timer = window.setTimeout(() => setHistoryReady(true), 5000);
+        return () => window.clearTimeout(timer);
+    }, [historyReady, oscapInstalled, phase]);
 
     useEffect(() => {
         cockpit.spawn(['hostname'], { err: 'ignore' })
@@ -242,17 +260,21 @@ export const App = () => {
         setPhase('setup');
     }, []);
 
-    const handleViewSavedScan = useCallback(async (manifest) => {
+    const handleViewSavedScan = useCallback(async (row) => {
         // History disables View while a scan runs; this also covers a
         // click that was already on its way.
         if (scanActiveRef.current) throw new Error(_("A scan is running. View saved scans when it has finished."));
-        const files = await readSavedScanFiles(manifest);
+        // Only the manifest (whole, for rule_meta) and the results are read
+        // now; report.html and the ARF are read when View report or a
+        // Download asks for them (loadFile, 4.6.2).
+        const [manifest, files] = await Promise.all([readScanManifest(row.dir), readSavedScanResults(row)]);
         if (scanActiveRef.current) throw new Error(_("A scan is running. View saved scans when it has finished."));
         const parsed = parseResults(files.resultsXml);
         setError(null);
         setScanResult({
             ...parsed,
             ...files,
+            loadFile: kind => readSavedScanFile(manifest, kind),
             // rule_meta didn't exist in manifests saved before this fix —
             // degrade to {} (FailingRuleRow already renders fine with no meta).
             ruleMeta: manifest.rule_meta || {},
@@ -441,6 +463,7 @@ export const App = () => {
                                     onContentChanged={handleContentChanged}
                                     onManageContent={handleManageContent}
                                     onPackagesInstalled={handlePackagesInstalled}
+                                    onReady={handleSetupReady}
                                             />
                                         )}
 
@@ -463,6 +486,7 @@ export const App = () => {
                                 scanRunning={phase === 'running'}
                                 onChanged={handleHistoryChanged}
                                 diskUsage={scanDiskUsage}
+                                deferred={!historyReady}
                                         />
                                     </div>
                                 </Tab>

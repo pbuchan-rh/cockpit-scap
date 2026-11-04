@@ -137,37 +137,83 @@ export async function listScanProfiles() {
             .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
 }
 
+/* A manifest without its rule_meta value, as JSON: awk drops the lines
+ * between '  "rule_meta": {' and its closing '  }' (writeManifest indents
+ * top-level keys by two spaces; JSON.stringify leaves no raw newline inside
+ * a string, so no deeper line starts that way) and writes
+ * '"rule_meta": null' in their place. One record per scan dir, each
+ * starting with \x1e and the dir name on its own line. Same permission
+ * checks as listScanProfiles(). */
+const LIGHT_MANIFESTS_SCRIPT = [
+    'denied() { echo "Permission denied" >&2; exit 2; }',
+    'cd -- "$1" 2>/dev/null || { [ -e "$1" ] && denied; exit 0; }',
+    'for d in */; do',
+    '    [ -d "$d" ] || continue',
+    '    { [ -r "$d" ] && [ -x "$d" ]; } || denied',
+    '    [ ! -e "$d/manifest.json" ] || [ -r "$d/manifest.json" ] || denied',
+    'done',
+    'set -- */manifest.json',
+    '[ -e "$1" ] || exit 0',
+    "exec awk '",
+    'FNR == 1 { skip = 0; d = FILENAME; sub(/\\/manifest\\.json$/, "", d); printf "\\036%s\\n", d }',
+    'skip { if ($0 ~ /^  }/) { skip = 0; print "  \\"rule_meta\\": null" ($0 ~ /,$/ ? "," : "") } next }',
+    '/^  "rule_meta": \\{$/ { skip = 1; next }',
+    '{ print }',
+    "' \"$@\"",
+].join('\n');
+
 /* List all saved scans, newest first. Each entry is the manifest content
- * plus a runtime-only `dir` field (derived from rootDir + timestamp, not
- * persisted — the timestamp doubles as the directory name). */
+ * plus a runtime-only `dir` field (derived from rootDir + the directory
+ * name, not persisted — the timestamp doubles as the directory name).
+ * Entries leave out rule_meta (~1.5 MB per scan; 4.6.2): the list does not
+ * need it, and View reads that one scan's whole manifest
+ * (readScanManifest). A manifest the light read cannot parse is read
+ * whole, so a row shows whenever its manifest parses, as before. */
 export async function listScans() {
     const rootDir = await getScanHistoryDir();
     let output;
     try {
-        output = await spawnUserRead(['ls', rootDir]);
+        output = await spawnUserRead(['sh', '-c', LIGHT_MANIFESTS_SCRIPT, 'sh', rootDir]);
     } catch {
         return [];
     }
-    const entries = output.trim().split('\n')
-            .filter(Boolean);
-    const manifests = await Promise.all(entries.map(async ts => {
-        const dir = `${rootDir}/${ts}`;
+    const records = output.split('\x1e').filter(Boolean);
+    const manifests = await Promise.all(records.map(async record => {
+        const nl = record.indexOf('\n');
+        if (nl < 0) return null;
+        const dir = `${rootDir}/${record.slice(0, nl)}`;
+        let manifest;
         try {
-            // cockpit.file().read() resolves with null (doesn't reject) for a
-            // missing file, and JSON.parse(null) returns null without
-            // throwing — so a directory left behind by a failed/interrupted
-            // save (mkdir succeeded, manifest.json write never reached)
-            // would otherwise pass through as {dir} and render a blank row.
-            const content = await readUserFile(`${dir}/manifest.json`);
-            const manifest = JSON.parse(content);
-            if (!manifest || typeof manifest !== 'object') throw new Error('empty manifest');
-            return { ...manifest, dir };
+            manifest = JSON.parse(record.slice(nl + 1));
         } catch {
-            return null;
+            try {
+                manifest = JSON.parse(await readUserFile(`${dir}/manifest.json`));
+            } catch {
+                return null;
+            }
         }
+        // A directory left behind by a failed/interrupted save (no
+        // manifest.json) gives no record; an empty manifest gives no row.
+        if (!manifest || typeof manifest !== 'object') return null;
+        delete manifest.rule_meta;
+        return { ...manifest, dir };
     }));
     return manifests.filter(Boolean)
             .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+}
+
+function checkScanDir(rootDir, dir) {
+    if (!dir || !dir.startsWith(rootDir + '/')) {
+        throw new Error('Refusing to read a scan directory outside ' + rootDir);
+    }
+}
+
+/* One saved scan's whole manifest (rule_meta included), plus `dir`. */
+export async function readScanManifest(dir) {
+    checkScanDir(await getScanHistoryDir(), dir);
+    const manifest = JSON.parse(await readUserFile(`${dir}/manifest.json`));
+    if (!manifest || typeof manifest !== 'object') throw new Error('empty manifest');
+    return { ...manifest, dir };
 }
 
 /* Seconds a saved scan took, from its own results' TestResult start-time
@@ -189,56 +235,53 @@ async function resultsDurationS(dir) {
 
 /* How long the newest saved scan of the same content, profile and
  * tailoring took, in seconds, for the running view's countdown (as v3).
- * Manifests are read newest first and only until the first match; a match
- * saved before scan_duration_s existed falls back to its own results file.
- * null when no saved scan matches. */
+ * Scan dirs newest first by name, from the light listing (no rule_meta);
+ * a match saved before scan_duration_s existed falls back to its own
+ * results file. null when no saved scan matches. */
 export async function findPriorScanDuration({ profileId, sdsPath, tailoringPath }) {
-    const rootDir = await getScanHistoryDir();
-    let output;
-    try {
-        output = await spawnUserRead(['ls', rootDir]);
-    } catch {
-        return null;
-    }
-    const entries = output.trim().split('\n')
-            .filter(Boolean)
-            .sort()
-            .reverse();
-    for (const ts of entries) {
-        const dir = `${rootDir}/${ts}`;
-        let manifest;
-        try {
-            manifest = JSON.parse(await readUserFile(`${dir}/manifest.json`));
-        } catch {
-            continue;
-        }
-        if (!manifest || manifest.profile_id !== profileId || manifest.sds_file !== sdsPath ||
-            (manifest.tailoring_path || null) !== (tailoringPath || null))
-            continue;
-        if (Number.isFinite(manifest.scan_duration_s) && manifest.scan_duration_s > 0)
-            return manifest.scan_duration_s;
-        return resultsDurationS(dir);
-    }
-    return null;
+    const scans = (await listScans()).sort((a, b) => b.dir.localeCompare(a.dir));
+    const match = scans.find(m => m.profile_id === profileId && m.sds_file === sdsPath &&
+        (m.tailoring_path || null) === (tailoringPath || null));
+    if (!match) return null;
+    if (Number.isFinite(match.scan_duration_s) && match.scan_duration_s > 0)
+        return match.scan_duration_s;
+    return resultsDurationS(match.dir);
 }
 
-/* Read back a saved scan's files for the "View report"/"Download" actions.
- * Mirrors readResults()'s shape (lib/oscap.js) so ScanResults.jsx can
- * consume either without special-casing: reportHtml/resultsXmlGz/arfXmlGz
- * as Uint8Array, resultsXml as plain text (decompressed on the fly for
- * re-parsing — no extra file kept on disk beyond the three saved above). */
-export async function readSavedScanFiles(manifest) {
-    const rootDir = await getScanHistoryDir();
-    if (!manifest.dir || !manifest.dir.startsWith(rootDir + '/')) {
-        throw new Error('Refusing to read a scan directory outside ' + rootDir);
+/* gzip bytes -> text, in the browser. */
+async function gunzipText(bytes) {
+    const stream = new Blob([bytes]).stream()
+            .pipeThrough(new DecompressionStream('gzip'));
+    return new TextDecoder().decode(await new Response(stream).arrayBuffer());
+}
+
+/* What the results view needs from a saved scan's files (with its
+ * manifest): resultsXml, the decompressed results XML, and resultsXmlGz,
+ * the saved results.xml.gz as read (Download -> Results XML). Only the
+ * gzipped file crosses the bridge (~1.2 MB instead of ~15 MB) and is
+ * decompressed here; without DecompressionStream, or if it fails, gzip -dc
+ * on the host as before. report.html and arf.xml.gz are read only when
+ * View report or a Download asks for them (readSavedScanFile; 4.6.2). */
+export async function readSavedScanResults(manifest) {
+    const resultsXmlGz = await readSavedScanFile(manifest, 'xml');
+    let resultsXml;
+    try {
+        resultsXml = await gunzipText(resultsXmlGz);
+    } catch {
+        resultsXml = await spawnUserRead(['gzip', '-dc', `${manifest.dir}/results.xml.gz`]);
     }
-    const [reportHtml, resultsXmlGz, arfXmlGz, resultsXml] = await Promise.all([
-        spawnUserRead(['cat', `${manifest.dir}/report.html`], { binary: true }),
-        spawnUserRead(['cat', `${manifest.dir}/results.xml.gz`], { binary: true }),
-        spawnUserRead(['cat', `${manifest.dir}/arf.xml.gz`], { binary: true }),
-        spawnUserRead(['gzip', '-dc', `${manifest.dir}/results.xml.gz`]),
-    ]);
-    return { reportHtml, resultsXmlGz, arfXmlGz, resultsXml };
+    return { resultsXml, resultsXmlGz };
+}
+
+const SAVED_SCAN_FILES = { html: 'report.html', xml: 'results.xml.gz', arf: 'arf.xml.gz' };
+
+/* One saved scan file, byte for byte, as a Uint8Array: 'html'
+ * (report.html), 'xml' (results.xml.gz) or 'arf' (arf.xml.gz). */
+export async function readSavedScanFile(manifest, kind) {
+    checkScanDir(await getScanHistoryDir(), manifest.dir);
+    const name = SAVED_SCAN_FILES[kind];
+    if (!name) throw new Error('Unknown scan file: ' + kind);
+    return spawnUserRead(['cat', `${manifest.dir}/${name}`], { binary: true });
 }
 
 export async function deleteScan(manifest) {

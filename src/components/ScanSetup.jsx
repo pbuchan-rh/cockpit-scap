@@ -49,7 +49,7 @@ function slugify(text) {
 
 export const ScanSetup = ({
     adminAllowed, remediationRunning, onScan, tailoringRefreshKey, contentRefreshKey, onContentChanged,
-    onManageContent, onPackagesInstalled,
+    onManageContent, onPackagesInstalled, onReady,
 }) => {
     const [contentList, setContentList] = useState([]);
     const [content, setContent] = useState('');
@@ -134,6 +134,7 @@ export const ScanSetup = ({
                     const lastId = last && (last.base_profile_id || last.profile_id);
                     setProfile(list.some(p => p.id === lastId) ? lastId : '');
                     setLoadingProfiles(false);
+                    onReadyRef.current?.();
                 })
                 .catch(ex => {
                     if (cancelled) return;
@@ -144,9 +145,18 @@ export const ScanSetup = ({
                         details: stripOscapNoise(ex.message || String(ex)),
                     });
                     setLoadingProfiles(false);
+                    onReadyRef.current?.();
                 });
         return () => { cancelled = true };
     }, [content, uploadKey]);
+
+    // onReady(): the first profile list is in (or there is no content to
+    // list), so app.jsx lets Scan History load (4.6.2).
+    const onReadyRef = useRef(onReady);
+    onReadyRef.current = onReady;
+    useEffect(() => {
+        if (!loadingContent && !content) onReadyRef.current?.();
+    }, [loadingContent, content]);
 
     function handleSelectContent(path) {
         setContentError(null);
